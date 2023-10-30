@@ -14,6 +14,9 @@ export class Committee {
 
     @Prop()
     publicKeys: string[];
+
+    @Prop()
+    dkgAddress: string;
 }
 
 export type CommitteeDocument = HydratedDocument<Committee>;
