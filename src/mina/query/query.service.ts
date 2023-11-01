@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Account, PublicKey, fetchEvents } from 'o1js';
+import {
+    Field,
+    Mina,
+    PublicKey,
+    UInt64,
+    fetchAccount,
+    fetchEvents,
+} from 'o1js';
 import { Event } from '../interfaces/event.interface';
 
 @Injectable()
@@ -13,8 +20,19 @@ export class QueryService {
         return events;
     }
 
-    async fetchAccountBalance(publicKey: string) {
-        const account = Account(PublicKey.fromBase58(publicKey));
+    async fetchAccountBalance(publicKey: string): Promise<UInt64> {
+        await fetchAccount({
+            publicKey: publicKey,
+        });
+        const account = Mina.getAccount(PublicKey.fromBase58(publicKey));
         return account.balance;
+    }
+
+    async fetchZkAppState(publicKey: string): Promise<Field[]> {
+        await fetchAccount({
+            publicKey: publicKey,
+        });
+        const account = Mina.getAccount(PublicKey.fromBase58(publicKey));
+        return account.zkapp.appState;
     }
 }
