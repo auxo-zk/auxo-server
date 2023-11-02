@@ -1,10 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { Field, Group, PublicKey } from 'o1js';
+import { CommitteeState } from '../interfaces/committee-state.interface';
 
 @Injectable()
 export class CommitteeService {
     constructor(private readonly queryService: QueryService) {}
+
+    async getState(): Promise<CommitteeState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.COMMITTEE_ADDRESS,
+        );
+        const committeeState: CommitteeState = {
+            memberTreeRoot: state[0],
+            settingTreeRoot: state[1],
+            nextCommitteeId: state[2],
+        };
+        return committeeState;
+    }
 
     async fetchEvents(): Promise<void> {
         const rawEvents = await this.queryService.fetchEvents(
