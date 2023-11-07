@@ -4,4 +4,5 @@ export interface CommitteeState {
     committeeTreeRoot: bigint;
     settingTreeRoot: bigint;
     nextCommitteeId: bigint;
+    actionStateHash: bigint;
 }

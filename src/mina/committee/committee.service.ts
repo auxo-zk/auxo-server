@@ -1,34 +1,35 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
-import { Field, Group, MerkleMap, MerkleTree, Poseidon, PublicKey } from 'o1js';
+import { Field, MerkleMap, MerkleTree, Poseidon, PublicKey } from 'o1js';
 import { CommitteeState } from '../interfaces/committee-state.interface';
 import { Committee } from 'src/schemas/committee.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import DynamicArray from '../utilities/dynamic-array';
 
 const memberTreeHeight = Number(process.env.MEMBER_TREE_HEIGHT as string);
 
 @Injectable()
 export class CommitteeService implements OnModuleInit {
+    private nextCommitteeId: number;
     private committeeTree: MerkleMap;
     private settingTree: MerkleMap;
-    private lastCommitteeId: number;
+    private actionStateHash: bigint;
 
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(Committee.name) private committeeModel: Model<Committee>,
     ) {
+        this.nextCommitteeId = 0;
         this.committeeTree = new MerkleMap();
         this.settingTree = new MerkleMap();
-        this.lastCommitteeId = 0;
     }
 
     get state() {
         return {
             committeeTree: this.committeeTree,
             settingTree: this.settingTree,
-            lastCommitteeId: this.lastCommitteeId,
+            nextCommitteeId: this.nextCommitteeId,
+            actionStateHash: this.actionStateHash,
         };
     }
 
@@ -39,7 +40,7 @@ export class CommitteeService implements OnModuleInit {
 
     async updateMerkleTrees() {
         const committees = await this.committeeModel.find({
-            committeeId: { $gte: this.lastCommitteeId },
+            committeeId: { $gte: this.nextCommitteeId },
         });
         this.insertLeaves(committees);
     }
@@ -49,9 +50,10 @@ export class CommitteeService implements OnModuleInit {
             process.env.COMMITTEE_ADDRESS,
         );
         const committeeState: CommitteeState = {
-            committeeTreeRoot: state[0].toBigInt(),
-            settingTreeRoot: state[1].toBigInt(),
-            nextCommitteeId: state[2].toBigInt(),
+            nextCommitteeId: state[0].toBigInt(),
+            committeeTreeRoot: state[1].toBigInt(),
+            settingTreeRoot: state[2].toBigInt(),
+            actionStateHash: state[3].toBigInt(),
         };
         return committeeState;
     }
@@ -73,12 +75,15 @@ export class CommitteeService implements OnModuleInit {
                     );
                     const publicKeys: string[] = [];
                     for (let i = 0; i < addressesLength; i++) {
-                        const x = data[2 + i * 2];
-                        const y = data[2 + i * 2 + 1];
-                        const publicKey = PublicKey.fromGroup(Group.from(x, y));
+                        const publicKey = PublicKey.fromFields([
+                            Field(data[2 + i * 2]),
+                            Field(data[2 + i * 2 + 1]),
+                        ]);
                         publicKeys.push(publicKey.toBase58());
                     }
-                    const threshold = Field.from(data[2 + 32 * 2]);
+                    const threshold = Field.from(
+                        data[2 + 2 ** (memberTreeHeight - 1) * 2],
+                    );
                     await this.committeeModel.findOneAndUpdate(
                         { committeeId: committeeId },
                         {
@@ -106,10 +111,10 @@ export class CommitteeService implements OnModuleInit {
         );
         const rawEvents = await this.queryService.fetchEvents(
             process.env.COMMITTEE_ADDRESS,
-            lastCommittee == null ? 0 : lastCommittee.blockHeight,
+            lastCommittee == null ? undefined : lastCommittee.blockHeight + 1,
         );
         let committeeId =
-            lastCommittee == null ? 0 : lastCommittee.committeeId + 1;
+            lastCommittee == null ? undefined : lastCommittee.committeeId + 1;
         for (let i = 0; i < rawEvents.length; i++) {
             const events = rawEvents[i].events;
             const blockHeight = rawEvents[i].blockHeight;
@@ -122,12 +127,15 @@ export class CommitteeService implements OnModuleInit {
                     );
                     const publicKeys: string[] = [];
                     for (let i = 0; i < addressesLength; i++) {
-                        const x = data[2 + i * 2];
-                        const y = data[2 + i * 2 + 1];
-                        const publicKey = PublicKey.fromGroup(Group.from(x, y));
+                        const publicKey = PublicKey.fromFields([
+                            Field(data[2 + i * 2]),
+                            Field(data[2 + i * 2 + 1]),
+                        ]);
                         publicKeys.push(publicKey.toBase58());
                     }
-                    const threshold = Field.from(data[2 + 32 * 2]);
+                    const threshold = Field.from(
+                        data[2 + 2 ** (memberTreeHeight - 1) * 2],
+                    );
                     await this.committeeModel.findOneAndUpdate(
                         { committeeId: committeeId },
                         {
@@ -147,47 +155,6 @@ export class CommitteeService implements OnModuleInit {
         }
     }
 
-    async merkleTree() {
-        const committeeTree = new MerkleMap();
-        const committees = await this.committeeModel.find();
-        for (let i = 0; i < committees.length; i++) {
-            const memberTree = new MerkleTree(memberTreeHeight);
-            const committee = committees[i];
-            const temp = [];
-            for (let j = 0; j < committee.numberOfMembers; j++) {
-                temp.push(
-                    PublicKey.fromBase58(committee.publicKeys[j]).toGroup(),
-                );
-            }
-            const publicKeys = new GroupArray(temp);
-            for (let j = 0; j < 32; j++) {
-                memberTree.setLeaf(
-                    BigInt(j),
-                    GroupArray.hash(publicKeys.get(Field(j))),
-                );
-            }
-            // for (let j = 0; j < committee.numberOfMembers; j++) {
-            //     memberTree.setLeaf(
-            //         BigInt(j),
-            //         Poseidon.hash(
-            //             PublicKey.fromBase58(
-            //                 committee.publicKeys[j],
-            //             ).toFields(),
-            //         ),
-            //     );
-            // }
-            console.log(memberTree.getRoot().toBigInt());
-            committeeTree.set(Field(i), memberTree.getRoot());
-        }
-        console.log(committeeTree.getRoot().toBigInt());
-        const appState = await this.queryService.fetchZkAppState(
-            process.env.COMMITTEE_ADDRESS,
-        );
-        for (let i = 0; i < appState.length; i++) {
-            console.log(appState[i].toBigInt());
-        }
-    }
-
     // ============ PRIVATE FUNCTIONS ============
 
     private insertLeaves(committees: Committee[]) {
@@ -202,22 +169,17 @@ export class CommitteeService implements OnModuleInit {
                 );
             }
             this.committeeTree.set(
-                Field(this.lastCommitteeId),
+                Field(this.nextCommitteeId),
                 memberTree.getRoot(),
             );
             this.settingTree.set(
-                Field(this.lastCommitteeId),
+                Field(this.nextCommitteeId),
                 Poseidon.hash([
                     Field(committee.threshold),
                     Field(committee.numberOfMembers),
                 ]),
             );
-            this.lastCommitteeId += 1;
+            this.nextCommitteeId += 1;
         }
     }
 }
-
-export class GroupArray extends DynamicArray(
-    Group,
-    2 ** (memberTreeHeight - 1),
-) {}
