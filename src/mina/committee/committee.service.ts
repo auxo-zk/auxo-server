@@ -34,22 +34,14 @@ export class CommitteeService implements OnModuleInit {
 
     async onModuleInit() {
         const committees = await this.committeeModel.find();
-        for (let i = 0; i < committees.length; i++) {
-            const committee = committees[i];
-            const memberTree = new MerkleTree(memberTreeHeight);
-            for (let j = 0; j < committee.numberOfMembers; j++) {
-                const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
-                memberTree.setLeaf(
-                    BigInt(j),
-                    Poseidon.hash(publicKey.toFields()),
-                );
-            }
-            this.committeeTree.set(
-                Field(this.lastCommitteeId),
-                memberTree.getRoot(),
-            );
-            this.lastCommitteeId += 1;
-        }
+        this.insertLeaves(committees);
+    }
+
+    async updateMerkleTrees() {
+        const committees = await this.committeeModel.find({
+            committeeId: { $gte: this.lastCommitteeId },
+        });
+        this.insertLeaves(committees);
     }
 
     async getZkAppState(): Promise<CommitteeState> {
@@ -193,6 +185,34 @@ export class CommitteeService implements OnModuleInit {
         );
         for (let i = 0; i < appState.length; i++) {
             console.log(appState[i].toBigInt());
+        }
+    }
+
+    // ============ PRIVATE FUNCTIONS ============
+
+    private insertLeaves(committees: Committee[]) {
+        for (let i = 0; i < committees.length; i++) {
+            const committee = committees[i];
+            const memberTree = new MerkleTree(memberTreeHeight);
+            for (let j = 0; j < committee.numberOfMembers; j++) {
+                const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
+                memberTree.setLeaf(
+                    BigInt(j),
+                    Poseidon.hash(publicKey.toFields()),
+                );
+            }
+            this.committeeTree.set(
+                Field(this.lastCommitteeId),
+                memberTree.getRoot(),
+            );
+            this.settingTree.set(
+                Field(this.lastCommitteeId),
+                Poseidon.hash([
+                    Field(committee.threshold),
+                    Field(committee.numberOfMembers),
+                ]),
+            );
+            this.lastCommitteeId += 1;
         }
     }
 }

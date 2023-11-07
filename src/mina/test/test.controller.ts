@@ -30,7 +30,8 @@ export class TestController {
 
     @Get('/test3')
     async test3(): Promise<void> {
-        await this.committeeService.merkleTree();
+        // console.log(this.committeeService.state);
+        await this.committeeService.updateMerkleTrees();
         // try {
         //     await fetchLastBlock();
         // } catch (err) {

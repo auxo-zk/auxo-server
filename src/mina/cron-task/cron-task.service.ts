@@ -13,13 +13,13 @@ export class CronTaskService {
         private readonly committeeService: CommitteeService,
     ) {}
 
-    @Interval(10000000)
+    @Interval(300000)
     async handleFetchMinaLastBlock(): Promise<void> {
         await fetchLastBlock();
     }
 
-    @Interval(1800000)
+    @Interval(300000)
     async handleFetchCommitteeEvents(): Promise<void> {
-        await this.committeeService.fetchAllCommitteeCreatedEvents();
+        await this.committeeService.fetchCommitteeCreatedEvents();
     }
 }
