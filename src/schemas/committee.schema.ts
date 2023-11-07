@@ -4,16 +4,19 @@ import { HydratedDocument } from 'mongoose';
 @Schema()
 export class Committee {
     @Prop({ required: true, unique: true })
-    committeeId: string;
+    committeeId: number;
 
     @Prop()
-    numberOfMembers: string;
+    numberOfMembers: number;
 
     @Prop()
-    threshold: string;
+    threshold: number;
 
     @Prop()
     publicKeys: string[];
+
+    @Prop()
+    blockHeight: number;
 }
 
 export type CommitteeDocument = HydratedDocument<Committee>;

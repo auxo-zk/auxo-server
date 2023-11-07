@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, Interval } from '@nestjs/schedule';
+import { Interval } from '@nestjs/schedule';
 import { fetchLastBlock } from 'o1js';
 import { QueryService } from '../query/query.service';
 import { CommitteeService } from '../committee/committee.service';
@@ -13,18 +13,13 @@ export class CronTaskService {
         private readonly committeeService: CommitteeService,
     ) {}
 
-    @Cron('45 * * * * *')
-    handleCron(): void {
-        this.logger.debug('task scheduler');
-    }
-
-    @Interval(1800000)
+    @Interval(10000000)
     async handleFetchMinaLastBlock(): Promise<void> {
         await fetchLastBlock();
     }
 
     @Interval(1800000)
     async handleFetchCommitteeEvents(): Promise<void> {
-        await this.committeeService.fetchEvents();
+        await this.committeeService.fetchAllCommitteeCreatedEvents();
     }
 }

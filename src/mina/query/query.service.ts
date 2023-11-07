@@ -3,6 +3,7 @@ import {
     Field,
     Mina,
     PublicKey,
+    UInt32,
     UInt64,
     fetchAccount,
     fetchEvents,
@@ -13,10 +14,21 @@ import { Event } from '../interfaces/event.interface';
 export class QueryService {
     constructor() {}
 
-    async fetchEvents(publicKey: string): Promise<Event[]> {
-        const events = await fetchEvents({
-            publicKey: publicKey,
-        });
+    async fetchEvents(
+        publicKey: string,
+        from?: number,
+        to?: number,
+    ): Promise<Event[]> {
+        const events = await fetchEvents(
+            {
+                publicKey: publicKey,
+            },
+            undefined,
+            {
+                from: from == undefined ? undefined : UInt32.from(from),
+                to: to == undefined ? undefined : UInt32.from(to),
+            },
+        );
         return events;
     }
 
@@ -29,10 +41,10 @@ export class QueryService {
     }
 
     async fetchZkAppState(publicKey: string): Promise<Field[]> {
-        await fetchAccount({
+        const result = await fetchAccount({
             publicKey: publicKey,
         });
-        const account = Mina.getAccount(PublicKey.fromBase58(publicKey));
-        return account.zkapp.appState;
+        const account = result.account;
+        return account.zkapp?.appState;
     }
 }
