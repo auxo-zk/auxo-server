@@ -14,6 +14,7 @@ import { CronTaskService } from './cron-task/cron-task.service';
 import { CommitteeService } from './committee/committee.service';
 
 import { TestController } from './test/test.controller';
+import { DistributedKeyGenerationService } from './distributed-key-generation/distributed-key-generation.service';
 
 @Module({
     imports: [
@@ -23,7 +24,7 @@ import { TestController } from './test/test.controller';
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
         ]),
     ],
-    providers: [Network, QueryService, CronTaskService, CommitteeService],
+    providers: [Network, QueryService, CronTaskService, CommitteeService, DistributedKeyGenerationService],
     controllers: [TestController],
 })
 export class MinaModule {}
