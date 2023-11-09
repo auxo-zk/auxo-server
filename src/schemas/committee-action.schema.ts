@@ -11,6 +11,9 @@ export const enum ActionEnum {
 
 @Schema()
 export class CommitteeAction {
+    @Prop({ required: true, unique: true })
+    actionHash: string;
+
     @Prop()
     actionEnum: ActionEnum;
 
@@ -39,13 +42,3 @@ export class CommitteeAction {
 export type CommitteeActionDocument = HydratedDocument<CommitteeAction>;
 export const CommitteeActionSchema =
     SchemaFactory.createForClass(CommitteeAction);
-
-// export class Point {
-//     x: string;
-//     y: string;
-// }
-
-// export class Round2Contribution {
-//     c: string;
-//     u: Point;
-// }

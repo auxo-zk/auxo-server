@@ -64,7 +64,7 @@ export class CommitteeService implements OnModuleInit {
             lastCommittee = await this.committeeModel.findOne(
                 {},
                 {},
-                { sort: { committeeId: -1 } },
+                { sort: { blockHeight: -1 } },
             );
         }
         const rawEvents = await this.queryService.fetchEvents(
