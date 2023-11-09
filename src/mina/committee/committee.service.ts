@@ -58,63 +58,21 @@ export class CommitteeService implements OnModuleInit {
         return committeeState;
     }
 
-    async fetchAllCommitteeCreatedEvents(): Promise<void> {
-        const rawEvents = await this.queryService.fetchEvents(
-            process.env.COMMITTEE_ADDRESS,
-        );
-        let committeeId = 0;
-        for (let i = 0; i < rawEvents.length; i++) {
-            const events = rawEvents[i].events;
-            const blockHeight = rawEvents[i].blockHeight;
-            for (let i = 0; i < events.length; i++) {
-                const data = events[i].data;
-                const eventType = Number(Field.from(data[0]).toString());
-                if (eventType == 0) {
-                    const addressesLength = Number(
-                        Field.from(data[1]).toString(),
-                    );
-                    const publicKeys: string[] = [];
-                    for (let i = 0; i < addressesLength; i++) {
-                        const publicKey = PublicKey.fromFields([
-                            Field(data[2 + i * 2]),
-                            Field(data[2 + i * 2 + 1]),
-                        ]);
-                        publicKeys.push(publicKey.toBase58());
-                    }
-                    const threshold = Field.from(
-                        data[2 + 2 ** (memberTreeHeight - 1) * 2],
-                    );
-                    await this.committeeModel.findOneAndUpdate(
-                        { committeeId: committeeId },
-                        {
-                            committeeId: committeeId,
-                            numberOfMembers: addressesLength,
-                            threshold: threshold,
-                            publicKeys: publicKeys,
-                            blockHeight: Number(
-                                blockHeight.toBigint().toString(),
-                            ),
-                        },
-                        { new: true, upsert: true },
-                    );
-                    committeeId += 1;
-                }
-            }
+    async fetchCommitteeCreatedEvents(fetchAll?: boolean): Promise<void> {
+        let lastCommittee: Committee = null;
+        if (!fetchAll) {
+            lastCommittee = await this.committeeModel.findOne(
+                {},
+                {},
+                { sort: { committeeId: -1 } },
+            );
         }
-    }
-
-    async fetchCommitteeCreatedEvents(): Promise<void> {
-        const lastCommittee = await this.committeeModel.findOne(
-            {},
-            {},
-            { sort: { committeeId: -1 } },
-        );
         const rawEvents = await this.queryService.fetchEvents(
             process.env.COMMITTEE_ADDRESS,
             lastCommittee == null ? undefined : lastCommittee.blockHeight + 1,
         );
         let committeeId =
-            lastCommittee == null ? undefined : lastCommittee.committeeId + 1;
+            lastCommittee == null ? 0 : lastCommittee.committeeId + 1;
         for (let i = 0; i < rawEvents.length; i++) {
             const events = rawEvents[i].events;
             const blockHeight = rawEvents[i].blockHeight;

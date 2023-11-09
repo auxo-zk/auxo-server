@@ -3,6 +3,10 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
+import {
+    CommitteeAction,
+    CommitteeActionSchema,
+} from 'src/schemas/committee-action.schema';
 
 import { Network } from './network/network';
 import { QueryService } from './query/query.service';
@@ -16,6 +20,7 @@ import { TestController } from './test/test.controller';
         ScheduleModule.forRoot(),
         MongooseModule.forFeature([
             { name: Committee.name, schema: CommitteeSchema },
+            { name: CommitteeAction.name, schema: CommitteeActionSchema },
         ]),
     ],
     providers: [Network, QueryService, CronTaskService, CommitteeService],

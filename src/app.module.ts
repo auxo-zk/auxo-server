@@ -1,17 +1,23 @@
 import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { MinaModule } from './mina/mina.module';
 
-import { AppController } from './app.controller';
+import { Committee, CommitteeSchema } from './schemas/committee.schema';
+import {
+    CommitteeAction,
+    CommitteeActionSchema,
+} from './schemas/committee-action.schema';
+
 import { AppService } from './app.service';
 
-import { MongooseModule } from '@nestjs/mongoose';
-import { Committee, CommitteeSchema } from './schemas/committee.schema';
-import { MinaModule } from './mina/mina.module';
+import { AppController } from './app.controller';
 
 @Module({
     imports: [
         MongooseModule.forRoot(process.env.DB),
         MongooseModule.forFeature([
             { name: Committee.name, schema: CommitteeSchema },
+            { name: CommitteeAction.name, schema: CommitteeActionSchema },
         ]),
         MinaModule,
     ],
