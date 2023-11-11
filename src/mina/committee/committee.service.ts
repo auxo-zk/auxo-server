@@ -10,6 +10,9 @@ const memberTreeHeight = Number(process.env.MEMBER_TREE_HEIGHT as string);
 
 @Injectable()
 export class CommitteeService implements OnModuleInit {
+    private readonly eventEnum: { [key: string]: number } = {
+        CommitteeCreated: 0,
+    };
     private nextCommitteeId: number;
     private committeeTree: MerkleMap;
     private settingTree: MerkleMap;
@@ -79,7 +82,7 @@ export class CommitteeService implements OnModuleInit {
             for (let i = 0; i < events.length; i++) {
                 const data = events[i].data;
                 const eventType = Number(Field.from(data[0]).toString());
-                if (eventType == 0) {
+                if (eventType == this.eventEnum['CommitteeCreated']) {
                     const addressesLength = Number(
                         Field.from(data[1]).toString(),
                     );

@@ -72,6 +72,14 @@
     ora "5.4.1"
     rxjs "7.8.1"
 
+"@auxo-dev/auxo-libs@^0.2.5":
+  version "0.2.5"
+  resolved "https://registry.yarnpkg.com/@auxo-dev/auxo-libs/-/auxo-libs-0.2.5.tgz#c38354e4b7c6565623577da0bb2ffcd2fe3f5286"
+  integrity sha512-P6JICgBcwuSeOmRaEURa1PWUUHaazdA0+uP4MF2Oz+aZhVs2rXJXQOf7Qdkb1yy7Xg3Z4m23HG98bnzD6eQlwA==
+  dependencies:
+    big-integer "^1.6.51"
+    o1js "^0.14.1"
+
 "@babel/code-frame@^7.0.0", "@babel/code-frame@^7.12.13", "@babel/code-frame@^7.16.7", "@babel/code-frame@^7.22.13":
   version "7.22.13"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.22.13.tgz#e3c1c099402598483b7a8c46a721d1038803755e"
@@ -1590,7 +1598,7 @@ base64-js@^1.3.1:
   resolved "https://registry.yarnpkg.com/base64-js/-/base64-js-1.5.1.tgz#1b1b440160a5bf7ad40b650f095963481903930a"
   integrity sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==
 
-big-integer@^1.6.44:
+big-integer@^1.6.44, big-integer@^1.6.51:
   version "1.6.51"
   resolved "https://registry.yarnpkg.com/big-integer/-/big-integer-1.6.51.tgz#0df92a5d9880560d3ff2d5fd20245c889d130686"
   integrity sha512-GPEid2Y9QU1Exl1rpO9B2IPJGHPSupF5GnVIP0blYvNOMer2bTvSWs1jGOUg04hTmu67nmLsQ9TBo1puaotBHg==
@@ -1739,6 +1747,11 @@ bytes@3.1.2:
   version "3.1.2"
   resolved "https://registry.yarnpkg.com/bytes/-/bytes-3.1.2.tgz#8b0beeb98605adf1b128fa4386403c009e0221a5"
   integrity sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==
+
+cachedir@^2.4.0:
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/cachedir/-/cachedir-2.4.0.tgz#7fef9cf7367233d7c88068fe6e34ed0d355a610d"
+  integrity sha512-9EtFOZR8g22CL7BWjJ9BUx1+A/djkofnyW3aOXZORNW2kxoUpx2h+uN2cOqwPmFhnpVmxg+KW2OjOSgChTEvsQ==
 
 call-bind@^1.0.0:
   version "1.0.5"
@@ -4038,6 +4051,19 @@ o1js@^0.13.1:
   integrity sha512-7QHHRRLmmyR8e+YmIFcgatS2q1on+SDD9h4NIK8JR/82eim7w8bQyBZqAwfCU2PmaQtqlZhkLoL4PmZRnxDzQQ==
   dependencies:
     blakejs "1.2.1"
+    detect-gpu "^5.0.5"
+    isomorphic-fetch "^3.0.0"
+    js-sha256 "^0.9.0"
+    reflect-metadata "^0.1.13"
+    tslib "^2.3.0"
+
+o1js@^0.14.1:
+  version "0.14.1"
+  resolved "https://registry.yarnpkg.com/o1js/-/o1js-0.14.1.tgz#492bf8e8614539246a085a88e99702719545eb77"
+  integrity sha512-ro01Ez5kUqREGoQpvvmsWhIEZAy4lt1PHNn90rIaBCTzi41mlfynw6WDRVhkw5PAW8J9YeC9iLTaddbCNAzX5g==
+  dependencies:
+    blakejs "1.2.1"
+    cachedir "^2.4.0"
     detect-gpu "^5.0.5"
     isomorphic-fetch "^3.0.0"
     js-sha256 "^0.9.0"

@@ -7,6 +7,15 @@ import { Field } from 'o1js';
 
 @Injectable()
 export class DistributedKeyGenerationService implements OnModuleInit {
+    private readonly eventEnum: { [key: string]: number } = {
+        CommitteeAction: 0,
+        KeyDeprecated: 1,
+        KeyGenerated: 2,
+        ActionsReduced: 3,
+        ResponseCompleted: 4,
+        Round1Finalized: 5,
+        Round2Finalized: 6,
+    };
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(CommitteeAction.name)
@@ -38,7 +47,7 @@ export class DistributedKeyGenerationService implements OnModuleInit {
             for (let j = 0; j < events.length; j++) {
                 const data = events[i].data;
                 const eventType = Number(Field.from(data[0]).toString());
-                if (eventType == 0) {
+                if (eventType == this.eventEnum['CommitteeAction']) {
                 }
             }
         }

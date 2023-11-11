@@ -12,7 +12,7 @@ export const enum ActionEnum {
 @Schema()
 export class CommitteeAction {
     @Prop({ required: true, unique: true })
-    actionHash: string;
+    committeeActionId: string;
 
     @Prop()
     actionEnum: ActionEnum;
@@ -26,17 +26,30 @@ export class CommitteeAction {
     @Prop()
     requestId: number;
 
-    @Prop()
-    round1Contribution: [{ x: string; y: string }];
+    @Prop({ type: Array<Point> })
+    round1Contribution: Point[];
 
-    @Prop()
-    round2Contribution: { c: string; u: { x: string; y: string } };
+    @Prop({ type: Object })
+    round2Contribution: { c: string; u: Point };
 
-    @Prop()
-    responseContribution: [{ x: string; y: string }];
+    @Prop({ type: Array<Point> })
+    responseContribution: Point[];
 
     @Prop()
     blockHeight: number;
+}
+
+export class Point {
+    @Prop()
+    x: string;
+
+    @Prop()
+    y: string;
+
+    constructor(x: string, y: string) {
+        this.x = x;
+        this.y = y;
+    }
 }
 
 export type CommitteeActionDocument = HydratedDocument<CommitteeAction>;
