@@ -7,6 +7,7 @@ import {
     CommitteeAction,
     CommitteeActionSchema,
 } from 'src/schemas/committee-action.schema';
+import { Key, KeySchema } from 'src/schemas/key.schema';
 
 import { Network } from './network/network';
 import { QueryService } from './query/query.service';
@@ -22,9 +23,16 @@ import { DistributedKeyGenerationService } from './distributed-key-generation/di
         MongooseModule.forFeature([
             { name: Committee.name, schema: CommitteeSchema },
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
+            { name: Key.name, schema: KeySchema },
         ]),
     ],
-    providers: [Network, QueryService, CronTaskService, CommitteeService, DistributedKeyGenerationService],
+    providers: [
+        Network,
+        QueryService,
+        CronTaskService,
+        CommitteeService,
+        DistributedKeyGenerationService,
+    ],
     controllers: [TestController],
 })
 export class MinaModule {}

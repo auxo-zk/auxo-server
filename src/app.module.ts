@@ -7,11 +7,11 @@ import {
     CommitteeAction,
     CommitteeActionSchema,
 } from './schemas/committee-action.schema';
+import { Key, KeySchema } from './schemas/key.schema';
 
 import { AppService } from './app.service';
 
 import { AppController } from './app.controller';
-import { Key, KeySchema } from './schemas/key.schema';
 
 @Module({
     imports: [
