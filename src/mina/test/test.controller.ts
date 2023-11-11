@@ -41,15 +41,29 @@ export class TestController {
         // await this.committeeService.fetchCommitteeCreatedEvents();
         // await this.committeeService.updateMerkleTrees();
         const newCommitteeAction = new this.committeeActionModel({
-            committeeActionId: '5',
+            committeeActionId: '6',
             actionEnum: 1,
             committeeId: 1,
             keyId: 1,
-            round1Contribution: [new Point('1', '2'), new Point('3', '4')],
-            round2Contribution: { c: '1', u: new Point('1', '2') },
-            responseContribution: [new Point('1', '2'), new Point('3', '4')],
+            data: [new Point('1', '2'), new Point('3', '4')],
         });
         await newCommitteeAction.save();
+        const newCommitteeAction1 = new this.committeeActionModel({
+            committeeActionId: '7',
+            actionEnum: 1,
+            committeeId: 1,
+            keyId: 1,
+            data: { c: '1', u: new Point('1', '2') },
+        });
+        await newCommitteeAction1.save();
+        const newCommitteeAction2 = new this.committeeActionModel({
+            committeeActionId: '8',
+            actionEnum: 1,
+            committeeId: 1,
+            keyId: 1,
+            data: [new Point('1', '2'), new Point('3', '4')],
+        });
+        await newCommitteeAction2.save();
         //round2Contribution: { c: '1', u: new Point('1', '2') },
     }
 }
