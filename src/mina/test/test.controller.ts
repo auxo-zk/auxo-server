@@ -4,8 +4,9 @@ import { Network } from '../network/network';
 // import { Field, Group, PublicKey } from 'o1js';
 import { CommitteeService } from '../committee/committee.service';
 import { Model } from 'mongoose';
-import { CommitteeAction, Point } from 'src/schemas/committee-action.schema';
+import { CommitteeAction } from 'src/schemas/committee-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
+import { Point } from 'src/schemas/key.schema';
 
 @Controller('test')
 export class TestController {

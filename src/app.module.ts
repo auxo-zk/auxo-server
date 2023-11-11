@@ -11,6 +11,7 @@ import {
 import { AppService } from './app.service';
 
 import { AppController } from './app.controller';
+import { Key, KeySchema } from './schemas/key.schema';
 
 @Module({
     imports: [
@@ -18,6 +19,7 @@ import { AppController } from './app.controller';
         MongooseModule.forFeature([
             { name: Committee.name, schema: CommitteeSchema },
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
+            { name: Key.name, schema: KeySchema },
         ]),
         MinaModule,
     ],

@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { Point } from './key.schema';
 export const enum ActionEnum {
     GENERATE_KEY,
     DEPRECATE_KEY,
@@ -11,7 +12,7 @@ export const enum ActionEnum {
 
 @Schema()
 export class CommitteeAction {
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true, index: true, unique: true })
     committeeActionId: string;
 
     @Prop()
@@ -37,19 +38,6 @@ export class CommitteeAction {
 
     @Prop()
     blockHeight: number;
-}
-
-export class Point {
-    @Prop()
-    x: string;
-
-    @Prop()
-    y: string;
-
-    constructor(x: string, y: string) {
-        this.x = x;
-        this.y = y;
-    }
 }
 
 export type CommitteeActionDocument = HydratedDocument<CommitteeAction>;
