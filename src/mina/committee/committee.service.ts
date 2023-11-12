@@ -76,6 +76,7 @@ export class CommitteeService implements OnModuleInit {
         );
         let committeeId =
             lastCommittee == null ? 0 : lastCommittee.committeeId + 1;
+        let lastActiveCommittee = 0;
         for (let i = 0; i < rawEvents.length; i++) {
             const events = rawEvents[i].events;
             const blockHeight = rawEvents[i].blockHeight;
@@ -111,7 +112,22 @@ export class CommitteeService implements OnModuleInit {
                         { new: true, upsert: true },
                     );
                     committeeId += 1;
+                } else if (eventType == 1) {
+                    lastActiveCommittee = Number(
+                        Field.from(data[1]).toString(),
+                    );
                 }
+            }
+
+            const activeCommittees = await this.committeeModel.find({
+                committeeId: { $lt: lastActiveCommittee },
+                active: false,
+            });
+
+            for (let i = 0; i < activeCommittees.length; i++) {
+                const committee = activeCommittees[i];
+                committee.set('active', true);
+                await committee.save();
             }
         }
     }

@@ -16,6 +16,8 @@ import { CommitteeService } from './committee/committee.service';
 
 import { TestController } from './test/test.controller';
 import { DistributedKeyGenerationService } from './distributed-key-generation/distributed-key-generation.service';
+import { Ipfs } from 'src/ipfs/ipfs';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
     imports: [
@@ -25,6 +27,7 @@ import { DistributedKeyGenerationService } from './distributed-key-generation/di
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
             { name: Key.name, schema: KeySchema },
         ]),
+        HttpModule,
     ],
     providers: [
         Network,
@@ -32,6 +35,7 @@ import { DistributedKeyGenerationService } from './distributed-key-generation/di
         CronTaskService,
         CommitteeService,
         DistributedKeyGenerationService,
+        Ipfs,
     ],
     controllers: [TestController],
 })

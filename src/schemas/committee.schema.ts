@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-@Schema()
+@Schema({ versionKey: false })
 export class Committee {
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true, unique: true, index: true })
     committeeId: number;
 
     @Prop()
@@ -14,6 +14,9 @@ export class Committee {
 
     @Prop()
     publicKeys: string[];
+
+    @Prop({ default: false })
+    active: boolean;
 
     @Prop()
     blockHeight: number;

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MinaModule } from './mina/mina.module';
+import { HttpModule } from '@nestjs/axios';
 
 import { Committee, CommitteeSchema } from './schemas/committee.schema';
 import {
@@ -12,6 +13,8 @@ import { Key, KeySchema } from './schemas/key.schema';
 import { AppService } from './app.service';
 
 import { AppController } from './app.controller';
+import { Ipfs } from './ipfs/ipfs';
+import { IpfsController } from './ipfs/ipfs.controller';
 
 @Module({
     imports: [
@@ -22,8 +25,9 @@ import { AppController } from './app.controller';
             { name: Key.name, schema: KeySchema },
         ]),
         MinaModule,
+        HttpModule,
     ],
-    controllers: [AppController],
-    providers: [AppService],
+    controllers: [AppController, IpfsController],
+    providers: [AppService, Ipfs],
 })
 export class AppModule {}
