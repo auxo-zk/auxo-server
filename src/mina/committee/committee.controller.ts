@@ -50,8 +50,13 @@ export class CommitteeController {
     @ApiTags('Committee')
     async createCommittee(
         @Body() createCommitteeDto: CreateCommitteeDto,
+        @Res() response: Response,
     ): Promise<IpfsResponse> {
-        const response = this.ipfs.upload(createCommitteeDto);
-        return response;
+        const result = await this.ipfs.upload(createCommitteeDto);
+        if (result == null) {
+            response.status(HttpStatus.BAD_REQUEST);
+        }
+        response.send(result);
+        return result;
     }
 }

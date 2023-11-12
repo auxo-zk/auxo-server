@@ -1,6 +1,6 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
-import { lastValueFrom, map } from 'rxjs';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { lastValueFrom } from 'rxjs';
 import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
 
 @Injectable()
@@ -18,16 +18,18 @@ export class Ipfs {
                     ':' +
                     process.env.IPFS_API_SECRET_KEY,
             );
-        const responseData = await lastValueFrom(
-            this.httpService
-                .post(requestURL, formData, {
-                    headers: {
-                        Authorization: auth,
-                    },
-                })
-                .pipe(map((response) => response.data)),
+        const response = await lastValueFrom(
+            this.httpService.post(requestURL, formData, {
+                headers: {
+                    Authorization: auth,
+                },
+            }),
         );
-        return responseData;
+        if (response.status == HttpStatus.OK) {
+            return response.data;
+        } else {
+            return null;
+        }
     }
 
     async uploadFile(file: Express.Multer.File): Promise<IpfsResponse> {
@@ -41,15 +43,17 @@ export class Ipfs {
                     ':' +
                     process.env.IPFS_API_SECRET_KEY,
             );
-        const responseData = await lastValueFrom(
-            this.httpService
-                .post(requestURL, formData, {
-                    headers: {
-                        Authorization: auth,
-                    },
-                })
-                .pipe(map((response) => response.data)),
+        const response = await lastValueFrom(
+            this.httpService.post(requestURL, formData, {
+                headers: {
+                    Authorization: auth,
+                },
+            }),
         );
-        return responseData;
+        if (response.status == HttpStatus.OK) {
+            return response.data;
+        } else {
+            return null;
+        }
     }
 }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
+import { HttpModule } from '@nestjs/axios';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import {
@@ -10,14 +11,14 @@ import {
 import { Key, KeySchema } from 'src/schemas/key.schema';
 
 import { Network } from './network/network';
+import { Ipfs } from 'src/ipfs/ipfs';
 import { QueryService } from './query/query.service';
 import { CronTaskService } from './cron-task/cron-task.service';
 import { CommitteeService } from './committee/committee.service';
+import { DistributedKeyGenerationService } from './distributed-key-generation/distributed-key-generation.service';
 
 import { TestController } from './test/test.controller';
-import { DistributedKeyGenerationService } from './distributed-key-generation/distributed-key-generation.service';
-import { Ipfs } from 'src/ipfs/ipfs';
-import { HttpModule } from '@nestjs/axios';
+import { CommitteeController } from './committee/committee.controller';
 
 @Module({
     imports: [
@@ -37,6 +38,6 @@ import { HttpModule } from '@nestjs/axios';
         DistributedKeyGenerationService,
         Ipfs,
     ],
-    controllers: [TestController],
+    controllers: [CommitteeController, TestController],
 })
 export class MinaModule {}
