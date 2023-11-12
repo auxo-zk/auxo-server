@@ -15,6 +15,7 @@ import { AppService } from './app.service';
 import { AppController } from './app.controller';
 import { Ipfs } from './ipfs/ipfs';
 import { IpfsController } from './ipfs/ipfs.controller';
+import { CommitteeController } from './committee/committee.controller';
 
 @Module({
     imports: [
@@ -27,7 +28,7 @@ import { IpfsController } from './ipfs/ipfs.controller';
         MinaModule,
         HttpModule,
     ],
-    controllers: [AppController, IpfsController],
+    controllers: [AppController, IpfsController, CommitteeController],
     providers: [AppService, Ipfs],
 })
 export class AppModule {}
