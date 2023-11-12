@@ -1,14 +1,27 @@
-import { Controller, Get, HttpStatus, Param, Res } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    HttpStatus,
+    Param,
+    Post,
+    Res,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Model } from 'mongoose';
+import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
+import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
+import { Ipfs } from 'src/ipfs/ipfs';
 import { Committee } from 'src/schemas/committee.schema';
 
 @Controller('committee')
 export class CommitteeController {
     constructor(
-        @InjectModel(Committee.name) private committeeModel: Model<Committee>,
+        private readonly ipfs: Ipfs,
+        @InjectModel(Committee.name)
+        private readonly committeeModel: Model<Committee>,
     ) {}
 
     @Get()
@@ -31,5 +44,14 @@ export class CommitteeController {
         }
         response.send(result);
         return result;
+    }
+
+    @Post()
+    @ApiTags('Committee')
+    async createCommittee(
+        @Body() createCommitteeDto: CreateCommitteeDto,
+    ): Promise<IpfsResponse> {
+        const response = this.ipfs.upload(createCommitteeDto);
+        return response;
     }
 }
