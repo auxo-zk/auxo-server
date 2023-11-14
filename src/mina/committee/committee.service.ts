@@ -1,6 +1,13 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
-import { Field, MerkleMap, MerkleTree, Poseidon, PublicKey } from 'o1js';
+import {
+    Encoding,
+    Field,
+    MerkleMap,
+    MerkleTree,
+    Poseidon,
+    PublicKey,
+} from 'o1js';
 import { CommitteeState } from '../interfaces/committee-state.interface';
 import { Committee } from 'src/schemas/committee.schema';
 import { InjectModel } from '@nestjs/mongoose';
@@ -11,7 +18,7 @@ const memberTreeHeight = Number(process.env.MEMBER_TREE_HEIGHT as string);
 @Injectable()
 export class CommitteeService implements OnModuleInit {
     private readonly eventEnum: { [key: string]: number } = {
-        CommitteeCreated: 0,
+        CommitteeCreated: 1,
     };
     private nextCommitteeId: number;
     private committeeTree: MerkleMap;
@@ -37,13 +44,14 @@ export class CommitteeService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        const committees = await this.committeeModel.find();
+        const committees = await this.committeeModel.find({ active: true });
         this.insertLeaves(committees);
     }
 
     async updateMerkleTrees() {
         const committees = await this.committeeModel.find({
             committeeId: { $gte: this.nextCommitteeId },
+            active: true,
         });
         this.insertLeaves(committees);
     }
@@ -80,21 +88,37 @@ export class CommitteeService implements OnModuleInit {
         for (let i = 0; i < rawEvents.length; i++) {
             const events = rawEvents[i].events;
             const blockHeight = rawEvents[i].blockHeight;
-            for (let i = 0; i < events.length; i++) {
-                const data = events[i].data;
+            for (let j = 0; j < events.length; j++) {
+                const data = events[j].data;
                 const eventType = Number(Field.from(data[0]).toString());
                 if (eventType == this.eventEnum['CommitteeCreated']) {
-                    const addressesLength = Number(
+                    const publicKeysLength = Number(
                         Field.from(data[1]).toString(),
                     );
                     const publicKeys: string[] = [];
-                    for (let i = 0; i < addressesLength; i++) {
+                    for (let k = 0; k < publicKeysLength; k++) {
                         const publicKey = PublicKey.fromFields([
-                            Field(data[2 + i * 2]),
-                            Field(data[2 + i * 2 + 1]),
+                            Field(data[2 + k * 2]),
+                            Field(data[2 + k * 2 + 1]),
                         ]);
                         publicKeys.push(publicKey.toBase58());
                     }
+                    const ipfsHashLength = Number(
+                        Field.from(
+                            data[2 + 2 ** (memberTreeHeight - 1) * 2 + 1],
+                        ).toBigInt(),
+                    );
+                    const ipfsHashFields: Field[] = [];
+                    for (let k = 0; k < ipfsHashLength; k++) {
+                        ipfsHashFields.push(
+                            Field.from(
+                                data[
+                                    2 + 2 ** (memberTreeHeight - 1) * 2 + 2 + k
+                                ],
+                            ),
+                        );
+                    }
+                    const ipfsHash = Encoding.stringFromFields(ipfsHashFields);
                     const threshold = Field.from(
                         data[2 + 2 ** (memberTreeHeight - 1) * 2],
                     );
@@ -102,9 +126,10 @@ export class CommitteeService implements OnModuleInit {
                         { committeeId: committeeId },
                         {
                             committeeId: committeeId,
-                            numberOfMembers: addressesLength,
+                            numberOfMembers: publicKeysLength,
                             threshold: threshold,
                             publicKeys: publicKeys,
+                            ipfsHash: ipfsHash,
                             blockHeight: Number(
                                 blockHeight.toBigint().toString(),
                             ),
@@ -112,7 +137,7 @@ export class CommitteeService implements OnModuleInit {
                         { new: true, upsert: true },
                     );
                     committeeId += 1;
-                } else if (eventType == 1) {
+                } else if (eventType == 0) {
                     lastActiveCommittee = Number(
                         Field.from(data[1]).toString(),
                     );

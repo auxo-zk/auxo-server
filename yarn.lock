@@ -72,10 +72,10 @@
     ora "5.4.1"
     rxjs "7.8.1"
 
-"@auxo-dev/auxo-libs@^0.2.5":
-  version "0.2.5"
-  resolved "https://registry.yarnpkg.com/@auxo-dev/auxo-libs/-/auxo-libs-0.2.5.tgz#c38354e4b7c6565623577da0bb2ffcd2fe3f5286"
-  integrity sha512-P6JICgBcwuSeOmRaEURa1PWUUHaazdA0+uP4MF2Oz+aZhVs2rXJXQOf7Qdkb1yy7Xg3Z4m23HG98bnzD6eQlwA==
+"@auxo-dev/auxo-libs@^0.2.8":
+  version "0.2.8"
+  resolved "https://registry.yarnpkg.com/@auxo-dev/auxo-libs/-/auxo-libs-0.2.8.tgz#a332a840690afe3d91f0d57dd0d1374b7f86a9c9"
+  integrity sha512-siKZZA4ZR3/c9BkefoPFSyB9CCipkGIbbQ98pgbhxLVE967CZ+HuAUoOQz3Js4zY+j1I++vy73/JYN3zPS74Tg==
   dependencies:
     big-integer "^1.6.51"
     o1js "^0.14.1"
@@ -4080,18 +4080,6 @@ npm-run-path@^5.1.0:
   integrity sha512-sJOdmRGrY2sjNTRMbSvluQqg+8X7ZK61yvzBEIDhz4f8z1TZFYABsqjjCBd/0PUNE9M6QDgHJXQkGUEm7Q+l9Q==
   dependencies:
     path-key "^4.0.0"
-
-o1js@^0.13.1:
-  version "0.13.1"
-  resolved "https://registry.yarnpkg.com/o1js/-/o1js-0.13.1.tgz#8575a1a5eb4abeb493f9d60e9f29dd876f9520bc"
-  integrity sha512-7QHHRRLmmyR8e+YmIFcgatS2q1on+SDD9h4NIK8JR/82eim7w8bQyBZqAwfCU2PmaQtqlZhkLoL4PmZRnxDzQQ==
-  dependencies:
-    blakejs "1.2.1"
-    detect-gpu "^5.0.5"
-    isomorphic-fetch "^3.0.0"
-    js-sha256 "^0.9.0"
-    reflect-metadata "^0.1.13"
-    tslib "^2.3.0"
 
 o1js@^0.14.1:
   version "0.14.1"

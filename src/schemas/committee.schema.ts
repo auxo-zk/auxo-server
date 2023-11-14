@@ -15,8 +15,11 @@ export class Committee {
     @Prop()
     publicKeys: string[];
 
-    @Prop({ default: false })
+    @Prop({ required: true, default: false })
     active: boolean;
+
+    @Prop()
+    ipfsHash: string;
 
     @Prop()
     blockHeight: number;
