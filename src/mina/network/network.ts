@@ -12,6 +12,6 @@ export class Network implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await fetchLastBlock();
+        // await fetchLastBlock();
     }
 }

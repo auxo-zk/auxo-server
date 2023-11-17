@@ -4,7 +4,10 @@ import { HydratedDocument } from 'mongoose';
 @Schema({ versionKey: false })
 export class Committee {
     @Prop({ required: true, unique: true, index: true })
-    committeeId: number;
+    actionState: string;
+
+    @Prop({ required: true, unique: true })
+    committeeIndex: number;
 
     @Prop()
     numberOfMembers: number;
@@ -20,9 +23,6 @@ export class Committee {
 
     @Prop()
     ipfsHash: string;
-
-    @Prop()
-    blockHeight: number;
 }
 
 export type CommitteeDocument = HydratedDocument<Committee>;

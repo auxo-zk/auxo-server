@@ -7,11 +7,14 @@ import {
     MerkleTree,
     Poseidon,
     PublicKey,
+    Reducer,
 } from 'o1js';
 import { CommitteeState } from '../interfaces/committee-state.interface';
 import { Committee } from 'src/schemas/committee.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { Action } from '../interfaces/action.interface';
+import { CommitteeAction } from 'src/schemas/committee-action.schema';
 
 const memberTreeHeight = Number(process.env.MEMBER_TREE_HEIGHT as string);
 
@@ -27,7 +30,10 @@ export class CommitteeService implements OnModuleInit {
 
     constructor(
         private readonly queryService: QueryService,
-        @InjectModel(Committee.name) private committeeModel: Model<Committee>,
+        @InjectModel(CommitteeAction.name)
+        private readonly committeeActionModel: Model<CommitteeAction>,
+        @InjectModel(Committee.name)
+        private readonly committeeModel: Model<Committee>,
     ) {
         this.nextCommitteeId = 0;
         this.committeeTree = new MerkleMap();
@@ -69,95 +75,140 @@ export class CommitteeService implements OnModuleInit {
         return committeeState;
     }
 
-    async fetchCommitteeCreatedEvents(fetchAll?: boolean): Promise<void> {
-        let lastCommittee: Committee = null;
-        if (!fetchAll) {
-            lastCommittee = await this.committeeModel.findOne(
-                {},
-                {},
-                { sort: { blockHeight: -1 } },
-            );
-        }
-        const rawEvents = await this.queryService.fetchEvents(
+    async fetchAllActions(): Promise<void> {
+        const actions = await this.queryService.fetchActions(
             process.env.COMMITTEE_ADDRESS,
-            lastCommittee == null ? undefined : lastCommittee.blockHeight + 1,
         );
-        let committeeId =
-            lastCommittee == null ? 0 : lastCommittee.committeeId + 1;
-        let lastActiveCommittee = 0;
-        for (let i = 0; i < rawEvents.length; i++) {
-            const events = rawEvents[i].events;
-            const blockHeight = rawEvents[i].blockHeight;
-            for (let j = 0; j < events.length; j++) {
-                const data = events[j].data;
-                const eventType = Number(Field.from(data[0]).toString());
-                if (eventType == this.eventEnum['CommitteeCreated']) {
-                    const publicKeysLength = Number(
-                        Field.from(data[1]).toString(),
-                    );
-                    const publicKeys: string[] = [];
-                    for (let k = 0; k < publicKeysLength; k++) {
-                        const publicKey = PublicKey.fromFields([
-                            Field(data[2 + k * 2]),
-                            Field(data[2 + k * 2 + 1]),
-                        ]);
-                        publicKeys.push(publicKey.toBase58());
-                    }
-                    const ipfsHashLength = Number(
-                        Field.from(
-                            data[2 + 2 ** (memberTreeHeight - 1) * 2 + 1],
-                        ).toBigInt(),
-                    );
-                    const ipfsHashFields: Field[] = [];
-                    for (let k = 0; k < ipfsHashLength; k++) {
-                        ipfsHashFields.push(
-                            Field.from(
-                                data[
-                                    2 + 2 ** (memberTreeHeight - 1) * 2 + 2 + k
-                                ],
-                            ),
-                        );
-                    }
-                    const ipfsHash = Encoding.stringFromFields(ipfsHashFields);
-                    const threshold = Field.from(
-                        data[2 + 2 ** (memberTreeHeight - 1) * 2],
-                    );
-                    await this.committeeModel.findOneAndUpdate(
-                        { committeeId: committeeId },
-                        {
-                            committeeId: committeeId,
-                            numberOfMembers: publicKeysLength,
-                            threshold: threshold,
-                            publicKeys: publicKeys,
-                            ipfsHash: ipfsHash,
-                            blockHeight: Number(
-                                blockHeight.toBigint().toString(),
-                            ),
-                        },
-                        { new: true, upsert: true },
-                    );
-                    committeeId += 1;
-                } else if (eventType == 0) {
-                    lastActiveCommittee = Number(
-                        Field.from(data[1]).toString(),
-                    );
-                }
-            }
+        let actionsLength = actions.length;
+        let previousActionState: Field = Reducer.initialActionState;
+        let actionId = 0;
+        while (actionsLength > 0) {
+            const currentActionState = Field.from(
+                actions[actionsLength - 1].hash,
+            );
+            await this.committeeActionModel.findOneAndUpdate(
+                {
+                    currentActionState: currentActionState.toString(),
+                },
+                {
+                    actionId: actionId,
+                    currentActionState: currentActionState.toString(),
+                    previousActionState: previousActionState.toString(),
+                    actions: actions[actionsLength - 1].actions,
+                },
+                { new: true, upsert: true },
+            );
 
-            const activeCommittees = await this.committeeModel.find({
-                committeeId: { $lt: lastActiveCommittee },
-                active: false,
-            });
-
-            for (let i = 0; i < activeCommittees.length; i++) {
-                const committee = activeCommittees[i];
-                committee.set('active', true);
-                await committee.save();
-            }
+            previousActionState = currentActionState;
+            actionsLength -= 1;
+            actionId += 1;
         }
     }
 
+    async updateCommittees() {
+        const lastCommittee = await this.committeeModel.findOne(
+            {},
+            {},
+            { sort: { committeeIndex: -1 } },
+        );
+        const temp = await this.committeeActionModel.findOne({
+            currentActionState: lastCommittee.actionState,
+        });
+        const committeeActions = await this.committeeActionModel.find(
+            { actionId: { $gt: temp.actionId } },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        console.log(committeeActions);
+        for (let i = 0; i < committeeActions.length; i++) {
+            const committeeAction = committeeActions[i];
+            const existed = await this.committeeModel.exists({
+                actionState: committeeAction.currentActionState,
+            });
+            if (!existed) {
+                const data = committeeAction.actions[0];
+                const previousActionState = Field.from(
+                    committeeAction.previousActionState,
+                );
+                const currentActionState = Field.from(
+                    committeeAction.currentActionState,
+                );
+                const n = Number(Field.from(data[0]).toString());
+                const publicKeys: string[] = [];
+                for (let j = 0; j < n; j++) {
+                    const publicKey = PublicKey.fromFields([
+                        Field(data[1 + j * 2]),
+                        Field(data[1 + j * 2 + 1]),
+                    ]);
+                    publicKeys.push(publicKey.toBase58());
+                }
+                const t = Number(
+                    Field.from(
+                        data[1 + 2 ** (memberTreeHeight - 1) * 2],
+                    ).toBigInt(),
+                );
+                const ipfsHashLength = Number(
+                    Field.from(
+                        data[1 + 2 ** (memberTreeHeight - 1) * 2 + 1],
+                    ).toBigInt(),
+                );
+                const ipfsHashFields: Field[] = [];
+                for (let j = 0; j < ipfsHashLength; j++) {
+                    ipfsHashFields.push(
+                        Field.from(
+                            data[1 + 2 ** (memberTreeHeight - 1) * 2 + 2 + j],
+                        ),
+                    );
+                }
+                const ipfsHash = Encoding.stringFromFields(ipfsHashFields);
+
+                const committeeIndex =
+                    await this.getCommitteeIndex(previousActionState);
+
+                await this.committeeModel.findOneAndUpdate(
+                    { actionState: committeeAction.currentActionState },
+                    {
+                        committeeIndex: committeeIndex,
+                        actionState: committeeAction.currentActionState,
+                        numberOfMembers: n,
+                        threshold: t,
+                        publicKeys: publicKeys,
+                        ipfsHash: ipfsHash,
+                    },
+                    { new: true, upsert: true },
+                );
+            }
+        }
+        const rawEvents = await this.queryService.fetchEvents(
+            process.env.COMMITTEE_ADDRESS,
+        );
+        const lastEvent = rawEvents[rawEvents.length - 1].events;
+        const lastActiveCommitteeIndex = Number(lastEvent[0].data[0]);
+        const notActiveCommittees = await this.committeeModel.find({
+            committeeIndex: { $lt: lastActiveCommitteeIndex },
+            active: false,
+        });
+        for (let i = 0; i < notActiveCommittees.length; i++) {
+            const notActiveCommittee = notActiveCommittees[i];
+            notActiveCommittee.set('active', true);
+            await notActiveCommittee.save();
+        }
+    }
     // ============ PRIVATE FUNCTIONS ============
+
+    private async getCommitteeIndex(
+        previousActionState: Field,
+    ): Promise<number> {
+        if (
+            previousActionState.equals(Reducer.initialActionState).toBoolean()
+        ) {
+            return 0;
+        }
+        const committee = await this.committeeModel.findOne({
+            actionState: previousActionState.toString(),
+        });
+        return committee.committeeIndex + 1;
+    }
 
     private insertLeaves(committees: Committee[]) {
         for (let i = 0; i < committees.length; i++) {

@@ -20,6 +20,6 @@ export class CronTaskService {
 
     @Interval(300000)
     async handleFetchCommitteeEvents(): Promise<void> {
-        await this.committeeService.fetchCommitteeCreatedEvents();
+        // await this.committeeService.fetchCommitteeCreatedEvents();
     }
 }

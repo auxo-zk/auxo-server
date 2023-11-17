@@ -7,7 +7,16 @@ import { Model } from 'mongoose';
 import { CommitteeAction } from 'src/schemas/committee-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { Encoding, Field, PublicKey } from 'o1js';
+import {
+    AccountUpdate,
+    Encoding,
+    Field,
+    Mina,
+    Poseidon,
+    PublicKey,
+    Reducer,
+} from 'o1js';
+import { Utilities } from '../utilities';
 // import { Point } from 'src/schemas/key.schema';
 
 @Controller('test')
@@ -33,28 +42,41 @@ export class TestController {
     async test2(): Promise<any> {
         // await this.ipfs.upload({ name: 'hello' });
         // await this.ipfs.get('QmNtgQnzXReBiqLeu37XchvBSKra6dwgDgNbWKSJMeH285');
-        await this.committeeService.fetchCommitteeCreatedEvents();
+        // const actions = await this.committeeService.fetchActions();
+        // await this.committeeService.fetchAllActions();
+        const actions = await this.queryService.fetchActions(
+            process.env.COMMITTEE_ADDRESS,
+        );
+        await this.committeeService.fetchAllActions();
+        await this.committeeService.updateCommittees();
+        // console.log(actions[0].actions);
+        // console.log(
+        //     Utilities.getNextActionState(
+        //         Reducer.initialActionState,
+        //         Utilities.getActionHash(
+        //             Utilities.stringArrayToFields(
+        //                 actions[actions.length - 1].actions,
+        //             ),
+        //         ),
+        //     ).toString(),
+        // );
+        // console.log(
+        //     Utilities.getNextActionState(
+        //         Field.from(actions[actions.length - 1].hash),
+        //         Utilities.getActionHash(
+        //             Utilities.stringArrayToFields(
+        //                 actions[actions.length - 2].actions,
+        //             ),
+        //         ),
+        //     ).toString(),
+        // );
     }
 
     @Get('/test3')
     async test3(): Promise<void> {
-        // await this.committeeService.fetchCommitteeCreatedEvents();
-        // const rawEvents = await this.queryService.fetchEvents(
-        //     'B62qjPatWc5jvdVgKXwNwKSjeyX7wa3SrCDof9Yxpeiuz4GoEyQjryN',
-        // );
-        // const data = rawEvents[2].events[0].data;
-        // console.log(data);
-        // [
-        //     Field.from(data[35]),
-        //     Field.from(data[36]),
-        //     Field.from(data[37]),
-        //     Field.from(data[38]),
-        // ];
-        // console.log(
-        //     Encoding.stringFromFields([
-        //         Field.from(data[36]),
-        //         Field.from(data[37]),
-        //     ]),
-        // );
+        const rawEvents = await this.queryService.fetchEvents(
+            'B62qkD3nDk511bJw9sD3dkf9EWCc9FxHhm9DMFrwXk9pjxH4URmAsT8',
+        );
+        console.log(rawEvents[0].events);
     }
 }

@@ -9,6 +9,7 @@ import {
     fetchEvents,
 } from 'o1js';
 import { Event } from '../interfaces/event.interface';
+import { Action } from 'src/mina/interfaces/action.interface';
 
 @Injectable()
 export class QueryService {
@@ -30,6 +31,17 @@ export class QueryService {
             },
         );
         return events;
+    }
+
+    async fetchActions(
+        publicKey: string,
+        fromActionState?: Field,
+        endActionState?: Field,
+    ): Promise<Action[]> {
+        return (await Mina.fetchActions(PublicKey.fromBase58(publicKey), {
+            fromActionState: fromActionState,
+            endActionState: endActionState,
+        })) as Action[];
     }
 
     async fetchAccountBalance(publicKey: string): Promise<UInt64> {
