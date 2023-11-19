@@ -13,7 +13,8 @@ export class CronTaskService {
         private readonly committeeService: CommitteeService,
     ) {}
 
-    @Interval(300000)
+    // 3 minutes
+    @Interval(180000)
     async handleNewBlock(): Promise<void> {
         await fetchLastBlock();
         await this.committeeService.update();

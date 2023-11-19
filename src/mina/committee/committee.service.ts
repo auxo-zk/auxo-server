@@ -49,9 +49,12 @@ export class CommitteeService implements OnModuleInit {
         const committees = await this.committeeModel.find({ active: true });
         this.insertLeaves(committees);
         ZkApp.Committee.CreateCommittee.compile().then(() => {
-            this.logger.log('Complete CreateCommittee compilation');
+            this.logger.log('Compile CreateCommittee successfully');
             ZkApp.Committee.CommitteeContract.compile().then(() => {
-                this.logger.log('Complete CommitteeContract compilation');
+                this.logger.log('Compile CommitteeContract successfully');
+                // this.rollup().then(() => {
+                //     this.logger.log('Rollup CommitteeContract successfully');
+                // });
             });
         });
     }
@@ -146,7 +149,10 @@ export class CommitteeService implements OnModuleInit {
             process.env.FEE_PAYER_PRIVATE_KEY,
         );
         const tx = await Mina.transaction(
-            feePayerPrivateKey.toPublicKey(),
+            {
+                sender: feePayerPrivateKey.toPublicKey(),
+                fee: '100000000',
+            },
             () => {
                 committeeContract.rollupIncrements(proof);
             },
@@ -177,7 +183,7 @@ export class CommitteeService implements OnModuleInit {
                     actionId: actionId,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
-                    actions: actions[actionsLength - 1].actions,
+                    actions: actions[actionsLength - 1].actions[0],
                 },
                 { new: true, upsert: true },
             );
@@ -257,6 +263,7 @@ export class CommitteeService implements OnModuleInit {
         );
         const lastEvent = rawEvents[rawEvents.length - 1].events;
         const lastActiveCommitteeIndex = Number(lastEvent[0].data[0]);
+        console.log(lastActiveCommitteeIndex);
         const notActiveCommittees = await this.committeeModel.find({
             committeeIndex: { $lt: lastActiveCommitteeIndex },
             active: false,
