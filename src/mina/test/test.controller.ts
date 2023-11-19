@@ -13,6 +13,7 @@ import {
     Field,
     Mina,
     Poseidon,
+    PrivateKey,
     PublicKey,
     Reducer,
 } from 'o1js';
@@ -40,36 +41,12 @@ export class TestController {
 
     @Get('/test2')
     async test2(): Promise<any> {
-        // await this.ipfs.upload({ name: 'hello' });
-        // await this.ipfs.get('QmNtgQnzXReBiqLeu37XchvBSKra6dwgDgNbWKSJMeH285');
-        // const actions = await this.committeeService.fetchActions();
         // await this.committeeService.fetchAllActions();
-        const actions = await this.queryService.fetchActions(
-            process.env.COMMITTEE_ADDRESS,
+        // await this.committeeService.updateCommittees();
+        const feePayerPrivateKey = PrivateKey.fromBase58(
+            process.env.FEE_PAYER_PRIVATE_KEY,
         );
-        await this.committeeService.fetchAllActions();
-        await this.committeeService.updateCommittees();
-        // console.log(actions[0].actions);
-        // console.log(
-        //     Utilities.getNextActionState(
-        //         Reducer.initialActionState,
-        //         Utilities.getActionHash(
-        //             Utilities.stringArrayToFields(
-        //                 actions[actions.length - 1].actions,
-        //             ),
-        //         ),
-        //     ).toString(),
-        // );
-        // console.log(
-        //     Utilities.getNextActionState(
-        //         Field.from(actions[actions.length - 1].hash),
-        //         Utilities.getActionHash(
-        //             Utilities.stringArrayToFields(
-        //                 actions[actions.length - 2].actions,
-        //             ),
-        //         ),
-        //     ).toString(),
-        // );
+        console.log(feePayerPrivateKey.toPublicKey().toBase58());
     }
 
     @Get('/test3')

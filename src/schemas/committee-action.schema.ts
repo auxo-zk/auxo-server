@@ -13,7 +13,7 @@ export class CommitteeAction {
     previousActionState: string;
 
     @Prop()
-    actions: string[][];
+    actions: string[];
 }
 
 export type CommitteeActionDocument = HydratedDocument<CommitteeAction>;

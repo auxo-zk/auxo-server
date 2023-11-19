@@ -16,9 +16,7 @@ export class CronTaskService {
     @Interval(300000)
     async handleNewBlock(): Promise<void> {
         await fetchLastBlock();
-        await this.committeeService.fetchAllActions();
-        await this.committeeService.updateCommittees();
-        await this.committeeService.updateMerkleTrees();
+        await this.committeeService.update();
     }
 
     @Interval(300000)

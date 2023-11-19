@@ -3,9 +3,6 @@ import { HydratedDocument } from 'mongoose';
 
 @Schema({ versionKey: false })
 export class Committee {
-    @Prop({ required: true, unique: true, index: true })
-    actionState: string;
-
     @Prop({ required: true, unique: true })
     committeeIndex: number;
 

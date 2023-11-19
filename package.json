@@ -20,7 +20,8 @@
         "test:e2e": "jest --config ./test/jest-e2e.json"
     },
     "dependencies": {
-        "@auxo-dev/auxo-libs": "^0.2.8",
+        "@auxo-dev/auxo-libs": "^0.3.1",
+        "@auxo-dev/dkg": "^0.2.2",
         "@nestjs/axios": "^3.0.1",
         "@nestjs/common": "^10.0.0",
         "@nestjs/core": "^10.0.0",

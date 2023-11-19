@@ -1,15 +1,10 @@
 import { AccountUpdate, Field } from 'o1js';
 
 export class Utilities {
-    static stringArrayToFields(input: string[][]): Field[][] {
-        const result: Field[][] = [];
+    static stringArrayToFields(input: string[]): Field[] {
+        const result: Field[] = [];
         for (let i = 0; i < input.length; i++) {
-            const row = input[i];
-            const rowOutput: Field[] = [];
-            for (let j = 0; j < row.length; j++) {
-                rowOutput.push(Field.from(row[j]));
-            }
-            result.push(rowOutput);
+            result.push(Field.from(input[i]));
         }
         return result;
     }

@@ -1,8 +1,8 @@
-// import { Field } from 'o1js';
+import { Field } from 'o1js';
 
 export interface CommitteeState {
-    committeeTreeRoot: bigint;
-    settingTreeRoot: bigint;
-    nextCommitteeId: bigint;
-    actionStateHash: bigint;
+    committeeTreeRoot: Field;
+    settingTreeRoot: Field;
+    nextCommitteeId: Field;
+    actionState: Field;
 }
