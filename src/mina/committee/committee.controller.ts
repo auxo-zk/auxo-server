@@ -30,14 +30,14 @@ export class CommitteeController {
         return this.committeeModel.find({});
     }
 
-    @Get(':committeeId')
+    @Get(':committeeIndex')
     @ApiTags('Committee')
     async getCommittee(
-        @Param('committeeId') committeeId: number,
+        @Param('committeeIndex') committeeIndex: number,
         @Res() response: Response,
     ): Promise<Committee> {
         const result = await this.committeeModel.findOne({
-            committeeId: committeeId,
+            committeeIndex: committeeIndex,
         });
         if (result == null) {
             response.status(HttpStatus.NOT_FOUND);
