@@ -8,8 +8,8 @@ import {
     fetchAccount,
     fetchEvents,
 } from 'o1js';
-import { Event } from '../interfaces/event.interface';
-import { Action } from 'src/mina/interfaces/action.interface';
+import { Event } from '../../interfaces/event.interface';
+import { Action } from 'src/interfaces/action.interface';
 
 @Injectable()
 export class QueryService {

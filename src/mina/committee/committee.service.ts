@@ -11,7 +11,7 @@ import {
     PublicKey,
     Reducer,
 } from 'o1js';
-import { CommitteeState } from '../interfaces/committee-state.interface';
+import { CommitteeState } from '../../interfaces/committee-state.interface';
 import { Committee } from 'src/schemas/committee.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, set } from 'mongoose';
@@ -48,15 +48,15 @@ export class CommitteeService implements OnModuleInit {
         await this.fetch();
         const committees = await this.committeeModel.find({ active: true });
         this.insertLeaves(committees);
-        ZkApp.Committee.CreateCommittee.compile().then(() => {
-            this.logger.log('Compile CreateCommittee successfully');
-            ZkApp.Committee.CommitteeContract.compile().then(() => {
-                this.logger.log('Compile CommitteeContract successfully');
-                // this.rollup().then(() => {
-                //     this.logger.log('Rollup CommitteeContract successfully');
-                // });
-            });
-        });
+        // ZkApp.Committee.CreateCommittee.compile().then(() => {
+        //     this.logger.log('Compile CreateCommittee successfully');
+        //     ZkApp.Committee.CommitteeContract.compile().then(() => {
+        //         this.logger.log('Compile CommitteeContract successfully');
+        //         // this.rollup().then(() => {
+        //         //     this.logger.log('Rollup CommitteeContract successfully');
+        //         // });
+        //     });
+        // });
     }
 
     async update() {
@@ -263,7 +263,6 @@ export class CommitteeService implements OnModuleInit {
         );
         const lastEvent = rawEvents[rawEvents.length - 1].events;
         const lastActiveCommitteeIndex = Number(lastEvent[0].data[0]);
-        console.log(lastActiveCommitteeIndex);
         const notActiveCommittees = await this.committeeModel.find({
             committeeIndex: { $lt: lastActiveCommitteeIndex },
             active: false,

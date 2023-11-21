@@ -56,4 +56,14 @@ export class Ipfs {
             return null;
         }
     }
+
+    async getData(ipfsHash: string): Promise<object> {
+        const requestURL = process.env.IPFS_GATEWAY + ipfsHash;
+        const response = await lastValueFrom(this.httpService.get(requestURL));
+        if (response.status == HttpStatus.OK) {
+            return response.data;
+        } else {
+            return null;
+        }
+    }
 }

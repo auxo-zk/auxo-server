@@ -7,6 +7,7 @@ import {
 import { Ipfs } from './ipfs';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
 
 @Controller('ipfs')
 export class IpfsController {
@@ -22,7 +23,9 @@ export class IpfsController {
         },
     })
     @UseInterceptors(FileInterceptor('file'))
-    async uploadFile(@UploadedFile() file: Express.Multer.File) {
+    async uploadFile(
+        @UploadedFile() file: Express.Multer.File,
+    ): Promise<IpfsResponse> {
         const response = await this.ipfs.uploadFile(file);
         return response;
     }
