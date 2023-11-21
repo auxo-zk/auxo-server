@@ -4,7 +4,7 @@ export class CommitteeDetail {
     committeeIndex: number;
     numberOfMembers: number;
     threshold: number;
-    publicKeys: PublicKey[];
+    members: Member[];
     active: boolean;
     ipfsHash: string;
     ipfsData: { name: string; creator: string; network: string };
@@ -15,22 +15,22 @@ export class CommitteeDetail {
         this.threshold = committee.threshold;
         this.active = committee.active;
         this.ipfsHash = committee.ipfsHash;
-        this.publicKeys = [];
+        this.members = [];
         for (let i = 0; i < committee.publicKeys.length; i++) {
-            this.publicKeys.push(
-                new PublicKey(committee.publicKeys[i], 'default', new Date()),
+            this.members.push(
+                new Member(committee.publicKeys[i], 'default', new Date()),
             );
         }
     }
 }
 
-class PublicKey {
-    address: string;
+class Member {
+    publicKey: string;
     alias: string;
     lastActive: Date;
 
-    constructor(address: string, alias: string, lastActive: Date) {
-        this.address = address;
+    constructor(publicKey: string, alias: string, lastActive: Date) {
+        this.publicKey = publicKey;
         this.alias = alias;
         this.lastActive = lastActive;
     }
