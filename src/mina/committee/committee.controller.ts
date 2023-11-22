@@ -29,8 +29,8 @@ export class CommitteeController {
 
     @Get()
     @ApiTags('Committee')
-    @CacheTTL(30000)
-    @UseInterceptors(CacheInterceptor)
+    // @CacheTTL(30000)
+    // @UseInterceptors(CacheInterceptor)
     async getAllCommittees(): Promise<CommitteeDetail[]> {
         const committees = await this.committeeModel.find({});
         const result: CommitteeDetail[] = new Array(committees.length);
