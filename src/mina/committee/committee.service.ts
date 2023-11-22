@@ -165,6 +165,7 @@ export class CommitteeService implements OnModuleInit {
     // ============ PRIVATE FUNCTIONS ============
 
     private async fetchAllActions(): Promise<void> {
+        const promises = [];
         const actions = await this.queryService.fetchActions(
             process.env.COMMITTEE_ADDRESS,
         );
@@ -175,26 +176,42 @@ export class CommitteeService implements OnModuleInit {
             const currentActionState = Field.from(
                 actions[actionsLength - 1].hash,
             );
-            await this.committeeActionModel.findOneAndUpdate(
-                {
-                    currentActionState: currentActionState.toString(),
-                },
-                {
-                    actionId: actionId,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
-                    actions: actions[actionsLength - 1].actions[0],
-                },
-                { new: true, upsert: true },
+            promises.push(
+                this.committeeActionModel.findOneAndUpdate(
+                    {
+                        currentActionState: currentActionState.toString(),
+                    },
+                    {
+                        actionId: actionId,
+                        currentActionState: currentActionState.toString(),
+                        previousActionState: previousActionState.toString(),
+                        actions: actions[actionsLength - 1].actions[0],
+                    },
+                    { new: true, upsert: true },
+                ),
             );
+            // await this.committeeActionModel.findOneAndUpdate(
+            //     {
+            //         currentActionState: currentActionState.toString(),
+            //     },
+            //     {
+            //         actionId: actionId,
+            //         currentActionState: currentActionState.toString(),
+            //         previousActionState: previousActionState.toString(),
+            //         actions: actions[actionsLength - 1].actions[0],
+            //     },
+            //     { new: true, upsert: true },
+            // );
 
             previousActionState = currentActionState;
             actionsLength -= 1;
             actionId += 1;
         }
+        await Promise.all(promises);
     }
 
     private async updateCommittees() {
+        let promises = [];
         const lastCommittee = await this.committeeModel.findOne(
             {},
             {},
@@ -246,18 +263,33 @@ export class CommitteeService implements OnModuleInit {
 
             const committeeIndex = committeeAction.actionId;
 
-            await this.committeeModel.findOneAndUpdate(
-                { committeeIndex: committeeIndex },
-                {
-                    committeeIndex: committeeIndex,
-                    numberOfMembers: n,
-                    threshold: t,
-                    publicKeys: publicKeys,
-                    ipfsHash: ipfsHash,
-                },
-                { new: true, upsert: true },
+            promises.push(
+                this.committeeModel.findOneAndUpdate(
+                    { committeeIndex: committeeIndex },
+                    {
+                        committeeIndex: committeeIndex,
+                        numberOfMembers: n,
+                        threshold: t,
+                        publicKeys: publicKeys,
+                        ipfsHash: ipfsHash,
+                    },
+                    { new: true, upsert: true },
+                ),
             );
+            // await this.committeeModel.findOneAndUpdate(
+            //     { committeeIndex: committeeIndex },
+            //     {
+            //         committeeIndex: committeeIndex,
+            //         numberOfMembers: n,
+            //         threshold: t,
+            //         publicKeys: publicKeys,
+            //         ipfsHash: ipfsHash,
+            //     },
+            //     { new: true, upsert: true },
+            // );
         }
+        await Promise.all(promises);
+        promises = [];
         const rawEvents = await this.queryService.fetchEvents(
             process.env.COMMITTEE_ADDRESS,
         );
@@ -270,8 +302,10 @@ export class CommitteeService implements OnModuleInit {
         for (let i = 0; i < notActiveCommittees.length; i++) {
             const notActiveCommittee = notActiveCommittees[i];
             notActiveCommittee.set('active', true);
-            await notActiveCommittee.save();
+            promises.push(notActiveCommittee.save());
+            // await notActiveCommittee.save();
         }
+        await Promise.all(promises);
     }
 
     private insertLeaves(committees: Committee[]) {

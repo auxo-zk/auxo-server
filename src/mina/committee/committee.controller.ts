@@ -30,11 +30,15 @@ export class CommitteeController {
     async getAllCommittees(): Promise<CommitteeDetail[]> {
         const committees = await this.committeeModel.find({});
         const result: CommitteeDetail[] = [];
+        const ipfsData = await Promise.all(
+            [...Array(committees.length).keys()].map((i: any) =>
+                this.ipfs.getData(committees[i].ipfsHash),
+            ),
+        );
         for (let i = 0; i < committees.length; i++) {
             const committee = committees[i];
-            const ipfsData = await this.ipfs.getData(committee.ipfsHash);
             const committeeDetail = new CommitteeDetail(committee);
-            committeeDetail.ipfsData = ipfsData as any;
+            committeeDetail.ipfsData = ipfsData[i] as any;
             result.push(committeeDetail);
         }
         return result;
