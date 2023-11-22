@@ -58,8 +58,28 @@ export class Ipfs {
     }
 
     async getData(ipfsHash: string): Promise<object> {
-        const requestURL = process.env.IPFS_GATEWAY + ipfsHash;
-        const response = await lastValueFrom(this.httpService.get(requestURL));
+        const requestURL = process.env.IPFS_API_ENDPOINT + '/cat';
+        const auth =
+            'Basic ' +
+            btoa(
+                process.env.IPFS_API_KEY +
+                    ':' +
+                    process.env.IPFS_API_SECRET_KEY,
+            );
+        const response = await lastValueFrom(
+            this.httpService.post(
+                requestURL,
+                {},
+                {
+                    params: {
+                        arg: ipfsHash,
+                    },
+                    headers: {
+                        Authorization: auth,
+                    },
+                },
+            ),
+        );
         if (response.status == HttpStatus.OK) {
             return response.data;
         } else {

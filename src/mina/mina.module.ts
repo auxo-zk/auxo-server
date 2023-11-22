@@ -27,6 +27,7 @@ import { CacheModule } from '@nestjs/cache-manager';
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
         ]),
         HttpModule,
+        CacheModule.register(),
     ],
     providers: [Network, QueryService, CronTaskService, CommitteeService, Ipfs],
     controllers: [CommitteeController, TestController],
