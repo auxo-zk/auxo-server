@@ -27,8 +27,17 @@ export class CommitteeController {
 
     @Get()
     @ApiTags('Committee')
-    async getAllCommittees(): Promise<Committee[]> {
-        return this.committeeModel.find({});
+    async getAllCommittees(): Promise<CommitteeDetail[]> {
+        const committees = await this.committeeModel.find({});
+        const result: CommitteeDetail[] = [];
+        for (let i = 0; i < committees.length; i++) {
+            const committee = committees[i];
+            const ipfsData = await this.ipfs.getData(committee.ipfsHash);
+            const committeeDetail = new CommitteeDetail(committee);
+            committeeDetail.ipfsData = ipfsData as any;
+            result.push(committeeDetail);
+        }
+        return result;
     }
 
     @Get(':committeeIndex')
