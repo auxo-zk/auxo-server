@@ -226,7 +226,11 @@ export class CommitteeService implements OnModuleInit {
                 { sort: { actionId: 1 } },
             );
         } else {
-            committeeActions = await this.committeeActionModel.find({});
+            committeeActions = await this.committeeActionModel.find(
+                {},
+                {},
+                { sort: { actionId: 1 } },
+            );
         }
 
         for (let i = 0; i < committeeActions.length; i++) {
@@ -295,10 +299,14 @@ export class CommitteeService implements OnModuleInit {
         );
         const lastEvent = rawEvents[rawEvents.length - 1].events;
         const lastActiveCommitteeIndex = Number(lastEvent[0].data[0]);
-        const notActiveCommittees = await this.committeeModel.find({
-            committeeIndex: { $lt: lastActiveCommitteeIndex },
-            active: false,
-        });
+        const notActiveCommittees = await this.committeeModel.find(
+            {
+                committeeIndex: { $lt: lastActiveCommitteeIndex },
+                active: false,
+            },
+            {},
+            { sort: { committeeIndex: 1 } },
+        );
         for (let i = 0; i < notActiveCommittees.length; i++) {
             const notActiveCommittee = notActiveCommittees[i];
             notActiveCommittee.set('active', true);

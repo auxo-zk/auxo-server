@@ -1,3 +1,4 @@
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
     Body,
     Controller,
@@ -6,6 +7,7 @@ import {
     Param,
     Post,
     Res,
+    UseInterceptors,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ApiTags } from '@nestjs/swagger';
@@ -27,9 +29,11 @@ export class CommitteeController {
 
     @Get()
     @ApiTags('Committee')
+    @CacheTTL(30000)
+    @UseInterceptors(CacheInterceptor)
     async getAllCommittees(): Promise<CommitteeDetail[]> {
         const committees = await this.committeeModel.find({});
-        const result: CommitteeDetail[] = [];
+        const result: CommitteeDetail[] = new Array(committees.length);
         const ipfsData = await Promise.all(
             [...Array(committees.length).keys()].map((i: any) =>
                 this.ipfs.getData(committees[i].ipfsHash),
@@ -39,7 +43,7 @@ export class CommitteeController {
             const committee = committees[i];
             const committeeDetail = new CommitteeDetail(committee);
             committeeDetail.ipfsData = ipfsData[i] as any;
-            result.push(committeeDetail);
+            result[committee.committeeIndex] = committeeDetail;
         }
         return result;
     }

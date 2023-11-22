@@ -17,6 +17,7 @@ import { CommitteeService } from './committee/committee.service';
 
 import { TestController } from './test/test.controller';
 import { CommitteeController } from './committee/committee.controller';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
     imports: [
@@ -26,6 +27,7 @@ import { CommitteeController } from './committee/committee.controller';
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
         ]),
         HttpModule,
+        CacheModule.register(),
     ],
     providers: [Network, QueryService, CronTaskService, CommitteeService, Ipfs],
     controllers: [CommitteeController, TestController],

@@ -11,8 +11,7 @@
                     "dtoFileNameSuffix": [
                         ".dto.ts",
                         ".entity.ts",
-                        ".schema.ts",
-                        ".interface.ts"
+                        ".schema.ts"
                     ],
                     "classValidatorShim": false
                 }
