@@ -48,15 +48,6 @@ export class CommitteeService implements OnModuleInit {
         await this.fetch();
         const committees = await this.committeeModel.find({ active: true });
         this.insertLeaves(committees);
-        // ZkApp.Committee.CreateCommittee.compile().then(() => {
-        //     this.logger.log('Compile CreateCommittee successfully');
-        //     ZkApp.Committee.CommitteeContract.compile().then(() => {
-        //         this.logger.log('Compile CommitteeContract successfully');
-        //         // this.rollup().then(() => {
-        //         //     this.logger.log('Rollup CommitteeContract successfully');
-        //         // });
-        //     });
-        // });
     }
 
     async update() {
@@ -75,6 +66,18 @@ export class CommitteeService implements OnModuleInit {
     async fetch() {
         await this.fetchAllActions();
         await this.updateCommittees();
+    }
+
+    async compile() {
+        ZkApp.Committee.CreateCommittee.compile().then(() => {
+            this.logger.log('Compile CreateCommittee successfully');
+            ZkApp.Committee.CommitteeContract.compile().then(() => {
+                this.logger.log('Compile CommitteeContract successfully');
+                // this.rollup().then(() => {
+                //     this.logger.log('Rollup CommitteeContract successfully');
+                // });
+            });
+        });
     }
 
     async fetchZkAppState(): Promise<CommitteeState> {

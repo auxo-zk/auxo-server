@@ -47,11 +47,7 @@ export class TestController {
         //     process.env.FEE_PAYER_PRIVATE_KEY,
         // );
         // console.log(feePayerPrivateKey.toPublicKey().toBase58());
-        console.log(
-            await this.ipfs.getData(
-                'QmdZyvZxREgPctoRguikD1PTqsXJH3Mg2M3hhRhVNSx4tn',
-            ),
-        );
+        await this.committeeService.compile();
     }
 
     @Get('/test3')

@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { MinaModule } from './mina/mina.module';
+import { CommitteeService } from './mina/committee/committee.service';
 // import * as compression from 'compression';
 // import helmet from 'helmet';
 
