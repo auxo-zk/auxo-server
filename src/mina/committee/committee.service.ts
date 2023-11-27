@@ -15,7 +15,7 @@ import { CommitteeState } from '../../interfaces/committee-state.interface';
 import { Committee } from 'src/schemas/committee.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, set } from 'mongoose';
-import { CommitteeAction } from 'src/schemas/committee-action.schema';
+import { CommitteeAction } from 'src/schemas/actions/committee-action.schema';
 import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 

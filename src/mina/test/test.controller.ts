@@ -4,7 +4,7 @@ import { Network } from '../network/network';
 // import { Field, Group, PublicKey } from 'o1js';
 import { CommitteeService } from '../committee/committee.service';
 import { Model } from 'mongoose';
-import { CommitteeAction } from 'src/schemas/committee-action.schema';
+import { CommitteeAction } from 'src/schemas/actions/committee-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Ipfs } from 'src/ipfs/ipfs';
 import {
