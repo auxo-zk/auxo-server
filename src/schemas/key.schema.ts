@@ -13,19 +13,17 @@ export class Key {
     memberId: number;
 
     @Prop()
-    round1Contributions: Round1Contribution[];
+    round1Contributions: Map<string, Round1Contribution>;
 
     @Prop()
-    round2Contributions: Round2Contribution[];
+    round2Contributions: Map<string, Round2Contribution>;
 }
 
 export class Round1Contribution {
-    memberIndex: number;
     c: { x: string; y: string }[];
 }
 
 export class Round2Contribution {
-    memberIndex: number;
     u: { x: string; y: string };
     c: string;
 }
