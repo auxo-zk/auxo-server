@@ -1,5 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { Encoding, Field, PublicKey } from 'o1js';
+import { memberTreeHeight } from 'src/mina/committee/committee.service';
+import { Committee } from '../committee.schema';
 
 @Schema({ versionKey: false })
 export class CommitteeAction {

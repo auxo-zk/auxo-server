@@ -16,7 +16,7 @@ export class Committee {
     publicKeys: string[];
 
     @Prop({ required: true, default: false })
-    active: boolean;
+    active?: boolean;
 
     @Prop()
     ipfsHash: string;

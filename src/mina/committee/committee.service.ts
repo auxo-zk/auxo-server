@@ -19,14 +19,18 @@ import { CommitteeAction } from 'src/schemas/actions/committee-action.schema';
 import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 
-const memberTreeHeight = Number(process.env.MEMBER_TREE_HEIGHT as string);
+export const memberTreeHeight = Number(
+    process.env.MEMBER_TREE_HEIGHT as string,
+);
+
+export const enum CommitteeEventEnum {
+    COMMITTEE_CREATED,
+    __LENGTH,
+}
 
 @Injectable()
 export class CommitteeService implements OnModuleInit {
     private readonly logger = new Logger(CommitteeService.name);
-    private readonly eventEnum: { [key: string]: number } = {
-        CommitteeCreated: 1,
-    };
     private nextCommitteeIndex: number;
     private committeeTree: MerkleMap;
     private settingTree: MerkleMap;
@@ -283,17 +287,6 @@ export class CommitteeService implements OnModuleInit {
                     { new: true, upsert: true },
                 ),
             );
-            // await this.committeeModel.findOneAndUpdate(
-            //     { committeeIndex: committeeIndex },
-            //     {
-            //         committeeIndex: committeeIndex,
-            //         numberOfMembers: n,
-            //         threshold: t,
-            //         publicKeys: publicKeys,
-            //         ipfsHash: ipfsHash,
-            //     },
-            //     { new: true, upsert: true },
-            // );
         }
         await Promise.all(promises);
         promises = [];
