@@ -43,19 +43,19 @@ export class CommitteeController {
             const committee = committees[i];
             const committeeDetail = new CommitteeDetail(committee);
             committeeDetail.ipfsData = ipfsData[i] as any;
-            result[committee.committeeIndex] = committeeDetail;
+            result[committee.committeeId] = committeeDetail;
         }
         return result;
     }
 
-    @Get(':committeeIndex')
+    @Get(':committeeId')
     @ApiTags('Committee')
     async getCommittee(
-        @Param('committeeIndex') committeeIndex: number,
+        @Param('committeeId') committeeId: number,
         @Res() response: Response,
     ): Promise<CommitteeDetail> {
         const result = await this.committeeModel.findOne({
-            committeeIndex: committeeIndex,
+            committeeId: committeeId,
         });
         if (result == null) {
             response.status(HttpStatus.NOT_FOUND);

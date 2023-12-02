@@ -1,7 +1,7 @@
 import { Committee } from 'src/schemas/committee.schema';
 
 export class CommitteeDetail {
-    committeeIndex: number;
+    committeeId: number;
     numberOfMembers: number;
     threshold: number;
     members: Member[];
@@ -10,7 +10,7 @@ export class CommitteeDetail {
     ipfsData: { name: string; creator: string; network: string };
 
     constructor(committee: Committee) {
-        this.committeeIndex = committee.committeeIndex;
+        this.committeeId = committee.committeeId;
         this.numberOfMembers = committee.numberOfMembers;
         this.threshold = committee.threshold;
         this.active = committee.active;

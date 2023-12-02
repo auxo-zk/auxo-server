@@ -4,7 +4,7 @@ import { HydratedDocument } from 'mongoose';
 @Schema({ versionKey: false })
 export class Committee {
     @Prop({ required: true, unique: true })
-    committeeIndex: number;
+    committeeId: number;
 
     @Prop()
     numberOfMembers: number;

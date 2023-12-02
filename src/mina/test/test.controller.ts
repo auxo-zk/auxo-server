@@ -45,7 +45,10 @@ export class TestController {
 
     @Get('/test2')
     async test2(): Promise<any> {
-        const job = await this.rollupCommitteeQueue.add({});
+        const actions = await this.queryService.fetchActions(
+            process.env.DKG_ADDRESS,
+        );
+        console.log(actions[0]);
     }
 
     @Get('/test3')

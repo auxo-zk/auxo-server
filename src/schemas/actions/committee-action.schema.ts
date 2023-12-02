@@ -56,9 +56,9 @@ export function getCommittee(committeeAction: CommitteeAction): Committee {
     }
     const ipfsHash = Encoding.stringFromFields(ipfsHashFields);
 
-    const committeeIndex = committeeAction.actionId;
+    const committeeId = committeeAction.actionId;
     const committee: Committee = {
-        committeeIndex: committeeIndex,
+        committeeId: committeeId,
         numberOfMembers: n,
         threshold: t,
         publicKeys: publicKeys,

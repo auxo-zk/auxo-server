@@ -31,3 +31,5 @@ export class DkgAction {
 
 export type DKGActionDocument = HydratedDocument<DkgAction>;
 export const DKGActionSchema = SchemaFactory.createForClass(DkgAction);
+
+export function getDkg() {}

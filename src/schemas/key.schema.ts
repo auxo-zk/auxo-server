@@ -4,10 +4,10 @@ import { HydratedDocument } from 'mongoose';
 @Schema({ versionKey: false })
 export class Key {
     @Prop({ required: true, unique: true })
-    keyIndex: number;
+    keyId: number;
 
     @Prop()
-    committeeIndex: number;
+    committeeId: number;
 
     @Prop()
     memberId: number;
