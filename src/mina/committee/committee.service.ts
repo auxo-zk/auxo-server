@@ -72,9 +72,6 @@ export class CommitteeService implements OnModuleInit {
             this.logger.log('Compile CreateCommittee successfully');
             ZkApp.Committee.CommitteeContract.compile().then(() => {
                 this.logger.log('Compile CommitteeContract successfully');
-                // this.rollup().then(() => {
-                //     this.logger.log('Rollup CommitteeContract successfully');
-                // });
             });
         });
     }
