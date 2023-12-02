@@ -18,6 +18,8 @@ import {
     Reducer,
 } from 'o1js';
 import { Utilities } from '../utilities';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 // import { Point } from 'src/schemas/key.schema';
 
 @Controller('test')
@@ -29,6 +31,8 @@ export class TestController {
         @InjectModel(CommitteeAction.name)
         private committeeActionModel: Model<CommitteeAction>,
         private readonly ipfs: Ipfs,
+        @InjectQueue('rollup-committee')
+        private readonly rollupCommitteeQueue: Queue,
     ) {}
 
     @Get('/test1')
@@ -41,15 +45,7 @@ export class TestController {
 
     @Get('/test2')
     async test2(): Promise<any> {
-        // await this.committeeService.fetchAllActions();
-        // await this.committeeService.updateCommittees();
-        // const feePayerPrivateKey = PrivateKey.fromBase58(
-        //     process.env.FEE_PAYER_PRIVATE_KEY,
-        // );
-        // console.log(feePayerPrivateKey.toPublicKey().toBase58());
-        console.log(
-            await this.queryService.fetchActions(process.env.ROUND_1_ADDRESS),
-        );
+        const job = await this.rollupCommitteeQueue.add({});
     }
 
     @Get('/test3')

@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
+import { BullModule } from '@nestjs/bull';
+import Bull from 'bull';
+import { join } from 'path';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import {
@@ -46,6 +49,16 @@ import { Key, KeySchema } from 'src/schemas/key.schema';
         ]),
         HttpModule,
         CacheModule.register(),
+        BullModule.forRoot({
+            redis: {
+                host: 'localhost',
+                port: 6379,
+            },
+        }),
+        BullModule.registerQueue({
+            name: 'rollup-committee',
+            processors: [join(__dirname, 'rollup-committee-processor.js')],
+        }),
     ],
     providers: [
         Network,
