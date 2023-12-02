@@ -21,7 +21,7 @@ import { Utilities } from '../utilities';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { getDkg } from 'src/schemas/actions/dkg-action.schema';
-import { getRound1 } from 'src/schemas/actions/round-1-action.schema';
+// import { getRound1 } from 'src/schemas/actions/round-1-action.schema';
 // import { Point } from 'src/schemas/key.schema';
 
 @Controller('test')

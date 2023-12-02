@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bull';
+import { CacheModule } from '@nestjs/cache-manager';
 import { join } from 'path';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
@@ -22,19 +23,22 @@ import {
     Round2Action,
     Round2ActionSchema,
 } from 'src/schemas/actions/round-2-action.schema';
+import { Key, KeySchema } from 'src/schemas/key.schema';
+import { Dkg, DkgSchema } from 'src/schemas/dkg.schema';
+import {
+    Round1Contribution,
+    Round1ContributionSchema,
+} from 'src/schemas/round-1-contribution.schema';
 
 import { Network } from './network/network';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { QueryService } from './query/query.service';
 import { CronTaskService } from './cron-task/cron-task.service';
 import { CommitteeService } from './committee/committee.service';
+import { DkgService } from './dkg/dkg.service';
 
 import { TestController } from './test/test.controller';
 import { CommitteeController } from './committee/committee.controller';
-import { CacheModule } from '@nestjs/cache-manager';
-import { DkgService } from './dkg/dkg.service';
-import { Key, KeySchema } from 'src/schemas/key.schema';
-import { Dkg, DkgSchema } from 'src/schemas/dkg.schema';
 
 @Module({
     imports: [
@@ -45,6 +49,7 @@ import { Dkg, DkgSchema } from 'src/schemas/dkg.schema';
             { name: DkgAction.name, schema: DkgActionSchema },
             { name: Dkg.name, schema: DkgSchema },
             { name: Round1Action.name, schema: Round1ActionSchema },
+            { name: Round1Contribution.name, schema: Round1ContributionSchema },
             { name: Round2Action.name, schema: Round2ActionSchema },
             { name: Key.name, schema: KeySchema },
         ]),

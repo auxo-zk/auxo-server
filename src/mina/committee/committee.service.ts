@@ -193,10 +193,10 @@ export class CommitteeService implements OnModuleInit {
             actionId += 1;
         }
         await Promise.all(promises);
-        await this.updateCommittees();
+        await this.updateCommittee();
     }
 
-    private async updateCommittees() {
+    private async updateCommittee() {
         let promises = [];
         const lastCommittee = await this.committeeModel.findOne(
             {},
