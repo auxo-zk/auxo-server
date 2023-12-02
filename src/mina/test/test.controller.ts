@@ -20,6 +20,8 @@ import {
 import { Utilities } from '../utilities';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { getDkg } from 'src/schemas/actions/dkg-action.schema';
+import { getRound1 } from 'src/schemas/actions/round-1-action.schema';
 // import { Point } from 'src/schemas/key.schema';
 
 @Controller('test')
@@ -45,10 +47,13 @@ export class TestController {
 
     @Get('/test2')
     async test2(): Promise<any> {
-        const actions = await this.queryService.fetchActions(
-            process.env.DKG_ADDRESS,
-        );
-        console.log(actions[0]);
+        // const rawActions = await this.queryService.fetchActions(
+        //     process.env.ROUND_1_ADDRESS,
+        // );
+        // for (let i = 0; i < rawActions.length; i++) {
+        //     const actions = rawActions[i].actions[0];
+        //     console.log(getRound1(actions));
+        // }
     }
 
     @Get('/test3')

@@ -26,7 +26,7 @@ import { Utilities } from '../utilities';
 @Injectable()
 export class CommitteeService implements OnModuleInit {
     private readonly logger = new Logger(CommitteeService.name);
-    private nextcommitteeId: number;
+    private nextCommitteeId: number;
     private committeeTree: MerkleMap;
     private settingTree: MerkleMap;
     private actionState: bigint;
@@ -38,7 +38,7 @@ export class CommitteeService implements OnModuleInit {
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
     ) {
-        this.nextcommitteeId = 0;
+        this.nextCommitteeId = 0;
         this.committeeTree = new MerkleMap();
         this.settingTree = new MerkleMap();
     }
@@ -53,7 +53,7 @@ export class CommitteeService implements OnModuleInit {
         await this.fetch();
         const committees = await this.committeeModel.find(
             {
-                committeeId: { $gte: this.nextcommitteeId },
+                committeeId: { $gte: this.nextCommitteeId },
                 active: true,
             },
             {},
@@ -64,7 +64,6 @@ export class CommitteeService implements OnModuleInit {
 
     async fetch() {
         await this.fetchAllActions();
-        await this.updateCommittees();
     }
 
     async compile() {
@@ -109,7 +108,7 @@ export class CommitteeService implements OnModuleInit {
         );
         const committeeTree = this.committeeTree;
         const settingTree = this.settingTree;
-        let nextcommitteeId = this.nextcommitteeId;
+        let nextCommitteeId = this.nextCommitteeId;
         for (let i = 0; i < notReducedActions.length; i++) {
             const notReducedAction = notReducedActions[i];
             proof = await ZkApp.Committee.CreateCommittee.nextStep(
@@ -117,11 +116,11 @@ export class CommitteeService implements OnModuleInit {
                 ZkApp.Committee.CommitteeAction.fromFields(
                     Utilities.stringArrayToFields(notReducedAction.actions),
                 ),
-                committeeTree.getWitness(Field.from(nextcommitteeId)),
-                settingTree.getWitness(Field.from(nextcommitteeId)),
+                committeeTree.getWitness(Field.from(nextCommitteeId)),
+                settingTree.getWitness(Field.from(nextCommitteeId)),
             );
             const committee = await this.committeeModel.findOne({
-                committeeId: nextcommitteeId,
+                committeeId: nextCommitteeId,
             });
             const memberTree = new MerkleTree(memberTreeHeight);
             for (let j = 0; j < committee.numberOfMembers; j++) {
@@ -131,15 +130,15 @@ export class CommitteeService implements OnModuleInit {
                     Poseidon.hash(publicKey.toFields()),
                 );
             }
-            committeeTree.set(Field(nextcommitteeId), memberTree.getRoot());
+            committeeTree.set(Field(nextCommitteeId), memberTree.getRoot());
             settingTree.set(
-                Field(nextcommitteeId),
+                Field(nextCommitteeId),
                 Poseidon.hash([
                     Field(committee.threshold),
                     Field(committee.numberOfMembers),
                 ]),
             );
-            nextcommitteeId += 1;
+            nextCommitteeId += 1;
         }
         const committeeContract = new ZkApp.Committee.CommitteeContract(
             PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
@@ -194,6 +193,7 @@ export class CommitteeService implements OnModuleInit {
             actionId += 1;
         }
         await Promise.all(promises);
+        await this.updateCommittees();
     }
 
     private async updateCommittees() {
@@ -235,23 +235,25 @@ export class CommitteeService implements OnModuleInit {
         const rawEvents = await this.queryService.fetchEvents(
             process.env.COMMITTEE_ADDRESS,
         );
-        const lastEvent = rawEvents[rawEvents.length - 1].events;
-        const lastActivecommitteeId = Number(lastEvent[0].data[0]);
-        const notActiveCommittees = await this.committeeModel.find(
-            {
-                committeeId: { $lt: lastActivecommitteeId },
-                active: false,
-            },
-            {},
-            { sort: { committeeId: 1 } },
-        );
-        for (let i = 0; i < notActiveCommittees.length; i++) {
-            const notActiveCommittee = notActiveCommittees[i];
-            notActiveCommittee.set('active', true);
-            promises.push(notActiveCommittee.save());
-            // await notActiveCommittee.save();
+        if (rawEvents.length > 0) {
+            const lastEvent = rawEvents[rawEvents.length - 1].events;
+            const lastActiveCommitteeId = Number(lastEvent[0].data[0]);
+            const notActiveCommittees = await this.committeeModel.find(
+                {
+                    committeeId: { $lt: lastActiveCommitteeId },
+                    active: false,
+                },
+                {},
+                { sort: { committeeId: 1 } },
+            );
+            for (let i = 0; i < notActiveCommittees.length; i++) {
+                const notActiveCommittee = notActiveCommittees[i];
+                notActiveCommittee.set('active', true);
+                promises.push(notActiveCommittee.save());
+                // await notActiveCommittee.save();
+            }
+            await Promise.all(promises);
         }
-        await Promise.all(promises);
     }
 
     private insertLeaves(committees: Committee[]) {
@@ -266,17 +268,17 @@ export class CommitteeService implements OnModuleInit {
                 );
             }
             this.committeeTree.set(
-                Field(this.nextcommitteeId),
+                Field(this.nextCommitteeId),
                 memberTree.getRoot(),
             );
             this.settingTree.set(
-                Field(this.nextcommitteeId),
+                Field(this.nextCommitteeId),
                 Poseidon.hash([
                     Field(committee.threshold),
                     Field(committee.numberOfMembers),
                 ]),
             );
-            this.nextcommitteeId += 1;
+            this.nextCommitteeId += 1;
         }
     }
 }

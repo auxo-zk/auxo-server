@@ -35,10 +35,10 @@ export function getCommittee(committeeAction: CommitteeAction): Committee {
     const data = committeeAction.actions;
     const n = Number(Field.from(data[0]).toString());
     const publicKeys: string[] = [];
-    for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
         const publicKey = PublicKey.fromFields([
-            Field(data[1 + j * 2]),
-            Field(data[1 + j * 2 + 1]),
+            Field(data[1 + i * 2]),
+            Field(data[1 + i * 2 + 1]),
         ]);
         publicKeys.push(publicKey.toBase58());
     }
@@ -49,9 +49,9 @@ export function getCommittee(committeeAction: CommitteeAction): Committee {
         Field.from(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 1]).toBigInt(),
     );
     const ipfsHashFields: Field[] = [];
-    for (let j = 0; j < ipfsHashLength; j++) {
+    for (let i = 0; i < ipfsHashLength; i++) {
         ipfsHashFields.push(
-            Field.from(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 2 + j]),
+            Field.from(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 2 + i]),
         );
     }
     const ipfsHash = Encoding.stringFromFields(ipfsHashFields);

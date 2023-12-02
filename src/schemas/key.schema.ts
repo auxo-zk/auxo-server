@@ -17,6 +17,9 @@ export class Key {
 
     @Prop()
     round2Contributions: Map<string, Round2Contribution>;
+
+    @Prop()
+    state: number;
 }
 
 export class Round1Contribution {

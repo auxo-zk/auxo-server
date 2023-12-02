@@ -3,7 +3,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bull';
-import Bull from 'bull';
 import { join } from 'path';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
@@ -13,7 +12,7 @@ import {
 } from 'src/schemas/actions/committee-action.schema';
 import {
     DkgAction,
-    DKGActionSchema,
+    DkgActionSchema,
 } from 'src/schemas/actions/dkg-action.schema';
 import {
     Round1Action,
@@ -35,6 +34,7 @@ import { CommitteeController } from './committee/committee.controller';
 import { CacheModule } from '@nestjs/cache-manager';
 import { DkgService } from './dkg/dkg.service';
 import { Key, KeySchema } from 'src/schemas/key.schema';
+import { Dkg, DkgSchema } from 'src/schemas/dkg.schema';
 
 @Module({
     imports: [
@@ -42,7 +42,8 @@ import { Key, KeySchema } from 'src/schemas/key.schema';
         MongooseModule.forFeature([
             { name: Committee.name, schema: CommitteeSchema },
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
-            { name: DkgAction.name, schema: DKGActionSchema },
+            { name: DkgAction.name, schema: DkgActionSchema },
+            { name: Dkg.name, schema: DkgSchema },
             { name: Round1Action.name, schema: Round1ActionSchema },
             { name: Round2Action.name, schema: Round2ActionSchema },
             { name: Key.name, schema: KeySchema },

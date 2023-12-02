@@ -1,32 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { Field, Reducer } from 'o1js';
 import { Model } from 'mongoose';
-import { DkgAction } from 'src/schemas/actions/dkg-action.schema';
+import { DkgAction, getDkg } from 'src/schemas/actions/dkg-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Round1Action } from 'src/schemas/actions/round-1-action.schema';
 import { Round2Action } from 'src/schemas/actions/round-2-action.schema';
+import { Dkg } from 'src/schemas/dkg.schema';
 
 @Injectable()
-export class DkgService {
+export class DkgService implements OnModuleInit {
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(DkgAction.name)
         private readonly dkgActionModel: Model<DkgAction>,
+        @InjectModel(Dkg.name)
+        private readonly dkgModel: Model<Dkg>,
         @InjectModel(Round1Action.name)
         private readonly round1ActionModel: Model<Round1Action>,
         @InjectModel(Round2Action.name)
         private readonly round2ActionModel: Model<Round2Action>,
     ) {}
 
-    async fetch() {}
+    async onModuleInit() {
+        await this.fetch();
+    }
+
+    async fetch() {
+        await this.fetchAllActions();
+    }
 
     // ============ PRIVATE FUNCTIONS ============
 
     private async fetchAllActions() {
         await this.fetchAllDkgActions();
         await this.fetchAllRound1Actions();
-        await this.fetchAllRound2Actions();
+        // await this.fetchAllRound2Actions();
     }
 
     private async fetchAllDkgActions() {
@@ -61,12 +70,13 @@ export class DkgService {
             actionId += 1;
         }
         await Promise.all(promises);
+        await this.updateDkg();
     }
 
     private async fetchAllRound1Actions() {
         const promises = [];
         const actions = await this.queryService.fetchActions(
-            process.env.DKG_ADDRESS,
+            process.env.ROUND_1_ADDRESS,
         );
         let actionsLength = actions.length;
         let previousActionState: Field = Reducer.initialActionState;
@@ -100,7 +110,7 @@ export class DkgService {
     private async fetchAllRound2Actions() {
         const promises = [];
         const actions = await this.queryService.fetchActions(
-            process.env.DKG_ADDRESS,
+            process.env.ROUND_2_ADDRESS,
         );
         let actionsLength = actions.length;
         let previousActionState: Field = Reducer.initialActionState;
@@ -129,6 +139,67 @@ export class DkgService {
             actionId += 1;
         }
         await Promise.all(promises);
+    }
+
+    private async updateDkg() {
+        let promises = [];
+        const lastDkg = await this.dkgModel.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+
+        let dkgActions: DkgAction[];
+        if (lastDkg != null) {
+            dkgActions = await this.dkgActionModel.find(
+                { actionId: { $gt: lastDkg.actionId } },
+                {},
+                { sort: { actionId: 1 } },
+            );
+        } else {
+            dkgActions = await this.dkgActionModel.find(
+                {},
+                {},
+                { sort: { actionId: 1 } },
+            );
+        }
+
+        for (let i = 0; i < dkgActions.length; i++) {
+            const dkgAction = dkgActions[i];
+            promises.push(
+                this.dkgModel.findOneAndUpdate(
+                    { actionId: dkgAction.actionId },
+                    getDkg(dkgAction),
+                    { new: true, upsert: true },
+                ),
+            );
+        }
+        await Promise.all(promises);
+        promises = [];
+        const rawEvents = await this.queryService.fetchEvents(
+            process.env.DKG_ADDRESS,
+        );
+        if (rawEvents.length > 0) {
+            const lastEvent = rawEvents[rawEvents.length - 1].events;
+            const lastActionState = Field.from(lastEvent[0].data[0]).toString();
+            const lastActiveDkgAction = await this.dkgActionModel.findOne({
+                currentActionState: lastActionState,
+            });
+            const notActiveDkgs = await this.dkgModel.find(
+                {
+                    actionId: { $lte: lastActiveDkgAction.actionId },
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            for (let i = 0; i < notActiveDkgs.length; i++) {
+                const notActiveDkg = notActiveDkgs[i];
+                notActiveDkg.set('active', true);
+                promises.push(notActiveDkg.save());
+            }
+            await Promise.all(promises);
+        }
     }
 
     private async updateKeys() {}

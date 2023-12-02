@@ -1,26 +1,24 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { DkgActionEnum } from './actions/dkg-action.schema';
 
 @Schema({ versionKey: false })
-export class Committee {
+export class Dkg {
     @Prop({ required: true, unique: true })
+    actionId: number;
+
+    @Prop()
     committeeId: number;
 
     @Prop()
-    numberOfMembers: number;
+    keyId?: number;
 
     @Prop()
-    threshold: number;
-
-    @Prop()
-    publicKeys: string[];
-
-    @Prop()
-    ipfsHash: string;
+    actionEnum: DkgActionEnum;
 
     @Prop({ required: true, default: false })
     active?: boolean;
 }
 
-export type CommitteeDocument = HydratedDocument<Committee>;
-export const CommitteeSchema = SchemaFactory.createForClass(Committee);
+export type DkgDocument = HydratedDocument<Dkg>;
+export const DkgSchema = SchemaFactory.createForClass(Dkg);
