@@ -7,11 +7,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Round1Action } from 'src/schemas/actions/round-1-action.schema';
 import { Round2Action } from 'src/schemas/actions/round-2-action.schema';
 
-export const enum DkgEventEnum {
-    KEY_UPDATES_REDUCED,
-    __LENGTH,
-}
-
 @Injectable()
 export class DkgService {
     constructor(

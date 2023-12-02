@@ -47,7 +47,9 @@ export class TestController {
         //     process.env.FEE_PAYER_PRIVATE_KEY,
         // );
         // console.log(feePayerPrivateKey.toPublicKey().toBase58());
-        await this.committeeService.compile();
+        console.log(
+            await this.queryService.fetchActions(process.env.ROUND_1_ADDRESS),
+        );
     }
 
     @Get('/test3')

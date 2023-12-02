@@ -1,6 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
+export const enum DkgEventEnum {
+    KEY_UPDATES_REDUCED,
+    __LENGTH,
+}
+
 export const enum DkgActionEnum {
     GENERATE_KEY,
     FINALIZE_ROUND_1,

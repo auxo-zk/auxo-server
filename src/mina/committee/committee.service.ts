@@ -15,18 +15,13 @@ import { CommitteeState } from '../../interfaces/committee-state.interface';
 import { Committee } from 'src/schemas/committee.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, set } from 'mongoose';
-import { CommitteeAction } from 'src/schemas/actions/committee-action.schema';
+import {
+    CommitteeAction,
+    getCommittee,
+    memberTreeHeight,
+} from 'src/schemas/actions/committee-action.schema';
 import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-
-export const memberTreeHeight = Number(
-    process.env.MEMBER_TREE_HEIGHT as string,
-);
-
-export const enum CommitteeEventEnum {
-    COMMITTEE_CREATED,
-    __LENGTH,
-}
 
 @Injectable()
 export class CommitteeService implements OnModuleInit {
@@ -197,19 +192,6 @@ export class CommitteeService implements OnModuleInit {
                     { new: true, upsert: true },
                 ),
             );
-            // await this.committeeActionModel.findOneAndUpdate(
-            //     {
-            //         currentActionState: currentActionState.toString(),
-            //     },
-            //     {
-            //         actionId: actionId,
-            //         currentActionState: currentActionState.toString(),
-            //         previousActionState: previousActionState.toString(),
-            //         actions: actions[actionsLength - 1].actions[0],
-            //     },
-            //     { new: true, upsert: true },
-            // );
-
             previousActionState = currentActionState;
             actionsLength -= 1;
             actionId += 1;
@@ -242,48 +224,11 @@ export class CommitteeService implements OnModuleInit {
 
         for (let i = 0; i < committeeActions.length; i++) {
             const committeeAction = committeeActions[i];
-            const data = committeeAction.actions;
-            const n = Number(Field.from(data[0]).toString());
-            const publicKeys: string[] = [];
-            for (let j = 0; j < n; j++) {
-                const publicKey = PublicKey.fromFields([
-                    Field(data[1 + j * 2]),
-                    Field(data[1 + j * 2 + 1]),
-                ]);
-                publicKeys.push(publicKey.toBase58());
-            }
-            const t = Number(
-                Field.from(
-                    data[1 + 2 ** (memberTreeHeight - 1) * 2],
-                ).toBigInt(),
-            );
-            const ipfsHashLength = Number(
-                Field.from(
-                    data[1 + 2 ** (memberTreeHeight - 1) * 2 + 1],
-                ).toBigInt(),
-            );
-            const ipfsHashFields: Field[] = [];
-            for (let j = 0; j < ipfsHashLength; j++) {
-                ipfsHashFields.push(
-                    Field.from(
-                        data[1 + 2 ** (memberTreeHeight - 1) * 2 + 2 + j],
-                    ),
-                );
-            }
-            const ipfsHash = Encoding.stringFromFields(ipfsHashFields);
-
             const committeeIndex = committeeAction.actionId;
-
             promises.push(
                 this.committeeModel.findOneAndUpdate(
                     { committeeIndex: committeeIndex },
-                    {
-                        committeeIndex: committeeIndex,
-                        numberOfMembers: n,
-                        threshold: t,
-                        publicKeys: publicKeys,
-                        ipfsHash: ipfsHash,
-                    },
+                    getCommittee(committeeAction),
                     { new: true, upsert: true },
                 ),
             );
