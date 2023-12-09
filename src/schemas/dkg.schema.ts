@@ -4,7 +4,7 @@ import { DkgActionEnum } from './actions/dkg-action.schema';
 
 @Schema({ versionKey: false })
 export class Dkg {
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true, unique: true, index: true })
     actionId: number;
 
     @Prop()

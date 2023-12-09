@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 
 @Schema({ versionKey: false })
 export class Round2 {
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true, unique: true, index: true })
     actionId: number;
 
     @Prop()

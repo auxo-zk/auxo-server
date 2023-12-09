@@ -10,7 +10,7 @@ export const enum KeyStatus {
 }
 @Schema({ versionKey: false })
 export class Key {
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true, unique: true, index: true })
     keyId: number;
 
     @Prop()

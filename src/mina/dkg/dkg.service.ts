@@ -2,7 +2,11 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { Field, Reducer } from 'o1js';
 import { Model } from 'mongoose';
-import { DkgAction, getDkg } from 'src/schemas/actions/dkg-action.schema';
+import {
+    DkgAction,
+    DkgActionEnum,
+    getDkg,
+} from 'src/schemas/actions/dkg-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     Round1Action,
@@ -15,6 +19,7 @@ import {
 import { Dkg } from 'src/schemas/dkg.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
+import { Key, KeyStatus } from 'src/schemas/key.schema';
 
 @Injectable()
 export class DkgService implements OnModuleInit {
@@ -32,6 +37,8 @@ export class DkgService implements OnModuleInit {
         private readonly round2ActionModel: Model<Round2Action>,
         @InjectModel(Round2.name)
         private readonly round2Model: Model<Round2>,
+        @InjectModel(Key.name)
+        private readonly keyModel: Model<Key>,
     ) {}
 
     async onModuleInit() {
@@ -45,9 +52,10 @@ export class DkgService implements OnModuleInit {
     // ============ PRIVATE FUNCTIONS ============
 
     private async fetchAllActions() {
-        await this.fetchAllDkgActions();
-        await this.fetchAllRound1Actions();
-        await this.fetchAllRound2Actions();
+        // await this.fetchAllDkgActions();
+        // await this.fetchAllRound1Actions();
+        // await this.fetchAllRound2Actions();
+        await this.updateKeys();
     }
 
     private async fetchAllDkgActions() {
@@ -117,7 +125,7 @@ export class DkgService implements OnModuleInit {
             actionId += 1;
         }
         await Promise.all(promises);
-        await this.updateRound1Contribution();
+        await this.updateRound1s();
     }
 
     private async fetchAllRound2Actions() {
@@ -153,7 +161,7 @@ export class DkgService implements OnModuleInit {
             actionId += 1;
         }
         await Promise.all(promises);
-        await this.updateRound2Contribution();
+        await this.updateRound2s();
     }
 
     private async updateDkgs() {
@@ -217,7 +225,7 @@ export class DkgService implements OnModuleInit {
         }
     }
 
-    private async updateRound1Contribution() {
+    private async updateRound1s() {
         let promises = [];
         const lastRound1Contribution = await this.round1Model.findOne(
             {},
@@ -280,7 +288,7 @@ export class DkgService implements OnModuleInit {
         }
     }
 
-    private async updateRound2Contribution() {
+    private async updateRound2s() {
         let promises = [];
         const lastRound2Contribution = await this.round2Model.findOne(
             {},
@@ -343,5 +351,78 @@ export class DkgService implements OnModuleInit {
         }
     }
 
-    private async updateKeys() {}
+    private async updateKeys() {
+        const lastActiveDkg = await this.dkgModel.findOne(
+            { active: true },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const numberOfKeysGenerated = await this.dkgModel.countDocuments({
+            actionEnum: DkgActionEnum.GENERATE_KEY,
+            active: true,
+        });
+        for (let i = 0; i < numberOfKeysGenerated; i++) {
+            const keyId = i;
+            const existed = await this.keyModel.exists({ keyId: keyId });
+
+            if (!existed) {
+                console.log(keyId);
+                const key = new this.keyModel({
+                    keyId: keyId,
+                    status: KeyStatus.EMPTY,
+                });
+                await key.save();
+            }
+        }
+
+        const deprecatedDkgs = await this.dkgModel.find({
+            actionEnum: DkgActionEnum.DEPRECATE_KEY,
+        });
+        const deprecatedDkgIds = deprecatedDkgs.map((item) => item.actionId);
+        const finalizedRound2Dkgs = await this.dkgModel
+            .find({
+                actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
+            })
+            .where('actionId')
+            .nin(deprecatedDkgIds);
+        const finalizedRound2DkgIds = finalizedRound2Dkgs.map(
+            (item) => item.actionId,
+        );
+        const finalizedRound1Dkgs = await this.dkgModel
+            .find({
+                actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
+            })
+            .where('actionId')
+            .nin(finalizedRound2DkgIds.concat(deprecatedDkgIds));
+        const finalizedRound1DkgIds = finalizedRound1Dkgs.map(
+            (item) => item.actionId,
+        );
+
+        for (let i = 0; i < deprecatedDkgs.length; i++) {
+            const deprecatedDkg = deprecatedDkgs[i];
+            const key = await this.keyModel.findOne({
+                keyId: deprecatedDkg.keyId,
+            });
+            key.set('status', KeyStatus.DEPRECATED);
+            await key.save();
+        }
+
+        for (let i = 0; i < finalizedRound2Dkgs.length; i++) {
+            const finalizedRound2Dkg = finalizedRound2Dkgs[i];
+            const key = await this.keyModel.findOne({
+                keyId: finalizedRound2Dkg.keyId,
+            });
+            key.set('status', KeyStatus.ACTIVE);
+            await key.save();
+        }
+
+        for (let i = 0; i < finalizedRound1Dkgs.length; i++) {
+            const finalizedRound1Dkg = finalizedRound1Dkgs[i];
+            const key = await this.keyModel.findOne({
+                keyId: finalizedRound1Dkg.keyId,
+            });
+            key.set('status', KeyStatus.ROUND_2_CONTRIBUTION);
+            await key.save();
+        }
+    }
 }
