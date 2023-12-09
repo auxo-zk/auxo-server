@@ -8,7 +8,10 @@ import {
     Round1Action,
     getRound1,
 } from 'src/schemas/actions/round-1-action.schema';
-import { Round2Action } from 'src/schemas/actions/round-2-action.schema';
+import {
+    Round2Action,
+    getRound2,
+} from 'src/schemas/actions/round-2-action.schema';
 import { Dkg } from 'src/schemas/dkg.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
@@ -129,6 +132,7 @@ export class DkgService implements OnModuleInit {
             const currentActionState = Field.from(
                 actions[actionsLength - 1].hash,
             );
+            console.log(actions[actionsLength - 1].actions[0]);
             promises.push(
                 this.round2ActionModel.findOneAndUpdate(
                     {
@@ -149,6 +153,7 @@ export class DkgService implements OnModuleInit {
             actionId += 1;
         }
         await Promise.all(promises);
+        await this.updateRound2Contribution();
     }
 
     private async updateDkgs() {
@@ -277,32 +282,32 @@ export class DkgService implements OnModuleInit {
 
     private async updateRound2Contribution() {
         let promises = [];
-        const lastRound1Contribution = await this.round1Model.findOne(
+        const lastRound2Contribution = await this.round2Model.findOne(
             {},
             {},
             { sort: { actionId: -1 } },
         );
 
-        let round1Actions: Round1Action[];
-        if (lastRound1Contribution != null) {
-            round1Actions = await this.round1ActionModel.find(
-                { actionId: { $gt: lastRound1Contribution.actionId } },
+        let round2Actions: Round2Action[];
+        if (lastRound2Contribution != null) {
+            round2Actions = await this.round1ActionModel.find(
+                { actionId: { $gt: lastRound2Contribution.actionId } },
                 {},
                 { sort: { actionId: 1 } },
             );
         } else {
-            round1Actions = await this.round1ActionModel.find(
+            round2Actions = await this.round2ActionModel.find(
                 {},
                 {},
                 { sort: { actionId: 1 } },
             );
         }
-        for (let i = 0; i < round1Actions.length; i++) {
-            const round1Action = round1Actions[i];
+        for (let i = 0; i < round2Actions.length; i++) {
+            const round2Action = round2Actions[i];
             promises.push(
-                this.round1Model.findOneAndUpdate(
-                    { actionId: round1Action.actionId },
-                    getRound1(round1Action),
+                this.round2Model.findOneAndUpdate(
+                    { actionId: round2Action.actionId },
+                    getRound2(round2Action),
                     { new: true, upsert: true },
                 ),
             );
@@ -310,29 +315,29 @@ export class DkgService implements OnModuleInit {
         await Promise.all(promises);
         promises = [];
         const rawEvents = await this.queryService.fetchEvents(
-            process.env.ROUND_1_ADDRESS,
+            process.env.ROUND_2_ADDRESS,
         );
         if (rawEvents.length > 0) {
             const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastActionState = Field.from(lastEvent[0].data[0]).toString();
-            const lastActiveRound1Action = await this.round1ActionModel.findOne(
+            const lastActiveRound2Action = await this.round2ActionModel.findOne(
                 {
                     currentActionState: lastActionState,
                 },
             );
-            const notActiveRound1Contributions = await this.round1Model.find(
+            const notActiveRound2Contributions = await this.round2Model.find(
                 {
-                    actionId: { $lte: lastActiveRound1Action.actionId },
+                    actionId: { $lte: lastActiveRound2Action.actionId },
                     active: false,
                 },
                 {},
                 { sort: { actionId: 1 } },
             );
-            for (let i = 0; i < notActiveRound1Contributions.length; i++) {
-                const notActiveRound1Contribution =
-                    notActiveRound1Contributions[i];
-                notActiveRound1Contribution.set('active', true);
-                promises.push(notActiveRound1Contribution.save());
+            for (let i = 0; i < notActiveRound2Contributions.length; i++) {
+                const notActiveRound2Contribution =
+                    notActiveRound2Contributions[i];
+                notActiveRound2Contribution.set('active', true);
+                promises.push(notActiveRound2Contribution.save());
             }
             await Promise.all(promises);
         }
