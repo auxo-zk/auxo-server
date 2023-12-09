@@ -25,10 +25,8 @@ import {
 } from 'src/schemas/actions/round-2-action.schema';
 import { Key, KeySchema } from 'src/schemas/key.schema';
 import { Dkg, DkgSchema } from 'src/schemas/dkg.schema';
-import {
-    Round1Contribution,
-    Round1ContributionSchema,
-} from 'src/schemas/round-1-contribution.schema';
+import { Round1, Round1Schema } from 'src/schemas/round-1.schema';
+import { Round2, Round2Schema } from 'src/schemas/round-2.schema';
 
 import { Network } from './network/network';
 import { Ipfs } from 'src/ipfs/ipfs';
@@ -49,8 +47,9 @@ import { CommitteeController } from './committee/committee.controller';
             { name: DkgAction.name, schema: DkgActionSchema },
             { name: Dkg.name, schema: DkgSchema },
             { name: Round1Action.name, schema: Round1ActionSchema },
-            { name: Round1Contribution.name, schema: Round1ContributionSchema },
+            { name: Round1.name, schema: Round1Schema },
             { name: Round2Action.name, schema: Round2ActionSchema },
+            { name: Round2.name, schema: Round2Schema },
             { name: Key.name, schema: KeySchema },
         ]),
         HttpModule,

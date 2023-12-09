@@ -6,11 +6,12 @@ import { DkgAction, getDkg } from 'src/schemas/actions/dkg-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     Round1Action,
-    getRound1Contribution,
+    getRound1,
 } from 'src/schemas/actions/round-1-action.schema';
 import { Round2Action } from 'src/schemas/actions/round-2-action.schema';
 import { Dkg } from 'src/schemas/dkg.schema';
-import { Round1Contribution } from 'src/schemas/round-1-contribution.schema';
+import { Round1 } from 'src/schemas/round-1.schema';
+import { Round2 } from 'src/schemas/round-2.schema';
 
 @Injectable()
 export class DkgService implements OnModuleInit {
@@ -22,10 +23,12 @@ export class DkgService implements OnModuleInit {
         private readonly dkgModel: Model<Dkg>,
         @InjectModel(Round1Action.name)
         private readonly round1ActionModel: Model<Round1Action>,
-        @InjectModel(Round1Contribution.name)
-        private readonly round1ContributionModel: Model<Round1Contribution>,
+        @InjectModel(Round1.name)
+        private readonly round1Model: Model<Round1>,
         @InjectModel(Round2Action.name)
         private readonly round2ActionModel: Model<Round2Action>,
+        @InjectModel(Round2.name)
+        private readonly round2Model: Model<Round2>,
     ) {}
 
     async onModuleInit() {
@@ -41,7 +44,7 @@ export class DkgService implements OnModuleInit {
     private async fetchAllActions() {
         await this.fetchAllDkgActions();
         await this.fetchAllRound1Actions();
-        // await this.fetchAllRound2Actions();
+        await this.fetchAllRound2Actions();
     }
 
     private async fetchAllDkgActions() {
@@ -76,7 +79,7 @@ export class DkgService implements OnModuleInit {
             actionId += 1;
         }
         await Promise.all(promises);
-        await this.updateDkg();
+        await this.updateDkgs();
     }
 
     private async fetchAllRound1Actions() {
@@ -148,7 +151,7 @@ export class DkgService implements OnModuleInit {
         await Promise.all(promises);
     }
 
-    private async updateDkg() {
+    private async updateDkgs() {
         let promises = [];
         const lastDkg = await this.dkgModel.findOne(
             {},
@@ -211,12 +214,11 @@ export class DkgService implements OnModuleInit {
 
     private async updateRound1Contribution() {
         let promises = [];
-        const lastRound1Contribution =
-            await this.round1ContributionModel.findOne(
-                {},
-                {},
-                { sort: { actionId: -1 } },
-            );
+        const lastRound1Contribution = await this.round1Model.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
 
         let round1Actions: Round1Action[];
         if (lastRound1Contribution != null) {
@@ -235,9 +237,9 @@ export class DkgService implements OnModuleInit {
         for (let i = 0; i < round1Actions.length; i++) {
             const round1Action = round1Actions[i];
             promises.push(
-                this.round1ContributionModel.findOneAndUpdate(
+                this.round1Model.findOneAndUpdate(
                     { actionId: round1Action.actionId },
-                    getRound1Contribution(round1Action),
+                    getRound1(round1Action),
                     { new: true, upsert: true },
                 ),
             );
@@ -255,15 +257,14 @@ export class DkgService implements OnModuleInit {
                     currentActionState: lastActionState,
                 },
             );
-            const notActiveRound1Contributions =
-                await this.round1ContributionModel.find(
-                    {
-                        actionId: { $lte: lastActiveRound1Action.actionId },
-                        active: false,
-                    },
-                    {},
-                    { sort: { actionId: 1 } },
-                );
+            const notActiveRound1Contributions = await this.round1Model.find(
+                {
+                    actionId: { $lte: lastActiveRound1Action.actionId },
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
             for (let i = 0; i < notActiveRound1Contributions.length; i++) {
                 const notActiveRound1Contribution =
                     notActiveRound1Contributions[i];
@@ -273,5 +274,69 @@ export class DkgService implements OnModuleInit {
             await Promise.all(promises);
         }
     }
+
+    private async updateRound2Contribution() {
+        let promises = [];
+        const lastRound1Contribution = await this.round1Model.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+
+        let round1Actions: Round1Action[];
+        if (lastRound1Contribution != null) {
+            round1Actions = await this.round1ActionModel.find(
+                { actionId: { $gt: lastRound1Contribution.actionId } },
+                {},
+                { sort: { actionId: 1 } },
+            );
+        } else {
+            round1Actions = await this.round1ActionModel.find(
+                {},
+                {},
+                { sort: { actionId: 1 } },
+            );
+        }
+        for (let i = 0; i < round1Actions.length; i++) {
+            const round1Action = round1Actions[i];
+            promises.push(
+                this.round1Model.findOneAndUpdate(
+                    { actionId: round1Action.actionId },
+                    getRound1(round1Action),
+                    { new: true, upsert: true },
+                ),
+            );
+        }
+        await Promise.all(promises);
+        promises = [];
+        const rawEvents = await this.queryService.fetchEvents(
+            process.env.ROUND_1_ADDRESS,
+        );
+        if (rawEvents.length > 0) {
+            const lastEvent = rawEvents[rawEvents.length - 1].events;
+            const lastActionState = Field.from(lastEvent[0].data[0]).toString();
+            const lastActiveRound1Action = await this.round1ActionModel.findOne(
+                {
+                    currentActionState: lastActionState,
+                },
+            );
+            const notActiveRound1Contributions = await this.round1Model.find(
+                {
+                    actionId: { $lte: lastActiveRound1Action.actionId },
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            for (let i = 0; i < notActiveRound1Contributions.length; i++) {
+                const notActiveRound1Contribution =
+                    notActiveRound1Contributions[i];
+                notActiveRound1Contribution.set('active', true);
+                promises.push(notActiveRound1Contribution.save());
+            }
+            await Promise.all(promises);
+        }
+    }
+
     private async updateKeys() {}
 }

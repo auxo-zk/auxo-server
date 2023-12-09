@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
 @Schema({ versionKey: false })
-export class Round1Contribution {
+export class Round1 {
     @Prop({ required: true, unique: true })
     actionId: number;
 
@@ -22,6 +22,5 @@ export class Round1Contribution {
     active?: boolean;
 }
 
-export type Round1ContributionDocument = HydratedDocument<Round1Contribution>;
-export const Round1ContributionSchema =
-    SchemaFactory.createForClass(Round1Contribution);
+export type Round1Document = HydratedDocument<Round1>;
+export const Round1Schema = SchemaFactory.createForClass(Round1);

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
-import { Round1Contribution } from '../round-1-contribution.schema';
+import { Round1 } from '../round-1.schema';
 
 @Schema({ versionKey: false })
 export class Round1Action {
@@ -21,9 +21,7 @@ export class Round1Action {
 export type Round1ActionDocument = HydratedDocument<Round1Action>;
 export const Round1ActionSchema = SchemaFactory.createForClass(Round1Action);
 
-export function getRound1Contribution(
-    round1Action: Round1Action,
-): Round1Contribution {
+export function getRound1(round1Action: Round1Action): Round1 {
     const data = round1Action.actions;
     const committeeId = Number(Field.from(data[0]).toString());
     const keyId = Number(Field.from(data[1]).toString());
@@ -35,7 +33,7 @@ export function getRound1Contribution(
         const y = Field.from(data[4 + i * 2 + 1]).toString();
         contribution.push({ x: x, y: y });
     }
-    const round1: Round1Contribution = {
+    const round1: Round1 = {
         actionId: round1Action.actionId,
         committeeId: committeeId,
         keyId: keyId,
