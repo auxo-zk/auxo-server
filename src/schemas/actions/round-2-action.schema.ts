@@ -1,7 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { Field } from 'o1js';
+import { Field, Provable } from 'o1js';
 import { Round2 } from '../round-2.schema';
+import { ZkApp } from '@auxo-dev/dkg';
+import { Utilities } from 'src/mina/utilities';
+import { CustomScalar } from '@auxo-dev/auxo-libs';
 
 @Schema({ versionKey: false })
 export class Round2Action {
@@ -33,21 +36,30 @@ export const Round2ActionSchema = SchemaFactory.createForClass(Round2Action);
 
 export function getRound2(round2Action: Round2Action): Round2 {
     const data = round2Action.actions;
-    const committeeId = Number(Field.from(data[0]).toString());
-    const keyId = Number(Field.from(data[1]).toString());
-    const memberId = Number(Field.from(data[2]).toString());
-    const contribution = {
-        c: '',
-        u: {
-            x: '',
-            y: '',
-        },
+    const contribution: { c: string[]; u: { x: string; y: string }[] } = {
+        c: [],
+        u: [],
     };
+    const action = ZkApp.Round2.Action.fromFields(
+        Utilities.stringArrayToFields(round2Action.actions),
+    );
+    for (let i = 0; i < action.contribution.c.length.toBigInt(); i++) {
+        const value = action.contribution.c.values[i];
+        contribution.c.push(value.toBigInt().toString());
+    }
+
+    for (let i = 0; i < action.contribution.U.length.toBigInt(); i++) {
+        const point = action.contribution.U.values[i];
+        contribution.u.push({
+            x: point.x.toBigInt().toString(),
+            y: point.y.toBigInt().toString(),
+        });
+    }
     const round2: Round2 = {
         actionId: round2Action.actionId,
-        committeeId: committeeId,
-        keyId: keyId,
-        memberId: memberId,
+        committeeId: Number(action.committeeId.toString()),
+        keyId: Number(action.keyId.toString()),
+        memberId: Number(action.memberId.toString()),
         contribution: contribution,
     };
     return round2;

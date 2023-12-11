@@ -2,6 +2,8 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
 import { Round1 } from '../round-1.schema';
+import { ZkApp } from '@auxo-dev/dkg';
+import { Utilities } from 'src/mina/utilities';
 
 @Schema({ versionKey: false })
 export class Round1Action {
@@ -23,21 +25,19 @@ export const Round1ActionSchema = SchemaFactory.createForClass(Round1Action);
 
 export function getRound1(round1Action: Round1Action): Round1 {
     const data = round1Action.actions;
-    const committeeId = Number(Field.from(data[0]).toString());
-    const keyId = Number(Field.from(data[1]).toString());
-    const memberId = Number(Field.from(data[2]).toString());
-    const contributionLength = Number(Field.from(data[3]).toString());
     const contribution: { x: string; y: string }[] = [];
-    for (let i = 0; i < contributionLength; i++) {
-        const x = Field.from(data[4 + i * 2]).toString();
-        const y = Field.from(data[4 + i * 2 + 1]).toString();
-        contribution.push({ x: x, y: y });
+    const action = ZkApp.Round1.Action.fromFields(
+        Utilities.stringArrayToFields(round1Action.actions),
+    );
+    for (let i = 0; i < action.contribution.C.length.toBigInt(); i++) {
+        const point = action.contribution.C.values[i];
+        contribution.push({ x: point.x.toString(), y: point.y.toString() });
     }
     const round1: Round1 = {
         actionId: round1Action.actionId,
-        committeeId: committeeId,
-        keyId: keyId,
-        memberId: memberId,
+        committeeId: Number(action.committeeId.toString()),
+        keyId: Number(action.keyId.toString()),
+        memberId: Number(action.memberId.toString()),
         contribution: contribution,
     };
     return round1;

@@ -88,77 +88,77 @@ export class CommitteeService implements OnModuleInit {
         return committeeState;
     }
 
-    async rollup() {
-        const state = await this.fetchZkAppState();
-        let proof = await ZkApp.Committee.CreateCommittee.firstStep(
-            state.actionState,
-            state.committeeTreeRoot,
-            state.settingTreeRoot,
-            state.nextCommitteeId,
-        );
-        const lastReducedAction = await this.committeeActionModel.findOne({
-            currentActionState: state.actionState.toString(),
-        });
-        const notReducedActions = await this.committeeActionModel.find(
-            {
-                actionId: { $gt: lastReducedAction.actionId },
-            },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        const committeeTree = this.committeeTree;
-        const settingTree = this.settingTree;
-        let nextCommitteeId = this.nextCommitteeId;
-        for (let i = 0; i < notReducedActions.length; i++) {
-            const notReducedAction = notReducedActions[i];
-            proof = await ZkApp.Committee.CreateCommittee.nextStep(
-                proof,
-                ZkApp.Committee.CommitteeAction.fromFields(
-                    Utilities.stringArrayToFields(notReducedAction.actions),
-                ),
-                committeeTree.getWitness(Field.from(nextCommitteeId)),
-                settingTree.getWitness(Field.from(nextCommitteeId)),
-            );
-            const committee = await this.committeeModel.findOne({
-                committeeId: nextCommitteeId,
-            });
-            const memberTree = new MerkleTree(memberTreeHeight);
-            for (let j = 0; j < committee.numberOfMembers; j++) {
-                const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
-                memberTree.setLeaf(
-                    BigInt(j),
-                    Poseidon.hash(publicKey.toFields()),
-                );
-            }
-            committeeTree.set(Field(nextCommitteeId), memberTree.getRoot());
-            settingTree.set(
-                Field(nextCommitteeId),
-                Poseidon.hash([
-                    Field(committee.threshold),
-                    Field(committee.numberOfMembers),
-                ]),
-            );
-            nextCommitteeId += 1;
-        }
-        const committeeContract = new ZkApp.Committee.CommitteeContract(
-            PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-        );
-        const feePayerPrivateKey = PrivateKey.fromBase58(
-            process.env.FEE_PAYER_PRIVATE_KEY,
-        );
-        const tx = await Mina.transaction(
-            {
-                sender: feePayerPrivateKey.toPublicKey(),
-                fee: '100000000',
-            },
-            () => {
-                committeeContract.rollupIncrements(proof);
-            },
-        );
-        await tx.prove();
-        await tx.sign([feePayerPrivateKey]).send();
-        await this.update();
-    }
+    // async rollup() {
+    //     const state = await this.fetchZkAppState();
+    //     let proof = await ZkApp.Committee.CreateCommittee.firstStep(
+    //         state.actionState,
+    //         state.committeeTreeRoot,
+    //         state.settingTreeRoot,
+    //         state.nextCommitteeId,
+    //     );
+    //     const lastReducedAction = await this.committeeActionModel.findOne({
+    //         currentActionState: state.actionState.toString(),
+    //     });
+    //     const notReducedActions = await this.committeeActionModel.find(
+    //         {
+    //             actionId: { $gt: lastReducedAction.actionId },
+    //         },
+    //         {},
+    //         { sort: { actionId: 1 } },
+    //     );
+    //     const committeeTree = this.committeeTree;
+    //     const settingTree = this.settingTree;
+    //     let nextCommitteeId = this.nextCommitteeId;
+    //     for (let i = 0; i < notReducedActions.length; i++) {
+    //         const notReducedAction = notReducedActions[i];
+    //         proof = await ZkApp.Committee.CreateCommittee.nextStep(
+    //             proof,
+    //             ZkApp.Committee.CommitteeAction.fromFields(
+    //                 Utilities.stringArrayToFields(notReducedAction.actions),
+    //             ),
+    //             committeeTree.getWitness(Field.from(nextCommitteeId)),
+    //             settingTree.getWitness(Field.from(nextCommitteeId)),
+    //         );
+    //         const committee = await this.committeeModel.findOne({
+    //             committeeId: nextCommitteeId,
+    //         });
+    //         const memberTree = new MerkleTree(memberTreeHeight);
+    //         for (let j = 0; j < committee.numberOfMembers; j++) {
+    //             const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
+    //             memberTree.setLeaf(
+    //                 BigInt(j),
+    //                 Poseidon.hash(publicKey.toFields()),
+    //             );
+    //         }
+    //         committeeTree.set(Field(nextCommitteeId), memberTree.getRoot());
+    //         settingTree.set(
+    //             Field(nextCommitteeId),
+    //             Poseidon.hash([
+    //                 Field(committee.threshold),
+    //                 Field(committee.numberOfMembers),
+    //             ]),
+    //         );
+    //         nextCommitteeId += 1;
+    //     }
+    //     const committeeContract = new ZkApp.Committee.CommitteeContract(
+    //         PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+    //     );
+    //     const feePayerPrivateKey = PrivateKey.fromBase58(
+    //         process.env.FEE_PAYER_PRIVATE_KEY,
+    //     );
+    //     const tx = await Mina.transaction(
+    //         {
+    //             sender: feePayerPrivateKey.toPublicKey(),
+    //             fee: '100000000',
+    //         },
+    //         () => {
+    //             committeeContract.rollupIncrements(proof);
+    //         },
+    //     );
+    //     await tx.prove();
+    //     await tx.sign([feePayerPrivateKey]).send();
+    //     await this.update();
+    // }
 
     // ============ PRIVATE FUNCTIONS ============
 

@@ -53,8 +53,8 @@ export class DkgService implements OnModuleInit {
 
     private async fetchAllActions() {
         // await this.fetchAllDkgActions();
-        // await this.fetchAllRound1Actions();
-        // await this.fetchAllRound2Actions();
+        await this.fetchAllRound1Actions();
+        await this.fetchAllRound2Actions();
         await this.updateKeys();
     }
 
@@ -140,7 +140,6 @@ export class DkgService implements OnModuleInit {
             const currentActionState = Field.from(
                 actions[actionsLength - 1].hash,
             );
-            console.log(actions[actionsLength - 1].actions[0]);
             promises.push(
                 this.round2ActionModel.findOneAndUpdate(
                     {
@@ -369,7 +368,7 @@ export class DkgService implements OnModuleInit {
                 console.log(keyId);
                 const key = new this.keyModel({
                     keyId: keyId,
-                    status: KeyStatus.EMPTY,
+                    status: KeyStatus.ROUND_1_CONTRIBUTION,
                 });
                 await key.save();
             }

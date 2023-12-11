@@ -16,7 +16,7 @@ export class Round2 {
     memberId: number;
 
     @Prop({ type: Object })
-    contribution: { c: string; u: { x: string; y: string } };
+    contribution: { c: string[]; u: { x: string; y: string }[] };
 
     @Prop({ required: true, default: false })
     active?: boolean;
