@@ -20,13 +20,9 @@ import {
     getCommittee,
     memberTreeHeight,
 } from 'src/schemas/actions/committee-action.schema';
-import { ZkApp } from '@auxo-dev/dkg';
+import { Storage, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-import {
-    LEVEL1_TREE_HEIGHT,
-    LEVEL2_TREE_HEIGHT,
-    Level1Witness,
-} from '@auxo-dev/dkg/build/esm/src/contracts/CommitteeStorage';
+import { CommitteeStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages';
 
 @Injectable()
 export class CommitteeService implements OnModuleInit {
@@ -44,8 +40,13 @@ export class CommitteeService implements OnModuleInit {
         private readonly committeeModel: Model<Committee>,
     ) {
         this.nextCommitteeId = 0;
-        this.committeeTree = new MerkleTree(LEVEL1_TREE_HEIGHT);
-        this.settingTree = new MerkleTree(LEVEL1_TREE_HEIGHT);
+
+        this.committeeTree = new MerkleTree(
+            Storage.CommitteeStorage.LEVEL1_TREE_HEIGHT,
+        );
+        this.settingTree = new MerkleTree(
+            Storage.CommitteeStorage.LEVEL1_TREE_HEIGHT,
+        );
     }
 
     async onModuleInit(): Promise<void> {
@@ -121,10 +122,10 @@ export class CommitteeService implements OnModuleInit {
                 ZkApp.Committee.CommitteeAction.fromFields(
                     Utilities.stringArrayToFields(notReducedAction.actions),
                 ),
-                new Level1Witness(
+                new Storage.CommitteeStorage.Level1Witness(
                     committeeTree.getWitness(BigInt(nextCommitteeId)),
                 ),
-                new Level1Witness(
+                new Storage.CommitteeStorage.Level1Witness(
                     settingTree.getWitness(BigInt(nextCommitteeId)),
                 ),
             );
@@ -271,7 +272,9 @@ export class CommitteeService implements OnModuleInit {
     private insertLeaves(committees: Committee[]) {
         for (let i = 0; i < committees.length; i++) {
             const committee = committees[i];
-            const memberTree = new MerkleTree(LEVEL2_TREE_HEIGHT);
+            const memberTree = new MerkleTree(
+                Storage.CommitteeStorage.LEVEL2_TREE_HEIGHT,
+            );
             for (let j = 0; j < committee.numberOfMembers; j++) {
                 const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
                 memberTree.setLeaf(

@@ -21,7 +21,7 @@
     },
     "dependencies": {
         "@auxo-dev/auxo-libs": "^0.3.4",
-        "@auxo-dev/dkg": "^0.2.4",
+        "@auxo-dev/dkg": "^0.2.5",
         "@nestjs/axios": "^3.0.1",
         "@nestjs/bull": "^10.0.1",
         "@nestjs/cache-manager": "^2.1.1",

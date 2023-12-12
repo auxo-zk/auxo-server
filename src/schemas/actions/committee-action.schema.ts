@@ -1,7 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { Encoding, Field, PublicKey } from 'o1js';
+import { Encoding, Field, Provable, PublicKey } from 'o1js';
 import { Committee } from '../committee.schema';
+import { ZkApp } from '@auxo-dev/dkg';
+import { Utilities } from 'src/mina/utilities';
 
 export const memberTreeHeight = Number(
     process.env.MEMBER_TREE_HEIGHT as string,
@@ -33,6 +35,10 @@ export const CommitteeActionSchema =
 
 export function getCommittee(committeeAction: CommitteeAction): Committee {
     const data = committeeAction.actions;
+    // const action = ZkApp.Committee.CommitteeAction.fromFields(
+    //     Utilities.stringArrayToFields(committeeAction.actions),
+    // );
+    // Provable.log(action);
     const n = Number(Field.from(data[0]).toString());
     const publicKeys: string[] = [];
     for (let i = 0; i < n; i++) {
