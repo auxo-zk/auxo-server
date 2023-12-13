@@ -40,7 +40,6 @@ export class CommitteeService implements OnModuleInit {
         private readonly committeeModel: Model<Committee>,
     ) {
         this.nextCommitteeId = 0;
-
         this.committeeTree = new MerkleTree(
             Storage.CommitteeStorage.LEVEL1_TREE_HEIGHT,
         );

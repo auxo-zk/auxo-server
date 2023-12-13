@@ -46,17 +46,13 @@ export class DkgService implements OnModuleInit {
     }
 
     async fetch() {
-        await this.fetchAllActions();
-    }
-
-    // ============ PRIVATE FUNCTIONS ============
-
-    private async fetchAllActions() {
         // await this.fetchAllDkgActions();
         await this.fetchAllRound1Actions();
         await this.fetchAllRound2Actions();
         await this.updateKeys();
     }
+
+    // ============ PRIVATE FUNCTIONS ============
 
     private async fetchAllDkgActions() {
         const promises = [];
