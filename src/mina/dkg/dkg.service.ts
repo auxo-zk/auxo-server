@@ -1,6 +1,6 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
-import { Field, Reducer } from 'o1js';
+import { Field, MerkleTree, Reducer } from 'o1js';
 import { Model } from 'mongoose';
 import {
     DkgAction,
@@ -23,6 +23,25 @@ import { Key, KeyStatus } from 'src/schemas/key.schema';
 
 @Injectable()
 export class DkgService implements OnModuleInit {
+    private readonly logger = new Logger(DkgService.name);
+    private readonly dkg: {
+        zkApp: MerkleTree;
+        keyCounter: MerkleTree;
+        keyStatus: MerkleTree;
+    };
+    private readonly round1: {
+        zkApp: MerkleTree;
+        reduceState: MerkleTree;
+        contribution: MerkleTree;
+        publicKey: MerkleTree;
+    };
+    private readonly round2: {
+        zkApp: MerkleTree;
+        reduceState: MerkleTree;
+        contribution: MerkleTree;
+        encryption: MerkleTree;
+    };
+
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(DkgAction.name)
