@@ -39,7 +39,7 @@ export function getCommittee(committeeAction: CommitteeAction): Committee {
     //     Utilities.stringArrayToFields(committeeAction.actions),
     // );
     // Provable.log(action);
-    const n = Number(Field.from(data[0]).toString());
+    const n = Number(Field(data[0]).toString());
     const publicKeys: string[] = [];
     for (let i = 0; i < n; i++) {
         const publicKey = PublicKey.fromFields([
@@ -49,15 +49,15 @@ export function getCommittee(committeeAction: CommitteeAction): Committee {
         publicKeys.push(publicKey.toBase58());
     }
     const t = Number(
-        Field.from(data[1 + 2 ** (memberTreeHeight - 1) * 2]).toBigInt(),
+        Field(data[1 + 2 ** (memberTreeHeight - 1) * 2]).toBigInt(),
     );
     const ipfsHashLength = Number(
-        Field.from(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 1]).toBigInt(),
+        Field(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 1]).toBigInt(),
     );
     const ipfsHashFields: Field[] = [];
     for (let i = 0; i < ipfsHashLength; i++) {
         ipfsHashFields.push(
-            Field.from(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 2 + i]),
+            Field(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 2 + i]),
         );
     }
     const ipfsHash = Encoding.stringFromFields(ipfsHashFields);

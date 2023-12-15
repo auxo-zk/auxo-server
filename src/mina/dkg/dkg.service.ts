@@ -26,19 +26,19 @@ import { Storage } from '@auxo-dev/dkg';
 export class DkgService implements OnModuleInit {
     private readonly logger = new Logger(DkgService.name);
     private readonly dkg: {
-        zkApp: MerkleTree;
+        zkApp: Field;
         keyCounter: MerkleTree;
         keyStatus: MerkleTree;
     };
     private readonly round1: {
-        zkApp: MerkleTree;
-        reduceState: MerkleTree;
+        zkApp: Field;
+        reduceState: Field;
         contribution: MerkleTree;
         publicKey: MerkleTree;
     };
     private readonly round2: {
-        zkApp: MerkleTree;
-        reduceState: MerkleTree;
+        zkApp: Field;
+        reduceState: Field;
         contribution: MerkleTree;
         encryption: MerkleTree;
     };
@@ -60,8 +60,23 @@ export class DkgService implements OnModuleInit {
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
     ) {
-        this.dkg.keyCounter = Storage.DKGStorage.EMPTY_LEVEL_1_TREE();
-        this.dkg.keyStatus = Storage.DKGStorage.EMPTY_LEVEL_1_TREE();
+        this.dkg = {
+            zkApp: Field(0),
+            keyCounter: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+            keyStatus: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+        };
+        this.round1 = {
+            zkApp: Field(0),
+            reduceState: Field(0),
+            contribution: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+            publicKey: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+        };
+        this.round2 = {
+            zkApp: Field(0),
+            reduceState: Field(0),
+            contribution: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+            encryption: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+        };
     }
 
     async onModuleInit() {
@@ -87,9 +102,7 @@ export class DkgService implements OnModuleInit {
         let previousActionState: Field = Reducer.initialActionState;
         let actionId = 0;
         while (actionsLength > 0) {
-            const currentActionState = Field.from(
-                actions[actionsLength - 1].hash,
-            );
+            const currentActionState = Field(actions[actionsLength - 1].hash);
             promises.push(
                 this.dkgActionModel.findOneAndUpdate(
                     {
@@ -122,9 +135,7 @@ export class DkgService implements OnModuleInit {
         let previousActionState: Field = Reducer.initialActionState;
         let actionId = 0;
         while (actionsLength > 0) {
-            const currentActionState = Field.from(
-                actions[actionsLength - 1].hash,
-            );
+            const currentActionState = Field(actions[actionsLength - 1].hash);
             promises.push(
                 this.round1ActionModel.findOneAndUpdate(
                     {
@@ -157,9 +168,7 @@ export class DkgService implements OnModuleInit {
         let previousActionState: Field = Reducer.initialActionState;
         let actionId = 0;
         while (actionsLength > 0) {
-            const currentActionState = Field.from(
-                actions[actionsLength - 1].hash,
-            );
+            const currentActionState = Field(actions[actionsLength - 1].hash);
             promises.push(
                 this.round2ActionModel.findOneAndUpdate(
                     {
@@ -223,7 +232,7 @@ export class DkgService implements OnModuleInit {
         );
         if (rawEvents.length > 0) {
             const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActionState = Field.from(lastEvent[0].data[0]).toString();
+            const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveDkgAction = await this.dkgActionModel.findOne({
                 currentActionState: lastActionState,
             });
@@ -283,7 +292,7 @@ export class DkgService implements OnModuleInit {
         );
         if (rawEvents.length > 0) {
             const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActionState = Field.from(lastEvent[0].data[0]).toString();
+            const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveRound1Action = await this.round1ActionModel.findOne(
                 {
                     currentActionState: lastActionState,
@@ -346,7 +355,7 @@ export class DkgService implements OnModuleInit {
         );
         if (rawEvents.length > 0) {
             const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActionState = Field.from(lastEvent[0].data[0]).toString();
+            const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveRound2Action = await this.round2ActionModel.findOne(
                 {
                     currentActionState: lastActionState,

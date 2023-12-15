@@ -36,11 +36,11 @@ export const DkgActionSchema = SchemaFactory.createForClass(DkgAction);
 
 export function getDkg(dkgAction: DkgAction): Dkg {
     const data = dkgAction.actions;
-    const committeeId = Number(Field.from(data[0]).toString());
-    const maskLength = Number(Field.from(data[2]).toString());
+    const committeeId = Number(Field(data[0]).toString());
+    const maskLength = Number(Field(data[2]).toString());
     const mask: number[] = [];
     for (let i = 0; i < maskLength; i++) {
-        mask.push(Number(Field.from(data[3 + i]).toString()));
+        mask.push(Number(Field(data[3 + i]).toString()));
     }
     const dkgActionEnum = maskToDkgActionEnum(mask);
     if (dkgActionEnum == DkgActionEnum.GENERATE_KEY) {
@@ -54,7 +54,7 @@ export function getDkg(dkgAction: DkgAction): Dkg {
     const dkg: Dkg = {
         actionId: dkgAction.actionId,
         committeeId: committeeId,
-        keyId: Number(Field.from(data[1]).toString()),
+        keyId: Number(Field(data[1]).toString()),
         actionEnum: dkgActionEnum,
     };
     return dkg;
