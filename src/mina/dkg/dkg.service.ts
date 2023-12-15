@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { Field, MerkleTree, Reducer } from 'o1js';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import {
     DkgAction,
     DkgActionEnum,
@@ -21,6 +21,7 @@ import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
 import { Key, KeyStatus } from 'src/schemas/key.schema';
 import { Storage } from '@auxo-dev/dkg';
+import { Utilities } from '../utilities';
 
 @Injectable()
 export class DkgService implements OnModuleInit {
@@ -80,14 +81,14 @@ export class DkgService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        // await this.fetch();
+        await this.fetch();
         await this.createTreesForDkg();
     }
 
     async fetch() {
-        await this.fetchAllDkgActions();
-        await this.fetchAllRound1Actions();
-        await this.fetchAllRound2Actions();
+        // await this.fetchAllDkgActions();
+        // await this.fetchAllRound1Actions();
+        // await this.fetchAllRound2Actions();
         await this.updateKeys();
     }
 
@@ -380,77 +381,73 @@ export class DkgService implements OnModuleInit {
     }
 
     private async updateKeys() {
-        const lastActiveDkg = await this.dkgModel.findOne(
-            { active: true },
-            {},
-            { sort: { actionId: -1 } },
-        );
-        const numberOfKeysGenerated = await this.dkgModel.countDocuments({
-            actionEnum: DkgActionEnum.GENERATE_KEY,
-            active: true,
-        });
-        for (let i = 0; i < numberOfKeysGenerated; i++) {
-            const keyId = i;
-            const existed = await this.keyModel.exists({ keyId: keyId });
-
-            if (!existed) {
-                // console.log(keyId);
-                const key = new this.keyModel({
-                    keyId: keyId,
-                    status: KeyStatus.ROUND_1_CONTRIBUTION,
+        const keyCounters: { _id: number; count: number }[] =
+            await this.dkgModel.aggregate([
+                {
+                    $match: {
+                        active: true,
+                        actionEnum: DkgActionEnum.GENERATE_KEY,
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$committeeId',
+                        count: { $count: {} },
+                    },
+                },
+            ]);
+        for (let i = 0; i < keyCounters.length; i++) {
+            const keyCounter = keyCounters[i];
+            const committeeId = keyCounter._id;
+            await this.dkgModel.find(
+                { active: true },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
+                const keyObjectId = Utilities.hash(committeeId + '_' + keyId);
+                const existed = await this.keyModel.exists({
+                    _id: keyObjectId,
                 });
+                if (!existed) {
+                    await this.keyModel.create({
+                        _id: keyObjectId,
+                        committeeId: committeeId,
+                        keyId: keyId,
+                        status: KeyStatus.ROUND_1_CONTRIBUTION,
+                    });
+                }
+                const deprecated = await this.dkgModel.exists({
+                    committeeId: committeeId,
+                    keyId: keyId,
+                    actionEnum: DkgActionEnum.DEPRECATE_KEY,
+                });
+                const key = await this.keyModel.findOne({
+                    _id: keyObjectId,
+                });
+                if (deprecated) {
+                    key.set('status', KeyStatus.DEPRECATED);
+                } else {
+                    const finalizedRound2 = await this.dkgModel.exists({
+                        committeeId: committeeId,
+                        keyId: keyId,
+                        actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
+                    });
+                    if (finalizedRound2) {
+                        key.set('status', KeyStatus.ACTIVE);
+                    } else {
+                        const finalizedRound1 = await this.dkgModel.exists({
+                            committeeId: committeeId,
+                            keyId: keyId,
+                            actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
+                        });
+                        if (finalizedRound1) {
+                            key.set('status', KeyStatus.ROUND_2_CONTRIBUTION);
+                        }
+                    }
+                }
                 await key.save();
             }
-        }
-
-        const deprecatedDkgs = await this.dkgModel.find({
-            actionEnum: DkgActionEnum.DEPRECATE_KEY,
-        });
-        const deprecatedDkgIds = deprecatedDkgs.map((item) => item.actionId);
-        const finalizedRound2Dkgs = await this.dkgModel
-            .find({
-                actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
-            })
-            .where('actionId')
-            .nin(deprecatedDkgIds);
-        const finalizedRound2DkgIds = finalizedRound2Dkgs.map(
-            (item) => item.actionId,
-        );
-        const finalizedRound1Dkgs = await this.dkgModel
-            .find({
-                actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
-            })
-            .where('actionId')
-            .nin(finalizedRound2DkgIds.concat(deprecatedDkgIds));
-        const finalizedRound1DkgIds = finalizedRound1Dkgs.map(
-            (item) => item.actionId,
-        );
-
-        for (let i = 0; i < deprecatedDkgs.length; i++) {
-            const deprecatedDkg = deprecatedDkgs[i];
-            const key = await this.keyModel.findOne({
-                keyId: deprecatedDkg.keyId,
-            });
-            key.set('status', KeyStatus.DEPRECATED);
-            await key.save();
-        }
-
-        for (let i = 0; i < finalizedRound2Dkgs.length; i++) {
-            const finalizedRound2Dkg = finalizedRound2Dkgs[i];
-            const key = await this.keyModel.findOne({
-                keyId: finalizedRound2Dkg.keyId,
-            });
-            key.set('status', KeyStatus.ACTIVE);
-            await key.save();
-        }
-
-        for (let i = 0; i < finalizedRound1Dkgs.length; i++) {
-            const finalizedRound1Dkg = finalizedRound1Dkgs[i];
-            const key = await this.keyModel.findOne({
-                keyId: finalizedRound1Dkg.keyId,
-            });
-            key.set('status', KeyStatus.ROUND_2_CONTRIBUTION);
-            await key.save();
         }
     }
 

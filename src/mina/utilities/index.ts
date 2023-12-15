@@ -1,5 +1,5 @@
 import { AccountUpdate, Field } from 'o1js';
-
+import * as bcrypt from 'bcrypt';
 export class Utilities {
     static stringArrayToFields(input: string[]): Field[] {
         const result: Field[] = [];
@@ -18,5 +18,9 @@ export class Utilities {
             currentState,
             actionHash,
         );
+    }
+
+    static hash(input: string): string {
+        return bcrypt.hashSync(input, 10);
     }
 }
