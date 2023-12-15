@@ -20,7 +20,7 @@ import { Dkg } from 'src/schemas/dkg.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
 import { Key, KeyStatus } from 'src/schemas/key.schema';
-import { Storage } from '@auxo-dev/dkg';
+import { Constants, Storage } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 
 @Injectable()
@@ -469,13 +469,20 @@ export class DkgService implements OnModuleInit {
             ]);
         for (let i = 0; i < keyCounters.length; i++) {
             const keyCounter = keyCounters[i];
+            const committeeId = keyCounter._id;
             this.dkg.keyCounter.setLeaf(
                 BigInt(keyCounter._id),
                 Field(keyCounter.count),
             );
+            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
+                const keyObjectId = Utilities.hash(committeeId + '_' + keyId);
+                const key = await this.keyModel.findOne({ _id: keyObjectId });
+                this.dkg.keyStatus.setLeaf(
+                    BigInt(committeeId * Constants.INSTANCE_LIMITS.KEY + keyId),
+                    Field(key.status),
+                );
+            }
         }
-
-        // Storage.DKGStorage.
     }
     private async createTreesForRound1() {}
     private async createTreesForRound2() {}
