@@ -20,6 +20,7 @@ import { Dkg } from 'src/schemas/dkg.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
 import { Key, KeyStatus } from 'src/schemas/key.schema';
+import { Storage } from '@auxo-dev/dkg';
 
 @Injectable()
 export class DkgService implements OnModuleInit {
@@ -58,14 +59,18 @@ export class DkgService implements OnModuleInit {
         private readonly round2Model: Model<Round2>,
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
-    ) {}
+    ) {
+        this.dkg.keyCounter = Storage.DKGStorage.EMPTY_LEVEL_1_TREE();
+        this.dkg.keyStatus = Storage.DKGStorage.EMPTY_LEVEL_1_TREE();
+    }
 
     async onModuleInit() {
-        await this.fetch();
+        // await this.fetch();
+        await this.createTreesForDkg();
     }
 
     async fetch() {
-        // await this.fetchAllDkgActions();
+        await this.fetchAllDkgActions();
         await this.fetchAllRound1Actions();
         await this.fetchAllRound2Actions();
         await this.updateKeys();
@@ -380,7 +385,7 @@ export class DkgService implements OnModuleInit {
             const existed = await this.keyModel.exists({ keyId: keyId });
 
             if (!existed) {
-                console.log(keyId);
+                // console.log(keyId);
                 const key = new this.keyModel({
                     keyId: keyId,
                     status: KeyStatus.ROUND_1_CONTRIBUTION,
@@ -439,4 +444,33 @@ export class DkgService implements OnModuleInit {
             await key.save();
         }
     }
+
+    private async createTreesForDkg() {
+        const keyCounters: { _id: number; count: number }[] =
+            await this.dkgModel.aggregate([
+                {
+                    $match: {
+                        active: true,
+                        actionEnum: DkgActionEnum.GENERATE_KEY,
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$committeeId',
+                        count: { $count: {} },
+                    },
+                },
+            ]);
+        for (let i = 0; i < keyCounters.length; i++) {
+            const keyCounter = keyCounters[i];
+            this.dkg.keyCounter.setLeaf(
+                BigInt(keyCounter._id),
+                Field(keyCounter.count),
+            );
+        }
+
+        // Storage.DKGStorage.
+    }
+    private async createTreesForRound1() {}
+    private async createTreesForRound2() {}
 }

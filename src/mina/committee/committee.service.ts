@@ -183,9 +183,7 @@ export class CommitteeService implements OnModuleInit {
         let previousActionState: Field = Reducer.initialActionState;
         let actionId = 0;
         while (actionsLength > 0) {
-            const currentActionState = Field.from(
-                actions[actionsLength - 1].hash,
-            );
+            const currentActionState = Field(actions[actionsLength - 1].hash);
             promises.push(
                 this.committeeActionModel.findOneAndUpdate(
                     {
