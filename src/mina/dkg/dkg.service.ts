@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
-import { Field, Group, MerkleTree, Reducer } from 'o1js';
+import { Field, Group, MerkleTree, Provable, Reducer } from 'o1js';
 import { Model, ObjectId } from 'mongoose';
 import {
     DkgAction,
@@ -24,6 +24,7 @@ import { Constants, Libs, Storage, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { Round1Contribution } from '@auxo-dev/dkg/build/esm/src/libs/Committee';
 import { Bit255 } from '@auxo-dev/auxo-libs';
+import { Committee } from 'src/schemas/committee.schema';
 
 const KEY_STATUS_ARRAY = [
     'EMPTY',
@@ -69,6 +70,8 @@ export class DkgService implements OnModuleInit {
         private readonly round2Model: Model<Round2>,
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
+        @InjectModel(Committee.name)
+        private readonly committeeModel: Model<Committee>,
     ) {
         this.dkg = {
             zkApp: Field(0),
@@ -91,9 +94,17 @@ export class DkgService implements OnModuleInit {
 
     async onModuleInit() {
         await this.fetch();
-        // await this.createTreesForDkg();
-        // await this.createTreesForRound1();
+        await this.createTreesForDkg();
+        await this.createTreesForRound1();
         await this.createTreesForRound2();
+        Provable.log(this.round1.contribution.level1.getRoot());
+        Provable.log(this.round1.publicKey.level1.getRoot());
+
+        Provable.log(
+            await this.queryService.fetchZkAppState(
+                process.env.ROUND_1_ADDRESS,
+            ),
+        );
     }
 
     async fetch() {
@@ -524,66 +535,78 @@ export class DkgService implements OnModuleInit {
         for (let i = 0; i < keyCounters.length; i++) {
             const keyCounter = keyCounters[i];
             const committeeId = keyCounter._id;
+            const committee = await this.committeeModel.findOne({
+                committeeId: committeeId,
+            });
             for (let keyId = 0; keyId < keyCounter.count; keyId++) {
                 const round1s = await this.round1Model.find({
                     committeeId: committeeId,
                     keyId: keyId,
                     active: true,
                 });
-                const contributionTree: Storage.DKGStorage.Level2MT =
-                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE();
-                const publicKeyTree: Storage.DKGStorage.Level2MT =
-                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE();
-                for (let j = 0; j < round1s.length; j++) {
-                    const round1 = round1s[j];
-                    const tmp: Group[] = [];
-                    for (let k = 0; k < round1.contribution.length; k++) {
-                        tmp.push(
-                            Group.from(
-                                round1.contribution[k].x,
-                                round1.contribution[k].y,
-                            ),
+                if (round1s.length == committee.numberOfMembers) {
+                    const level1IndexContribution =
+                        this.round1.contribution.calculateLevel1Index({
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        });
+                    const level1IndexPublicKey =
+                        this.round1.publicKey.calculateLevel1Index({
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        });
+                    this.round1.contribution.updateInternal(
+                        level1IndexContribution,
+                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                    );
+                    this.round1.publicKey.updateInternal(
+                        level1IndexPublicKey,
+                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                    );
+                    for (let j = 0; j < round1s.length; j++) {
+                        const round1 = round1s[j];
+                        const tmp: Group[] = [];
+                        for (let k = 0; k < round1.contribution.length; k++) {
+                            tmp.push(
+                                Group.from(
+                                    round1.contribution[k].x,
+                                    round1.contribution[k].y,
+                                ),
+                            );
+                        }
+                        const level2IndexContribution =
+                            this.round1.contribution.calculateLevel2Index(
+                                Field(round1.memberId),
+                            );
+                        const contributionLeaf =
+                            this.round1.contribution.calculateLeaf(
+                                new Libs.Committee.Round1Contribution({
+                                    C: Libs.Committee.CArray.from(tmp),
+                                }),
+                            );
+                        this.round1.contribution.updateLeaf(
+                            contributionLeaf,
+                            level1IndexContribution,
+                            level2IndexContribution,
+                        );
+                        const level2IndexPublicKey =
+                            this.round1.contribution.calculateLevel2Index(
+                                Field(round1.memberId),
+                            );
+                        const publicKeyLeaf =
+                            this.round1.publicKey.calculateLeaf(
+                                Group.from(
+                                    round1.contribution[0].x,
+                                    round1.contribution[0].y,
+                                ),
+                            );
+                        this.round1.contribution.updateLeaf(
+                            publicKeyLeaf,
+                            level1IndexPublicKey,
+                            level2IndexPublicKey,
                         );
                     }
-                    const contributionLeaf =
-                        this.round1.contribution.calculateLeaf(
-                            new Libs.Committee.Round1Contribution({
-                                C: Libs.Committee.CArray.from(tmp),
-                            }),
-                        );
-                    contributionTree.setLeaf(
-                        BigInt(round1.memberId),
-                        contributionLeaf,
-                    );
-                    const publicKeyLeaf = this.round1.publicKey.calculateLeaf(
-                        Group.from(
-                            round1.contribution[0].x,
-                            round1.contribution[0].y,
-                        ),
-                    );
-                    publicKeyTree.setLeaf(
-                        BigInt(round1.memberId),
-                        publicKeyLeaf,
-                    );
                 }
-                const level1IndexContribution =
-                    this.round1.contribution.calculateLevel1Index({
-                        committeeId: Field(committeeId),
-                        keyId: Field(keyId),
-                    });
-                const level1IndexPublicKey =
-                    this.round1.publicKey.calculateLevel1Index({
-                        committeeId: Field(committeeId),
-                        keyId: Field(keyId),
-                    });
-                this.round1.contribution.updateInternal(
-                    level1IndexContribution,
-                    contributionTree,
-                );
-                this.round1.publicKey.updateInternal(
-                    level1IndexPublicKey,
-                    publicKeyTree,
-                );
             }
         }
     }
