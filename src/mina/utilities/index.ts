@@ -23,4 +23,8 @@ export class Utilities {
     static hash(input: string): string {
         return bcrypt.hashSync(input, 10);
     }
+
+    static getKeyObjectId(committeeId: number, keyId: number): string {
+        return committeeId + '_' + keyId;
+    }
 }

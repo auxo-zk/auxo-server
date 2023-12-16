@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
-import { Field, MerkleTree, Reducer } from 'o1js';
+import { Field, Group, MerkleTree, Reducer } from 'o1js';
 import { Model, ObjectId } from 'mongoose';
 import {
     DkgAction,
@@ -20,28 +20,37 @@ import { Dkg } from 'src/schemas/dkg.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
 import { Key, KeyStatus } from 'src/schemas/key.schema';
-import { Constants, Storage } from '@auxo-dev/dkg';
+import { Constants, Libs, Storage, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
+import { Round1Contribution } from '@auxo-dev/dkg/build/esm/src/libs/Committee';
+import { Bit255 } from '@auxo-dev/auxo-libs';
 
+const KEY_STATUS_ARRAY = [
+    'EMPTY',
+    'ROUND_1_CONTRIBUTION',
+    'ROUND_2_CONTRIBUTION',
+    'ACTIVE',
+    'DEPRECATED',
+];
 @Injectable()
 export class DkgService implements OnModuleInit {
     private readonly logger = new Logger(DkgService.name);
     private readonly dkg: {
         zkApp: Field;
         keyCounter: MerkleTree;
-        keyStatus: MerkleTree;
+        keyStatus: Storage.DKGStorage.KeyStatusStorage;
     };
     private readonly round1: {
         zkApp: Field;
         reduceState: Field;
-        contribution: MerkleTree;
-        publicKey: MerkleTree;
+        contribution: Storage.DKGStorage.Round1ContributionStorage;
+        publicKey: Storage.DKGStorage.PublicKeyStorage;
     };
     private readonly round2: {
         zkApp: Field;
         reduceState: Field;
-        contribution: MerkleTree;
-        encryption: MerkleTree;
+        contribution: Storage.DKGStorage.Round2ContributionStorage;
+        encryption: Storage.DKGStorage.EncryptionStorage;
     };
 
     constructor(
@@ -64,25 +73,27 @@ export class DkgService implements OnModuleInit {
         this.dkg = {
             zkApp: Field(0),
             keyCounter: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
-            keyStatus: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+            keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
         };
         this.round1 = {
             zkApp: Field(0),
             reduceState: Field(0),
-            contribution: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
-            publicKey: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+            contribution: new Storage.DKGStorage.Round1ContributionStorage(),
+            publicKey: new Storage.DKGStorage.PublicKeyStorage(),
         };
         this.round2 = {
             zkApp: Field(0),
             reduceState: Field(0),
-            contribution: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
-            encryption: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+            contribution: new Storage.DKGStorage.Round2ContributionStorage(),
+            encryption: new Storage.DKGStorage.EncryptionStorage(),
         };
     }
 
     async onModuleInit() {
         await this.fetch();
-        await this.createTreesForDkg();
+        // await this.createTreesForDkg();
+        // await this.createTreesForRound1();
+        await this.createTreesForRound2();
     }
 
     async fetch() {
@@ -405,7 +416,10 @@ export class DkgService implements OnModuleInit {
                 { sort: { actionId: 1 } },
             );
             for (let keyId = 0; keyId < keyCounter.count; keyId++) {
-                const keyObjectId = Utilities.hash(committeeId + '_' + keyId);
+                const keyObjectId = Utilities.getKeyObjectId(
+                    committeeId,
+                    keyId,
+                );
                 const existed = await this.keyModel.exists({
                     _id: keyObjectId,
                 });
@@ -474,16 +488,172 @@ export class DkgService implements OnModuleInit {
                 BigInt(keyCounter._id),
                 Field(keyCounter.count),
             );
+
             for (let keyId = 0; keyId < keyCounter.count; keyId++) {
-                const keyObjectId = Utilities.hash(committeeId + '_' + keyId);
+                const keyObjectId = Utilities.getKeyObjectId(
+                    committeeId,
+                    keyId,
+                );
                 const key = await this.keyModel.findOne({ _id: keyObjectId });
-                this.dkg.keyStatus.setLeaf(
-                    BigInt(committeeId * Constants.INSTANCE_LIMITS.KEY + keyId),
-                    Field(key.status),
+                const level1Index = this.dkg.keyStatus.calculateLevel1Index({
+                    committeeId: Field(committeeId),
+                    keyId: Field(keyId),
+                });
+                const leaf = this.dkg.keyStatus.calculateLeaf(
+                    key.status as any,
+                );
+                this.dkg.keyStatus.updateLeaf(leaf, level1Index);
+            }
+        }
+    }
+    private async createTreesForRound1() {
+        const keyCounters: { _id: number; count: number }[] =
+            await this.round1Model.aggregate([
+                {
+                    $match: {
+                        active: true,
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$committeeId',
+                        count: { $count: {} },
+                    },
+                },
+            ]);
+        for (let i = 0; i < keyCounters.length; i++) {
+            const keyCounter = keyCounters[i];
+            const committeeId = keyCounter._id;
+            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
+                const round1s = await this.round1Model.find({
+                    committeeId: committeeId,
+                    keyId: keyId,
+                    active: true,
+                });
+                const contributionTree: Storage.DKGStorage.Level2MT =
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE();
+                const publicKeyTree: Storage.DKGStorage.Level2MT =
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE();
+                for (let j = 0; j < round1s.length; j++) {
+                    const round1 = round1s[j];
+                    const tmp: Group[] = [];
+                    for (let k = 0; k < round1.contribution.length; k++) {
+                        tmp.push(
+                            Group.from(
+                                round1.contribution[k].x,
+                                round1.contribution[k].y,
+                            ),
+                        );
+                    }
+                    const contributionLeaf =
+                        this.round1.contribution.calculateLeaf(
+                            new Libs.Committee.Round1Contribution({
+                                C: Libs.Committee.CArray.from(tmp),
+                            }),
+                        );
+                    contributionTree.setLeaf(
+                        BigInt(round1.memberId),
+                        contributionLeaf,
+                    );
+                    const publicKeyLeaf = this.round1.publicKey.calculateLeaf(
+                        Group.from(
+                            round1.contribution[0].x,
+                            round1.contribution[0].y,
+                        ),
+                    );
+                    publicKeyTree.setLeaf(
+                        BigInt(round1.memberId),
+                        publicKeyLeaf,
+                    );
+                }
+                const level1IndexContribution =
+                    this.round1.contribution.calculateLevel1Index({
+                        committeeId: Field(committeeId),
+                        keyId: Field(keyId),
+                    });
+                const level1IndexPublicKey =
+                    this.round1.publicKey.calculateLevel1Index({
+                        committeeId: Field(committeeId),
+                        keyId: Field(keyId),
+                    });
+                this.round1.contribution.updateInternal(
+                    level1IndexContribution,
+                    contributionTree,
+                );
+                this.round1.publicKey.updateInternal(
+                    level1IndexPublicKey,
+                    publicKeyTree,
                 );
             }
         }
     }
-    private async createTreesForRound1() {}
-    private async createTreesForRound2() {}
+    private async createTreesForRound2() {
+        const keyCounters: { _id: number; count: number }[] =
+            await this.round1Model.aggregate([
+                {
+                    $match: {
+                        active: true,
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$committeeId',
+                        count: { $count: {} },
+                    },
+                },
+            ]);
+        for (let i = 0; i < keyCounters.length; i++) {
+            const keyCounter = keyCounters[i];
+            const committeeId = keyCounter._id;
+            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
+                const round2s = await this.round2Model.find({
+                    committeeId: committeeId,
+                    keyId: keyId,
+                    active: true,
+                });
+                const contributionTree: Storage.DKGStorage.Level2MT =
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE();
+                const encryptionTree: Storage.DKGStorage.Level2MT =
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE();
+                for (let j = 0; j < round2s.length; j++) {
+                    const round2 = round2s[j];
+                    const tmp1: Bit255[] = [];
+                    for (let k = 0; k < round2.contribution.u.length; k++) {
+                        tmp1.push(
+                            Bit255.fromBigInt(BigInt(round2.contribution.c[k])),
+                        );
+                    }
+                    const tmp2: Group[] = [];
+                    for (let k = 0; k < round2.contribution.u.length; k++) {
+                        tmp2.push(
+                            Group.from(
+                                round2.contribution.u[k].x,
+                                round2.contribution.u[k].y,
+                            ),
+                        );
+                    }
+                    const contributionLeaf =
+                        this.round2.contribution.calculateLeaf(
+                            new Libs.Committee.Round2Contribution({
+                                c: Libs.Committee.cArray.from(tmp1),
+                                U: Libs.Committee.UArray.from(tmp2),
+                            }),
+                        );
+                    contributionTree.setLeaf(
+                        BigInt(round2.memberId),
+                        contributionLeaf,
+                    );
+                }
+                const level1IndexContribution =
+                    this.round2.contribution.calculateLevel1Index({
+                        committeeId: Field(committeeId),
+                        keyId: Field(keyId),
+                    });
+                this.round2.contribution.updateInternal(
+                    level1IndexContribution,
+                    contributionTree,
+                );
+            }
+        }
+    }
 }
