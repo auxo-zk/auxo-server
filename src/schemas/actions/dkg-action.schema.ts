@@ -64,10 +64,10 @@ function maskToDkgActionEnum(mask: number[]) {
     if (mask[DkgActionEnum.GENERATE_KEY] == 1) {
         return DkgActionEnum.GENERATE_KEY;
     } else if (mask[DkgActionEnum.FINALIZE_ROUND_1] == 1) {
-        return DkgActionEnum.GENERATE_KEY;
+        return DkgActionEnum.FINALIZE_ROUND_1;
     } else if (mask[DkgActionEnum.FINALIZE_ROUND_2] == 1) {
-        return DkgActionEnum.GENERATE_KEY;
+        return DkgActionEnum.FINALIZE_ROUND_2;
     } else if (mask[DkgActionEnum.DEPRECATE_KEY] == 1) {
-        return DkgActionEnum.GENERATE_KEY;
+        return DkgActionEnum.DEPRECATE_KEY;
     }
 }

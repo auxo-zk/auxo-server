@@ -57,6 +57,6 @@ export class QueryService {
             publicKey: publicKey,
         });
         const account = result.account;
-        return account.zkapp?.appState;
+        return account.zkapp.appState;
     }
 }

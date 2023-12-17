@@ -7,7 +7,7 @@ import {
     DkgActionEnum,
     getDkg,
 } from 'src/schemas/actions/dkg-action.schema';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectModel, raw } from '@nestjs/mongoose';
 import {
     Round1Action,
     getRound1,
@@ -93,24 +93,25 @@ export class DkgService implements OnModuleInit {
     }
 
     async onModuleInit() {
+        Provable.log(this.round1.contribution.level1.getRoot());
         await this.fetch();
         await this.createTreesForDkg();
         await this.createTreesForRound1();
         await this.createTreesForRound2();
         Provable.log(this.round1.contribution.level1.getRoot());
-        Provable.log(this.round1.publicKey.level1.getRoot());
+        // Provable.log(this.round1.publicKey.level1.getRoot());
 
-        Provable.log(
-            await this.queryService.fetchZkAppState(
-                process.env.ROUND_1_ADDRESS,
-            ),
-        );
+        // Provable.log(
+        //     await this.queryService.fetchZkAppState(
+        //         process.env.ROUND_1_ADDRESS,
+        //     ),
+        // );
     }
 
     async fetch() {
-        // await this.fetchAllDkgActions();
-        // await this.fetchAllRound1Actions();
-        // await this.fetchAllRound2Actions();
+        await this.fetchAllDkgActions();
+        await this.fetchAllRound1Actions();
+        await this.fetchAllRound2Actions();
         await this.updateKeys();
     }
 
@@ -254,7 +255,8 @@ export class DkgService implements OnModuleInit {
             process.env.DKG_ADDRESS,
         );
         if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
+            // const lastEvent = rawEvents[rawEvents.length - 1].events;
+            const lastEvent = rawEvents[0].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveDkgAction = await this.dkgActionModel.findOne({
                 currentActionState: lastActionState,
@@ -314,7 +316,8 @@ export class DkgService implements OnModuleInit {
             process.env.ROUND_1_ADDRESS,
         );
         if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
+            // const lastEvent = rawEvents[rawEvents.length - 1].events;
+            const lastEvent = rawEvents[0].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveRound1Action = await this.round1ActionModel.findOne(
                 {
@@ -377,7 +380,8 @@ export class DkgService implements OnModuleInit {
             process.env.ROUND_2_ADDRESS,
         );
         if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
+            // const lastEvent = rawEvents[rawEvents.length - 1].events;
+            const lastEvent = rawEvents[0].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveRound2Action = await this.round2ActionModel.findOne(
                 {
@@ -535,16 +539,16 @@ export class DkgService implements OnModuleInit {
         for (let i = 0; i < keyCounters.length; i++) {
             const keyCounter = keyCounters[i];
             const committeeId = keyCounter._id;
-            const committee = await this.committeeModel.findOne({
-                committeeId: committeeId,
-            });
             for (let keyId = 0; keyId < keyCounter.count; keyId++) {
+                const key = await this.keyModel.findOne({
+                    _id: committeeId + '_' + keyId,
+                });
                 const round1s = await this.round1Model.find({
                     committeeId: committeeId,
                     keyId: keyId,
                     active: true,
                 });
-                if (round1s.length == committee.numberOfMembers) {
+                if (key.status >= KeyStatus.ROUND_2_CONTRIBUTION) {
                     const level1IndexContribution =
                         this.round1.contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),
