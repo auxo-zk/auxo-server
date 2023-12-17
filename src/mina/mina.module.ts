@@ -37,6 +37,7 @@ import { DkgService } from './dkg/dkg.service';
 
 import { TestController } from './test/test.controller';
 import { CommitteeController } from './committee/committee.controller';
+import { KeyController } from './key/key.controller';
 
 @Module({
     imports: [
@@ -73,6 +74,6 @@ import { CommitteeController } from './committee/committee.controller';
         Ipfs,
         DkgService,
     ],
-    controllers: [CommitteeController, TestController],
+    controllers: [CommitteeController, TestController, KeyController],
 })
 export class MinaModule {}

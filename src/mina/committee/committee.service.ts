@@ -179,11 +179,10 @@ export class CommitteeService implements OnModuleInit {
         const actions = await this.queryService.fetchActions(
             process.env.COMMITTEE_ADDRESS,
         );
-        let actionsLength = actions.length;
         let previousActionState: Field = Reducer.initialActionState;
         let actionId = 0;
-        while (actionsLength > 0) {
-            const currentActionState = Field(actions[actionsLength - 1].hash);
+        while (actionId < actions.length) {
+            const currentActionState = Field(actions[actionId].hash);
             promises.push(
                 this.committeeActionModel.findOneAndUpdate(
                     {
@@ -193,13 +192,12 @@ export class CommitteeService implements OnModuleInit {
                         actionId: actionId,
                         currentActionState: currentActionState.toString(),
                         previousActionState: previousActionState.toString(),
-                        actions: actions[actionsLength - 1].actions[0],
+                        actions: actions[actionId].actions[0],
                     },
                     { new: true, upsert: true },
                 ),
             );
             previousActionState = currentActionState;
-            actionsLength -= 1;
             actionId += 1;
         }
         await Promise.all(promises);

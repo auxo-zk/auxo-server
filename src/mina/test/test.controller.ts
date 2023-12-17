@@ -61,6 +61,6 @@ export class TestController {
         const rawEvents = await this.queryService.fetchEvents(
             'B62qkD3nDk511bJw9sD3dkf9EWCc9FxHhm9DMFrwXk9pjxH4URmAsT8',
         );
-        console.log(rawEvents[0].events);
+        console.log(rawEvents[rawEvents.length - 1].events);
     }
 }

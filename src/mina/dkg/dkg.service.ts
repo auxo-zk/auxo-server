@@ -93,19 +93,10 @@ export class DkgService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        Provable.log(this.round1.contribution.level1.getRoot());
         await this.fetch();
         await this.createTreesForDkg();
         await this.createTreesForRound1();
         await this.createTreesForRound2();
-        Provable.log(this.round1.contribution.level1.getRoot());
-        // Provable.log(this.round1.publicKey.level1.getRoot());
-
-        // Provable.log(
-        //     await this.queryService.fetchZkAppState(
-        //         process.env.ROUND_1_ADDRESS,
-        //     ),
-        // );
     }
 
     async fetch() {
@@ -122,11 +113,10 @@ export class DkgService implements OnModuleInit {
         const actions = await this.queryService.fetchActions(
             process.env.DKG_ADDRESS,
         );
-        let actionsLength = actions.length;
         let previousActionState: Field = Reducer.initialActionState;
         let actionId = 0;
-        while (actionsLength > 0) {
-            const currentActionState = Field(actions[actionsLength - 1].hash);
+        while (actionId < actions.length) {
+            const currentActionState = Field(actions[actionId].hash);
             promises.push(
                 this.dkgActionModel.findOneAndUpdate(
                     {
@@ -136,14 +126,13 @@ export class DkgService implements OnModuleInit {
                         actionId: actionId,
                         currentActionState: currentActionState.toString(),
                         previousActionState: previousActionState.toString(),
-                        actions: actions[actionsLength - 1].actions[0],
+                        actions: actions[actionId].actions[0],
                     },
                     { new: true, upsert: true },
                 ),
             );
 
             previousActionState = currentActionState;
-            actionsLength -= 1;
             actionId += 1;
         }
         await Promise.all(promises);
@@ -155,11 +144,10 @@ export class DkgService implements OnModuleInit {
         const actions = await this.queryService.fetchActions(
             process.env.ROUND_1_ADDRESS,
         );
-        let actionsLength = actions.length;
         let previousActionState: Field = Reducer.initialActionState;
         let actionId = 0;
-        while (actionsLength > 0) {
-            const currentActionState = Field(actions[actionsLength - 1].hash);
+        while (actionId < actions.length) {
+            const currentActionState = Field(actions[actionId].hash);
             promises.push(
                 this.round1ActionModel.findOneAndUpdate(
                     {
@@ -169,14 +157,13 @@ export class DkgService implements OnModuleInit {
                         actionId: actionId,
                         currentActionState: currentActionState.toString(),
                         previousActionState: previousActionState.toString(),
-                        actions: actions[actionsLength - 1].actions[0],
+                        actions: actions[actionId].actions[0],
                     },
                     { new: true, upsert: true },
                 ),
             );
 
             previousActionState = currentActionState;
-            actionsLength -= 1;
             actionId += 1;
         }
         await Promise.all(promises);
@@ -188,11 +175,10 @@ export class DkgService implements OnModuleInit {
         const actions = await this.queryService.fetchActions(
             process.env.ROUND_2_ADDRESS,
         );
-        let actionsLength = actions.length;
         let previousActionState: Field = Reducer.initialActionState;
         let actionId = 0;
-        while (actionsLength > 0) {
-            const currentActionState = Field(actions[actionsLength - 1].hash);
+        while (actionId < actions.length) {
+            const currentActionState = Field(actions[actionId].hash);
             promises.push(
                 this.round2ActionModel.findOneAndUpdate(
                     {
@@ -202,14 +188,13 @@ export class DkgService implements OnModuleInit {
                         actionId: actionId,
                         currentActionState: currentActionState.toString(),
                         previousActionState: previousActionState.toString(),
-                        actions: actions[actionsLength - 1].actions[0],
+                        actions: actions[actionId].actions[0],
                     },
                     { new: true, upsert: true },
                 ),
             );
 
             previousActionState = currentActionState;
-            actionsLength -= 1;
             actionId += 1;
         }
         await Promise.all(promises);
@@ -256,7 +241,7 @@ export class DkgService implements OnModuleInit {
         );
         if (rawEvents.length > 0) {
             // const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastEvent = rawEvents[0].events;
+            const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveDkgAction = await this.dkgActionModel.findOne({
                 currentActionState: lastActionState,
@@ -317,7 +302,7 @@ export class DkgService implements OnModuleInit {
         );
         if (rawEvents.length > 0) {
             // const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastEvent = rawEvents[0].events;
+            const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveRound1Action = await this.round1ActionModel.findOne(
                 {
@@ -381,7 +366,7 @@ export class DkgService implements OnModuleInit {
         );
         if (rawEvents.length > 0) {
             // const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastEvent = rawEvents[0].events;
+            const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveRound2Action = await this.round2ActionModel.findOne(
                 {
@@ -523,10 +508,11 @@ export class DkgService implements OnModuleInit {
     }
     private async createTreesForRound1() {
         const keyCounters: { _id: number; count: number }[] =
-            await this.round1Model.aggregate([
+            await this.dkgModel.aggregate([
                 {
                     $match: {
                         active: true,
+                        actionEnum: DkgActionEnum.GENERATE_KEY,
                     },
                 },
                 {
@@ -604,7 +590,7 @@ export class DkgService implements OnModuleInit {
                                     round1.contribution[0].y,
                                 ),
                             );
-                        this.round1.contribution.updateLeaf(
+                        this.round1.publicKey.updateLeaf(
                             publicKeyLeaf,
                             level1IndexPublicKey,
                             level2IndexPublicKey,
@@ -616,10 +602,11 @@ export class DkgService implements OnModuleInit {
     }
     private async createTreesForRound2() {
         const keyCounters: { _id: number; count: number }[] =
-            await this.round1Model.aggregate([
+            await this.dkgModel.aggregate([
                 {
                     $match: {
                         active: true,
+                        actionEnum: DkgActionEnum.GENERATE_KEY,
                     },
                 },
                 {
@@ -633,53 +620,114 @@ export class DkgService implements OnModuleInit {
             const keyCounter = keyCounters[i];
             const committeeId = keyCounter._id;
             for (let keyId = 0; keyId < keyCounter.count; keyId++) {
-                const round2s = await this.round2Model.find({
-                    committeeId: committeeId,
-                    keyId: keyId,
-                    active: true,
+                const key = await this.keyModel.findOne({
+                    _id: committeeId + '_' + keyId,
                 });
-                const contributionTree: Storage.DKGStorage.Level2MT =
-                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE();
-                const encryptionTree: Storage.DKGStorage.Level2MT =
-                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE();
-                for (let j = 0; j < round2s.length; j++) {
-                    const round2 = round2s[j];
-                    const tmp1: Bit255[] = [];
-                    for (let k = 0; k < round2.contribution.u.length; k++) {
-                        tmp1.push(
-                            Bit255.fromBigInt(BigInt(round2.contribution.c[k])),
-                        );
-                    }
-                    const tmp2: Group[] = [];
-                    for (let k = 0; k < round2.contribution.u.length; k++) {
-                        tmp2.push(
-                            Group.from(
-                                round2.contribution.u[k].x,
-                                round2.contribution.u[k].y,
-                            ),
-                        );
-                    }
-                    const contributionLeaf =
-                        this.round2.contribution.calculateLeaf(
+                const round2s = await this.round2Model.find(
+                    {
+                        committeeId: committeeId,
+                        keyId: keyId,
+                        active: true,
+                    },
+                    {},
+                    { sort: { memberId: 1 } },
+                );
+                if (key.status >= KeyStatus.ACTIVE) {
+                    const level1IndexContribution =
+                        this.round2.contribution.calculateLevel1Index({
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        });
+                    const level1IndexEncryption =
+                        this.round2.contribution.calculateLevel1Index({
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        });
+                    this.round2.contribution.updateInternal(
+                        level1IndexContribution,
+                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                    );
+                    this.round2.encryption.updateInternal(
+                        level1IndexEncryption,
+                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                    );
+
+                    const contributions: Libs.Committee.Round2Contribution[] =
+                        [];
+                    for (let j = 0; j < round2s.length; j++) {
+                        const round2 = round2s[j];
+                        const tmp1: Bit255[] = [];
+                        for (let k = 0; k < round2.contribution.u.length; k++) {
+                            tmp1.push(
+                                Bit255.fromBigInt(
+                                    BigInt(round2.contribution.c[k]),
+                                ),
+                            );
+                        }
+                        const tmp2: Group[] = [];
+                        for (let k = 0; k < round2.contribution.u.length; k++) {
+                            tmp2.push(
+                                Group.from(
+                                    round2.contribution.u[k].x,
+                                    round2.contribution.u[k].y,
+                                ),
+                            );
+                        }
+                        contributions.push(
                             new Libs.Committee.Round2Contribution({
                                 c: Libs.Committee.cArray.from(tmp1),
                                 U: Libs.Committee.UArray.from(tmp2),
                             }),
                         );
-                    contributionTree.setLeaf(
-                        BigInt(round2.memberId),
-                        contributionLeaf,
-                    );
+                    }
+                    for (let j = 0; j < round2s.length; j++) {
+                        const round2 = round2s[j];
+                        const tmp1: Bit255[] = [];
+                        for (let k = 0; k < round2.contribution.u.length; k++) {
+                            tmp1.push(
+                                Bit255.fromBigInt(
+                                    BigInt(round2.contribution.c[k]),
+                                ),
+                            );
+                        }
+                        const tmp2: Group[] = [];
+                        for (let k = 0; k < round2.contribution.u.length; k++) {
+                            tmp2.push(
+                                Group.from(
+                                    round2.contribution.u[k].x,
+                                    round2.contribution.u[k].y,
+                                ),
+                            );
+                        }
+                        const level2IndexContribution =
+                            this.round2.contribution.calculateLevel2Index(
+                                Field(round2.memberId),
+                            );
+                        const contributionLeaf =
+                            this.round2.contribution.calculateLeaf(
+                                contributions[j],
+                            );
+                        this.round2.contribution.updateLeaf(
+                            contributionLeaf,
+                            level1IndexContribution,
+                            level2IndexContribution,
+                        );
+                        const level2IndexEncryption =
+                            this.round2.contribution.calculateLevel2Index(
+                                Field(round2.memberId),
+                            );
+                        const encryptionLeaf =
+                            this.round2.encryption.calculateLeaf({
+                                memberId: Field(round2.memberId),
+                                contributions: contributions,
+                            });
+                        this.round2.encryption.updateLeaf(
+                            encryptionLeaf,
+                            level1IndexEncryption,
+                            level2IndexEncryption,
+                        );
+                    }
                 }
-                const level1IndexContribution =
-                    this.round2.contribution.calculateLevel1Index({
-                        committeeId: Field(committeeId),
-                        keyId: Field(keyId),
-                    });
-                this.round2.contribution.updateInternal(
-                    level1IndexContribution,
-                    contributionTree,
-                );
             }
         }
     }
