@@ -35,7 +35,6 @@ export const Round2ActionSchema = SchemaFactory.createForClass(Round2Action);
 //   });
 
 export function getRound2(round2Action: Round2Action): Round2 {
-    const data = round2Action.actions;
     const contribution: { c: string[]; u: { x: string; y: string }[] } = {
         c: [],
         u: [],

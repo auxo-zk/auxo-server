@@ -7,13 +7,13 @@ export class Dkg {
     @Prop({ required: true, unique: true, index: true })
     actionId: number;
 
-    @Prop()
+    @Prop({ index: true })
     committeeId: number;
 
     @Prop()
     keyId?: number;
 
-    @Prop()
+    @Prop({ index: true })
     actionEnum: DkgActionEnum;
 
     @Prop({ required: true, default: false })

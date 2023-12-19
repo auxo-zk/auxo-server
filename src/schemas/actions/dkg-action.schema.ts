@@ -2,6 +2,8 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
 import { Dkg } from '../dkg.schema';
+import { ZkApp } from '@auxo-dev/dkg';
+import { Utilities } from 'src/mina/utilities';
 
 export const enum DkgEventEnum {
     KEY_UPDATES_REDUCED,
@@ -36,12 +38,13 @@ export const DkgActionSchema = SchemaFactory.createForClass(DkgAction);
 
 export function getDkg(dkgAction: DkgAction): Dkg {
     const data = dkgAction.actions;
-    const committeeId = Number(Field(data[0]).toString());
+    const action = ZkApp.DKG.Action.fromFields(
+        Utilities.stringArrayToFields(dkgAction.actions),
+    );
+    const committeeId = Number(action.committeeId.toString());
+    // console.log(action.mask);
     const maskLength = Number(Field(data[2]).toString());
-    const mask: number[] = [];
-    for (let i = 0; i < maskLength; i++) {
-        mask.push(Number(Field(data[3 + i]).toString()));
-    }
+    const mask = action.mask;
     const dkgActionEnum = maskToDkgActionEnum(mask);
     if (dkgActionEnum == DkgActionEnum.GENERATE_KEY) {
         const dkg: Dkg = {
@@ -60,14 +63,14 @@ export function getDkg(dkgAction: DkgAction): Dkg {
     return dkg;
 }
 
-function maskToDkgActionEnum(mask: number[]) {
-    if (mask[DkgActionEnum.GENERATE_KEY] == 1) {
+function maskToDkgActionEnum(mask: ZkApp.DKG.ActionMask): DkgActionEnum {
+    if (mask.values[DkgActionEnum.GENERATE_KEY].toBoolean()) {
         return DkgActionEnum.GENERATE_KEY;
-    } else if (mask[DkgActionEnum.FINALIZE_ROUND_1] == 1) {
+    } else if (mask.values[DkgActionEnum.FINALIZE_ROUND_1].toBoolean()) {
         return DkgActionEnum.FINALIZE_ROUND_1;
-    } else if (mask[DkgActionEnum.FINALIZE_ROUND_2] == 1) {
+    } else if (mask.values[DkgActionEnum.FINALIZE_ROUND_2].toBoolean()) {
         return DkgActionEnum.FINALIZE_ROUND_2;
-    } else if (mask[DkgActionEnum.DEPRECATE_KEY] == 1) {
+    } else if (mask.values[DkgActionEnum.DEPRECATE_KEY].toBoolean()) {
         return DkgActionEnum.DEPRECATE_KEY;
     }
 }

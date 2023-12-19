@@ -20,3 +20,5 @@ export class ResponseAction {
 export type ResponseActionDocument = HydratedDocument<ResponseAction>;
 export const ResponseActionSchema =
     SchemaFactory.createForClass(ResponseAction);
+
+export function getDkgResponse(responseAction: ResponseAction) {}

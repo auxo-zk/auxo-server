@@ -24,7 +24,6 @@ export type Round1ActionDocument = HydratedDocument<Round1Action>;
 export const Round1ActionSchema = SchemaFactory.createForClass(Round1Action);
 
 export function getRound1(round1Action: Round1Action): Round1 {
-    const data = round1Action.actions;
     const contribution: { x: string; y: string }[] = [];
     const action = ZkApp.Round1.Action.fromFields(
         Utilities.stringArrayToFields(round1Action.actions),
