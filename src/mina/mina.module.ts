@@ -38,6 +38,16 @@ import { DkgService } from './dkg/dkg.service';
 import { TestController } from './test/test.controller';
 import { CommitteeController } from './committee/committee.controller';
 import { KeyController } from './key/key.controller';
+import { DkgUsageService } from './dkg-usage/dkg-usage.service';
+import {
+    RequestAction,
+    RequestActionSchema,
+} from 'src/schemas/actions/request-action.schema';
+import {
+    ResponseAction,
+    ResponseActionSchema,
+} from 'src/schemas/actions/response-action.schema';
+import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
 
 @Module({
     imports: [
@@ -52,6 +62,9 @@ import { KeyController } from './key/key.controller';
             { name: Round2Action.name, schema: Round2ActionSchema },
             { name: Round2.name, schema: Round2Schema },
             { name: Key.name, schema: KeySchema },
+            { name: RequestAction.name, schema: RequestActionSchema },
+            { name: DkgRequest.name, schema: DkgRequestSchema },
+            { name: ResponseAction.name, schema: ResponseActionSchema },
         ]),
         HttpModule,
         CacheModule.register(),
@@ -73,6 +86,7 @@ import { KeyController } from './key/key.controller';
         CommitteeService,
         Ipfs,
         DkgService,
+        DkgUsageService,
     ],
     controllers: [CommitteeController, TestController, KeyController],
 })
