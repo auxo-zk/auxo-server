@@ -2,11 +2,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { Field, Group, MerkleTree, Provable, Reducer } from 'o1js';
 import { Model, ObjectId } from 'mongoose';
-import {
-    DkgAction,
-    DkgActionEnum,
-    getDkg,
-} from 'src/schemas/actions/dkg-action.schema';
+import { DkgAction, getDkg } from 'src/schemas/actions/dkg-action.schema';
 import { InjectModel, raw } from '@nestjs/mongoose';
 import {
     Round1Action,
@@ -19,12 +15,13 @@ import {
 import { Dkg } from 'src/schemas/dkg.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
-import { Key, KeyStatus } from 'src/schemas/key.schema';
+import { Key } from 'src/schemas/key.schema';
 import { Constants, Libs, Storage, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { Round1Contribution } from '@auxo-dev/dkg/build/esm/src/libs/Committee';
 import { Bit255 } from '@auxo-dev/auxo-libs';
 import { Committee } from 'src/schemas/committee.schema';
+import { DkgActionEnum, KeyStatus } from 'src/constants';
 
 const KEY_STATUS_ARRAY = [
     'EMPTY',

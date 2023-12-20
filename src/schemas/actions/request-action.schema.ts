@@ -4,13 +4,7 @@ import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
 import { Utilities } from 'src/mina/utilities';
 import { DkgRequest } from '../request.schema';
-
-export const enum RequestActionEnum {
-    REQUEST,
-    UNREQUEST,
-    RESOLVE,
-    __LENGTH,
-}
+import { RequestActionEnum } from 'src/constants';
 
 @Schema({ versionKey: false })
 export class RequestAction {

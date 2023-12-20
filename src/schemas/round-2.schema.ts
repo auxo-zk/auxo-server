@@ -6,10 +6,10 @@ export class Round2 {
     @Prop({ required: true, unique: true, index: true })
     actionId: number;
 
-    @Prop()
+    @Prop({ index: true })
     committeeId: number;
 
-    @Prop()
+    @Prop({ index: true })
     keyId: number;
 
     @Prop()
@@ -18,7 +18,7 @@ export class Round2 {
     @Prop({ type: Object })
     contribution: { c: string[]; u: { x: string; y: string }[] };
 
-    @Prop({ required: true, default: false })
+    @Prop({ required: true, default: false, index: true })
     active?: boolean;
 }
 

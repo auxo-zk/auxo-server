@@ -4,19 +4,7 @@ import { Field } from 'o1js';
 import { Dkg } from '../dkg.schema';
 import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina/utilities';
-
-export const enum DkgEventEnum {
-    KEY_UPDATES_REDUCED,
-    __LENGTH,
-}
-
-export const enum DkgActionEnum {
-    GENERATE_KEY,
-    FINALIZE_ROUND_1,
-    FINALIZE_ROUND_2,
-    DEPRECATE_KEY,
-    __LENGTH,
-}
+import { DkgActionEnum } from 'src/constants';
 
 @Schema({ versionKey: false })
 export class DkgAction {

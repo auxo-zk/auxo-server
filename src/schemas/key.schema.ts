@@ -1,13 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, ObjectId } from 'mongoose';
-
-export const enum KeyStatus {
-    EMPTY,
-    ROUND_1_CONTRIBUTION,
-    ROUND_2_CONTRIBUTION,
-    ACTIVE,
-    DEPRECATED,
-}
+import { KeyStatus } from 'src/constants';
 @Schema({ versionKey: false })
 export class Key {
     @Prop({ type: String, _id: true, index: true })
@@ -19,7 +12,7 @@ export class Key {
     @Prop({ required: true })
     keyId: number;
 
-    @Prop()
+    @Prop({ index: true })
     status: KeyStatus;
 }
 

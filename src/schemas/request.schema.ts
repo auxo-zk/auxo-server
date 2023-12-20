@@ -1,12 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { RequestActionEnum } from './actions/request-action.schema';
-
-export const enum RequestStatusEnum {
-    NOT_YET_REQUESTED,
-    REQUESTING,
-    // RESOLVED, this will be hash of request vector D: H(length + values)
-}
+import { RequestActionEnum } from 'src/constants';
 
 @Schema({ versionKey: false })
 export class DkgRequest {

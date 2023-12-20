@@ -59,6 +59,8 @@ export class CommitteeController {
         });
         if (result == null) {
             response.status(HttpStatus.NOT_FOUND);
+            response.send(null);
+            return null;
         }
         const ipfsData = await this.ipfs.getData(result.ipfsHash);
         const committeeDetail = new CommitteeDetail(result);

@@ -18,7 +18,7 @@ export class Round1 {
     @Prop()
     contribution: { x: string; y: string }[];
 
-    @Prop({ required: true, default: false })
+    @Prop({ required: true, default: false, index: true })
     active?: boolean;
 }
 

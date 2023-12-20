@@ -9,11 +9,6 @@ export const memberTreeHeight = Number(
     process.env.MEMBER_TREE_HEIGHT as string,
 );
 
-export const enum CommitteeEventEnum {
-    COMMITTEE_CREATED,
-    __LENGTH,
-}
-
 @Schema({ versionKey: false })
 export class CommitteeAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
