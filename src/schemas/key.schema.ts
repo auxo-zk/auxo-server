@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, ObjectId } from 'mongoose';
 import { KeyStatus } from 'src/constants';
-@Schema({ versionKey: false })
+@Schema({ versionKey: false, _id: false })
 export class Key {
     @Prop({ type: String, _id: true, index: true })
     _id: ObjectId;
