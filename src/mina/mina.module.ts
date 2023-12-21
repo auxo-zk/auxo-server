@@ -32,12 +32,12 @@ import { Network } from './network/network';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { QueryService } from './query/query.service';
 import { CronTaskService } from './cron-task/cron-task.service';
-import { CommitteeService } from './committee/committee.service';
+import { CommitteesService } from './committee/committee.service';
 import { DkgService } from './dkg/dkg.service';
 
 import { TestController } from './test/test.controller';
-import { CommitteeController } from './committee/committee.controller';
-import { KeyController } from './key/key.controller';
+import { CommitteesController } from './committee/committee.controller';
+import { KeysController } from './key/key.controller';
 import { DkgUsageService } from './dkg-usage/dkg-usage.service';
 import {
     RequestAction,
@@ -48,6 +48,10 @@ import {
     ResponseActionSchema,
 } from 'src/schemas/actions/response-action.schema';
 import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
+import { AuthController } from './auth/auth.controller';
+import { AuthService } from './auth/auth.service';
+import { JwtModule } from '@nestjs/jwt';
+import { jwtConstants } from 'src/constants';
 
 @Module({
     imports: [
@@ -78,16 +82,27 @@ import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
             name: 'rollup-committee',
             processors: [join(__dirname, 'rollup-committee-processor.js')],
         }),
+        JwtModule.register({
+            global: true,
+            secret: jwtConstants.secret,
+            signOptions: { expiresIn: '60s' },
+        }),
     ],
     providers: [
         Network,
         QueryService,
         CronTaskService,
-        CommitteeService,
+        CommitteesService,
         Ipfs,
         DkgService,
         DkgUsageService,
+        AuthService,
     ],
-    controllers: [CommitteeController, TestController, KeyController],
+    controllers: [
+        CommitteesController,
+        TestController,
+        KeysController,
+        AuthController,
+    ],
 })
 export class MinaModule {}

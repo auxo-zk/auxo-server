@@ -25,8 +25,8 @@ import { Utilities } from '../utilities';
 import { CommitteeStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages';
 
 @Injectable()
-export class CommitteeService implements OnModuleInit {
-    private readonly logger = new Logger(CommitteeService.name);
+export class CommitteesService implements OnModuleInit {
+    private readonly logger = new Logger(CommitteesService.name);
     private nextCommitteeId: number;
     private committeeTree: MerkleTree;
     private settingTree: MerkleTree;

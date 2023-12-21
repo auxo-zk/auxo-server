@@ -19,8 +19,8 @@ import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Committee } from 'src/schemas/committee.schema';
 
-@Controller('committee')
-export class CommitteeController {
+@Controller('committees')
+export class CommitteesController {
     constructor(
         private readonly ipfs: Ipfs,
         @InjectModel(Committee.name)

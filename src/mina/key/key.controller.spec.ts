@@ -1,18 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { KeyController } from './key.controller';
+import { KeysController } from './key.controller';
 
 describe('KeyController', () => {
-  let controller: KeyController;
+    let controller: KeysController;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [KeyController],
-    }).compile();
+    beforeEach(async () => {
+        const module: TestingModule = await Test.createTestingModule({
+            controllers: [KeysController],
+        }).compile();
 
-    controller = module.get<KeyController>(KeyController);
-  });
+        controller = module.get<KeysController>(KeysController);
+    });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
+    it('should be defined', () => {
+        expect(controller).toBeDefined();
+    });
 });

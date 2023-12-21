@@ -11,8 +11,8 @@ import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
 import { KeyDetail } from 'src/entities/key-detail.entity';
 
-@Controller('key')
-export class KeyController {
+@Controller('keys')
+export class KeysController {
     constructor(
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
