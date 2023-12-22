@@ -3,7 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { MinaModule } from './mina/mina.module';
-import { CommitteeService } from './mina/committee/committee.service';
+import { CommitteesService } from './mina/committees/committees.service';
 // import * as compression from 'compression';
 // import helmet from 'helmet';
 
@@ -13,9 +13,9 @@ async function bootstrap() {
         .setTitle('Auxo server')
         .setDescription('Server for auxo project')
         .setVersion('0.0.1')
+        .setBasePath('v0')
         .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, document);
+
     // app.use(
     //     compression({
     //         filter: () => {
@@ -26,6 +26,9 @@ async function bootstrap() {
     // );
     // app.use(helmet());
     app.enableCors();
+    app.setGlobalPrefix('v0');
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
     await app.listen(3000, '0.0.0.0');
 }
 bootstrap();

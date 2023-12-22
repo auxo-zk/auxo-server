@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { Network } from '../network/network';
 // import { Field, Group, PublicKey } from 'o1js';
-import { CommitteesService } from '../committee/committee.service';
+import { CommitteesService } from '../committees/committees.service';
 import { Model } from 'mongoose';
 import { CommitteeAction } from 'src/schemas/actions/committee-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
@@ -29,7 +29,7 @@ export class TestController {
     constructor(
         private readonly network: Network,
         private readonly queryService: QueryService,
-        private readonly committeeService: CommitteesService,
+        private readonly committeesService: CommitteesService,
         @InjectModel(CommitteeAction.name)
         private committeeActionModel: Model<CommitteeAction>,
         private readonly ipfs: Ipfs,

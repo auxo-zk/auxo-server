@@ -32,12 +32,12 @@ import { Network } from './network/network';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { QueryService } from './query/query.service';
 import { CronTaskService } from './cron-task/cron-task.service';
-import { CommitteesService } from './committee/committee.service';
+import { CommitteesService } from './committees/committees.service';
 import { DkgService } from './dkg/dkg.service';
 
 import { TestController } from './test/test.controller';
-import { CommitteesController } from './committee/committee.controller';
-import { KeysController } from './key/key.controller';
+import { CommitteesController } from './committees/committees.controller';
+import { KeysController } from './keys/keys.controller';
 import { DkgUsageService } from './dkg-usage/dkg-usage.service';
 import {
     RequestAction,

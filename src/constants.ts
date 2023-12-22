@@ -36,3 +36,7 @@ export const enum KeyStatus {
     ACTIVE,
     DEPRECATED,
 }
+
+export const jwtConstants = {
+    secret: 'vkl',
+};
