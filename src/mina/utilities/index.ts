@@ -9,6 +9,14 @@ export class Utilities {
         return result;
     }
 
+    static fieldsToStringArray(input: Field[]): string[] {
+        const result: string[] = [];
+        for (let i = 0; i < input.length; i++) {
+            result.push(input[i].toString());
+        }
+        return result;
+    }
+
     static getActionHash(actions: Field[][]): Field {
         return AccountUpdate.Actions.hash(actions);
     }
