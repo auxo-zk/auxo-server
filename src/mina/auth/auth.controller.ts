@@ -1,10 +1,18 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import {
+    Body,
+    Controller,
+    Get,
+    Post,
+    Request,
+    UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthenticateDto } from 'src/dtos/authenticate.dto';
 import { AuthService } from './auth.service';
 import { Encoding, Field, PrivateKey, Provable, Signature } from 'o1js';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { ServerSignature } from 'src/entities/server-signature.entity';
+import { AuthGuard } from './auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -12,17 +20,23 @@ export class AuthController {
 
     @Post()
     @ApiTags('Auth')
-    async authenticate(@Body() authenticateDto: AuthenticateDto) {
-        // return this.authService.verifySignature(
-        //     authenticateDto.address,
-        //     authenticateDto.role,
-        //     authenticateDto.signature,
-        // );
+    async authenticate(
+        @Body() authenticateDto: AuthenticateDto,
+    ): Promise<string> {
+        return await this.authService.verifySignature(authenticateDto);
     }
 
     @Get()
     @ApiTags('Auth')
-    async getAuth(): Promise<ServerSignature> {
+    async requestAuth(): Promise<ServerSignature> {
         return await this.authService.createNonce();
+    }
+
+    @Get('profile')
+    @ApiTags('Auth')
+    @ApiBearerAuth('access-token')
+    @UseGuards(AuthGuard)
+    async getProfile(@Request() req) {
+        return req.user;
     }
 }
