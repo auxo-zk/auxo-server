@@ -1,9 +1,11 @@
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
+    BadRequestException,
     Body,
     Controller,
     Get,
     HttpStatus,
+    NotFoundException,
     Param,
     Post,
     Res,
@@ -52,20 +54,16 @@ export class CommitteesController {
     @ApiTags('Committee')
     async getCommittee(
         @Param('committeeId') committeeId: number,
-        @Res() response: Response,
     ): Promise<CommitteeDetail> {
         const result = await this.committeeModel.findOne({
             committeeId: committeeId,
         });
         if (result == null) {
-            response.status(HttpStatus.NOT_FOUND);
-            response.send(null);
-            return null;
+            throw new NotFoundException();
         }
         const ipfsData = await this.ipfs.getData(result.ipfsHash);
         const committeeDetail = new CommitteeDetail(result);
         committeeDetail.ipfsData = ipfsData as any;
-        response.send(committeeDetail);
         return committeeDetail;
     }
 
@@ -73,13 +71,11 @@ export class CommitteesController {
     @ApiTags('Committee')
     async createCommittee(
         @Body() createCommitteeDto: CreateCommitteeDto,
-        @Res() response: Response,
     ): Promise<IpfsResponse> {
         const result = await this.ipfs.upload(createCommitteeDto);
         if (result == null) {
-            response.status(HttpStatus.BAD_REQUEST);
+            throw new BadRequestException();
         }
-        response.send(result);
         return result;
     }
 }

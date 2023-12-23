@@ -1,5 +1,12 @@
 import { CacheTTL } from '@nestjs/cache-manager';
-import { Controller, Get, HttpStatus, Query, Res } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    HttpStatus,
+    NotFoundException,
+    Query,
+    Res,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ApiTags } from '@nestjs/swagger';
 import { Model } from 'mongoose';
@@ -32,10 +39,7 @@ export class KeysController {
 
     @Get('/detail')
     @ApiTags('Key')
-    async getKeyDetails(
-        @Query() query: GetKeyQuery,
-        @Res() response: Response,
-    ) {
+    async getKeyDetails(@Query() query: GetKeyQuery) {
         const keyObjectId = Utilities.getKeyObjectId(
             query.committeeId,
             query.keyId,
@@ -52,12 +56,9 @@ export class KeysController {
                 keyId: query.keyId,
             });
             const keyDetail = new KeyDetail(key, round1s, round2s);
-            response.send(keyDetail);
             return keyDetail;
         } else {
-            response.status(HttpStatus.NOT_FOUND);
-            response.send(null);
-            return null;
+            throw new NotFoundException();
         }
     }
 }
