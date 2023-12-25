@@ -57,7 +57,7 @@
   dependencies:
     o1js "0.15.1"
 
-"@auxo-dev/dkg@^0.2.8":
+"@auxo-dev/dkg@^0.2.5":
   version "0.2.8"
   resolved "https://registry.yarnpkg.com/@auxo-dev/dkg/-/dkg-0.2.8.tgz#d5da78251bcc9a8eefa8a30b59686d3614602902"
   integrity sha512-d+ufZwD9rNwZ+pSayMPobtqiOHkLxtnKv0MJzWUjnbksfhJoEdN+NTlixcLJjDCudWxjondSbf7QFfScXjmQ7A==
@@ -4516,23 +4516,10 @@ npmlog@^5.0.1:
     gauge "^3.0.0"
     set-blocking "^2.0.0"
 
-o1js@0.15.1:
+o1js@0.15.1, o1js@^0.15.1:
   version "0.15.1"
   resolved "https://registry.yarnpkg.com/o1js/-/o1js-0.15.1.tgz#135a89099d8ff377a42cdda4aa9c01b9ded15316"
   integrity sha512-B5GHUNfwOW3uc9clgCKktZDlZUJ2052QiG8ZF/VX8IK2lo4nZKe4C5wJOExgj1o+T0d/NKrBpLRS9LqIvDW6Ug==
-  dependencies:
-    blakejs "1.2.1"
-    cachedir "^2.4.0"
-    detect-gpu "^5.0.5"
-    isomorphic-fetch "^3.0.0"
-    js-sha256 "^0.9.0"
-    reflect-metadata "^0.1.13"
-    tslib "^2.3.0"
-
-o1js@^0.14.1:
-  version "0.14.2"
-  resolved "https://registry.yarnpkg.com/o1js/-/o1js-0.14.2.tgz#a7b26c832d0a329bccfab63137c5ce251026de79"
-  integrity sha512-xU0NfbaOeooT5G7sQbVD0uDKpViLKwfVeCk+3U4rJk7HRq2KtHkdc7rlA0/86AtLUSRQpD5OZlJbVGW4daDvfQ==
   dependencies:
     blakejs "1.2.1"
     cachedir "^2.4.0"
