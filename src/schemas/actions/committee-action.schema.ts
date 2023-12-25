@@ -29,41 +29,21 @@ export const CommitteeActionSchema =
     SchemaFactory.createForClass(CommitteeAction);
 
 export function getCommittee(committeeAction: CommitteeAction): Committee {
-    const data = committeeAction.actions;
-    // const action = ZkApp.Committee.CommitteeAction.fromFields(
-    //     Utilities.stringArrayToFields(committeeAction.actions),
-    // );
-    // Provable.log(action);
-    const n = Number(Field(data[0]).toString());
+    const action = ZkApp.Committee.CommitteeAction.fromFields(
+        Utilities.stringArrayToFields(committeeAction.actions),
+    );
     const publicKeys: string[] = [];
-    for (let i = 0; i < n; i++) {
-        const publicKey = PublicKey.fromFields([
-            Field(data[1 + i * 2]),
-            Field(data[1 + i * 2 + 1]),
-        ]);
+    for (let i = 0; i < action.addresses.length.toBigInt(); i++) {
+        const publicKey = PublicKey.from(action.addresses.values[i]);
         publicKeys.push(publicKey.toBase58());
     }
-    const t = Number(
-        Field(data[1 + 2 ** (memberTreeHeight - 1) * 2]).toBigInt(),
-    );
-    const ipfsHashLength = Number(
-        Field(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 1]).toBigInt(),
-    );
-    const ipfsHashFields: Field[] = [];
-    for (let i = 0; i < ipfsHashLength; i++) {
-        ipfsHashFields.push(
-            Field(data[1 + 2 ** (memberTreeHeight - 1) * 2 + 2 + i]),
-        );
-    }
-    const ipfsHash = Encoding.stringFromFields(ipfsHashFields);
 
-    const committeeId = committeeAction.actionId;
     const committee: Committee = {
-        committeeId: committeeId,
-        numberOfMembers: n,
-        threshold: t,
+        committeeId: committeeAction.actionId,
+        numberOfMembers: publicKeys.length,
+        threshold: Number(action.threshold.toString()),
         publicKeys: publicKeys,
-        ipfsHash: ipfsHash,
+        ipfsHash: action.ipfsHash.toString(),
     };
     return committee;
 }

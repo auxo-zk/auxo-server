@@ -33,38 +33,23 @@ export class CommitteesController {
     @ApiTags('Committee')
     @CacheTTL(30000)
     @UseInterceptors(CacheInterceptor)
-    async getAllCommittees(): Promise<CommitteeDetail[]> {
+    async getAllCommittees(): Promise<Committee[]> {
         const committees = await this.committeeModel.find({});
-        const result: CommitteeDetail[] = new Array(committees.length);
-        const ipfsData = await Promise.all(
-            [...Array(committees.length).keys()].map((i: any) =>
-                this.ipfs.getData(committees[i].ipfsHash),
-            ),
-        );
-        for (let i = 0; i < committees.length; i++) {
-            const committee = committees[i];
-            const committeeDetail = new CommitteeDetail(committee);
-            committeeDetail.ipfsData = ipfsData[i] as any;
-            result[committee.committeeId] = committeeDetail;
-        }
-        return result;
+        return committees;
     }
 
     @Get(':committeeId')
     @ApiTags('Committee')
     async getCommittee(
         @Param('committeeId') committeeId: number,
-    ): Promise<CommitteeDetail> {
+    ): Promise<Committee> {
         const result = await this.committeeModel.findOne({
             committeeId: committeeId,
         });
         if (result == null) {
             throw new NotFoundException();
         }
-        const ipfsData = await this.ipfs.getData(result.ipfsHash);
-        const committeeDetail = new CommitteeDetail(result);
-        committeeDetail.ipfsData = ipfsData as any;
-        return committeeDetail;
+        return result;
     }
 
     @Post()

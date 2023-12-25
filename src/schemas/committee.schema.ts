@@ -18,9 +18,24 @@ export class Committee {
     @Prop()
     ipfsHash: string;
 
+    @Prop()
+    name?: string;
+
+    @Prop()
+    creator?: string;
+
+    @Prop()
+    members?: Member[];
+
     @Prop({ required: true, default: false, index: true })
     active?: boolean;
 }
 
 export type CommitteeDocument = HydratedDocument<Committee>;
 export const CommitteeSchema = SchemaFactory.createForClass(Committee);
+
+export class Member {
+    memberId: number;
+    alias: string;
+    publicKey: string;
+}

@@ -23,6 +23,7 @@ import {
 import { Storage, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { CommitteeStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages';
+import { Ipfs } from 'src/ipfs/ipfs';
 
 @Injectable()
 export class CommitteesService implements OnModuleInit {
@@ -34,6 +35,7 @@ export class CommitteesService implements OnModuleInit {
 
     constructor(
         private readonly queryService: QueryService,
+        private readonly ipfs: Ipfs,
         @InjectModel(CommitteeAction.name)
         private readonly committeeActionModel: Model<CommitteeAction>,
         @InjectModel(Committee.name)
@@ -230,10 +232,15 @@ export class CommitteesService implements OnModuleInit {
         for (let i = 0; i < committeeActions.length; i++) {
             const committeeAction = committeeActions[i];
             const committeeId = committeeAction.actionId;
+            const committee = getCommittee(committeeAction);
+            const ipfsData = await this.ipfs.getData(committee.ipfsHash);
+            committee.name = ipfsData['name'];
+            committee.creator = ipfsData['creator'];
+            committee.members = ipfsData['members'];
             promises.push(
                 this.committeeModel.findOneAndUpdate(
                     { committeeId: committeeId },
-                    getCommittee(committeeAction),
+                    committee,
                     { new: true, upsert: true },
                 ),
             );
@@ -248,7 +255,7 @@ export class CommitteesService implements OnModuleInit {
             const lastActiveCommitteeId = Number(lastEvent[0].data[0]);
             const notActiveCommittees = await this.committeeModel.find(
                 {
-                    committeeId: { $lt: lastActiveCommitteeId },
+                    committeeId: { $lte: lastActiveCommitteeId },
                     active: false,
                 },
                 {},
