@@ -50,20 +50,20 @@
     ora "5.4.1"
     rxjs "7.8.1"
 
-"@auxo-dev/auxo-libs@^0.3.4":
-  version "0.3.4"
-  resolved "https://registry.yarnpkg.com/@auxo-dev/auxo-libs/-/auxo-libs-0.3.4.tgz#7a12fcf26246a5f66370697784ea2c74e091a0c8"
-  integrity sha512-kl9LkZDJbajcrBgVqPyES/SsYPaJoznEi2JGGwBsgvR3gk2OHgQaQOXJPZ42AjMXgJp8ZvoyOBUOAnPo5MAhEA==
+"@auxo-dev/auxo-libs@^0.3.5":
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/@auxo-dev/auxo-libs/-/auxo-libs-0.3.5.tgz#ba8cbc04a188413f08fd61a7a838f026f724450c"
+  integrity sha512-H8vXMoJ2cHFQj7rugBY6q9ScEfOyZ6Z/Q6j7O88dZzcBQZNtxV+FsyWrIbfBs/n/qnS2UHdh8r7fKGsmfOy3pQ==
   dependencies:
-    o1js "^0.14.1"
+    o1js "0.15.1"
 
-"@auxo-dev/dkg@^0.2.5":
-  version "0.2.5"
-  resolved "https://registry.yarnpkg.com/@auxo-dev/dkg/-/dkg-0.2.5.tgz#eeb9377a4552eb64237b1384691a5fecdec59af6"
-  integrity sha512-EqHIlAF78WeUfmVrRjsYwWb4uGfOP0isHFJcZkYajsj3bcAesMKcf8PvmZ9VtEgsCdr5BkZYIzKxJfDWXaPdEQ==
+"@auxo-dev/dkg@^0.2.8":
+  version "0.2.8"
+  resolved "https://registry.yarnpkg.com/@auxo-dev/dkg/-/dkg-0.2.8.tgz#d5da78251bcc9a8eefa8a30b59686d3614602902"
+  integrity sha512-d+ufZwD9rNwZ+pSayMPobtqiOHkLxtnKv0MJzWUjnbksfhJoEdN+NTlixcLJjDCudWxjondSbf7QFfScXjmQ7A==
   dependencies:
-    "@auxo-dev/auxo-libs" "^0.3.4"
-    o1js "^0.14.2"
+    "@auxo-dev/auxo-libs" "^0.3.5"
+    o1js "0.15.1"
 
 "@babel/code-frame@^7.0.0", "@babel/code-frame@^7.12.13", "@babel/code-frame@^7.16.7", "@babel/code-frame@^7.22.13", "@babel/code-frame@^7.23.5":
   version "7.23.5"
@@ -4497,7 +4497,20 @@ npmlog@^5.0.1:
     gauge "^3.0.0"
     set-blocking "^2.0.0"
 
-o1js@^0.14.1, o1js@^0.14.2:
+o1js@0.15.1:
+  version "0.15.1"
+  resolved "https://registry.yarnpkg.com/o1js/-/o1js-0.15.1.tgz#135a89099d8ff377a42cdda4aa9c01b9ded15316"
+  integrity sha512-B5GHUNfwOW3uc9clgCKktZDlZUJ2052QiG8ZF/VX8IK2lo4nZKe4C5wJOExgj1o+T0d/NKrBpLRS9LqIvDW6Ug==
+  dependencies:
+    blakejs "1.2.1"
+    cachedir "^2.4.0"
+    detect-gpu "^5.0.5"
+    isomorphic-fetch "^3.0.0"
+    js-sha256 "^0.9.0"
+    reflect-metadata "^0.1.13"
+    tslib "^2.3.0"
+
+o1js@^0.14.1:
   version "0.14.2"
   resolved "https://registry.yarnpkg.com/o1js/-/o1js-0.14.2.tgz#a7b26c832d0a329bccfab63137c5ce251026de79"
   integrity sha512-xU0NfbaOeooT5G7sQbVD0uDKpViLKwfVeCk+3U4rJk7HRq2KtHkdc7rlA0/86AtLUSRQpD5OZlJbVGW4daDvfQ==
