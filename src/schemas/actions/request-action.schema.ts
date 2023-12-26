@@ -31,13 +31,14 @@ export function getDkgRequest(requestAction: RequestAction): DkgRequest {
     const requestId = action.requestId.toString();
     const requester = action.newRequester.toBase58();
     const R: { x: string; y: string }[] = [];
-    for (let i = 0; i < action.R.length.toBigInt(); i++) {
+
+    for (let i = 0; i < action.R.values.length; i++) {
         const x = action.R.values[i].x.toString();
         const y = action.R.values[i].y.toString();
         R.push({ x: x, y: y });
     }
     const D: { x: string; y: string }[] = [];
-    for (let i = 0; i < action.D.length.toBigInt(); i++) {
+    for (let i = 0; i < action.D.values.length; i++) {
         const x = action.D.values[i].x.toString();
         const y = action.D.values[i].y.toString();
         D.push({ x: x, y: y });

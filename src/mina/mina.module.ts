@@ -37,7 +37,6 @@ import { DkgService } from './dkg/dkg.service';
 
 import { TestController } from './test/test.controller';
 import { CommitteesController } from './committees/committees.controller';
-import { KeysController } from './keys/keys.controller';
 import { DkgUsageService } from './dkg-usage/dkg-usage.service';
 import {
     RequestAction,
@@ -98,11 +97,6 @@ import { jwtConstants } from 'src/constants';
         DkgUsageService,
         AuthService,
     ],
-    controllers: [
-        CommitteesController,
-        TestController,
-        KeysController,
-        AuthController,
-    ],
+    controllers: [CommitteesController, TestController, AuthController],
 })
 export class MinaModule {}
