@@ -265,7 +265,6 @@ export class CommitteesService implements OnModuleInit {
                 const notActiveCommittee = notActiveCommittees[i];
                 notActiveCommittee.set('active', true);
                 promises.push(notActiveCommittee.save());
-                // await notActiveCommittee.save();
             }
             await Promise.all(promises);
         }

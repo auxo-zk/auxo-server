@@ -16,7 +16,6 @@ import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Model } from 'mongoose';
 import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
-import { CommitteeDetail } from 'src/entities/committee-detail.entity';
 import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Committee } from 'src/schemas/committee.schema';
