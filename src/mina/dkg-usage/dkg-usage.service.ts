@@ -8,6 +8,11 @@ import {
 import { QueryService } from '../query/query.service';
 import { Field, Reducer } from 'o1js';
 import { DkgRequest } from 'src/schemas/request.schema';
+import {
+    ResponseAction,
+    getDkgResponse,
+} from 'src/schemas/actions/response-action.schema';
+import { DkgResponse } from 'src/schemas/response.schema';
 
 @Injectable()
 export class DkgUsageService implements OnModuleInit {
@@ -17,6 +22,10 @@ export class DkgUsageService implements OnModuleInit {
         private readonly requestActionModel: Model<RequestAction>,
         @InjectModel(DkgRequest.name)
         private readonly dkgRequestModel: Model<DkgRequest>,
+        @InjectModel(ResponseAction.name)
+        private readonly responseActionModel: Model<ResponseAction>,
+        @InjectModel(DkgResponse.name)
+        private readonly dkgResponseModel: Model<DkgResponse>,
     ) {}
     async onModuleInit() {
         await this.fetch();
@@ -24,6 +33,7 @@ export class DkgUsageService implements OnModuleInit {
 
     async fetch() {
         await this.fetchAllRequestActions();
+        await this.fetchAllResponseActions();
     }
 
     private async fetchAllRequestActions() {
@@ -112,6 +122,97 @@ export class DkgUsageService implements OnModuleInit {
                 const notActiveDkgRequest = notActiveDkgRequests[i];
                 notActiveDkgRequest.set('active', true);
                 promises.push(notActiveDkgRequest.save());
+            }
+            await Promise.all(promises);
+        }
+    }
+
+    private async fetchAllResponseActions() {
+        const promises = [];
+        const actions = await this.queryService.fetchActions(
+            process.env.RESPONSE_ADDRESS,
+        );
+        let previousActionState: Field = Reducer.initialActionState;
+        let actionId = 0;
+        while (actionId < actions.length) {
+            const currentActionState = Field(actions[actionId].hash);
+            promises.push(
+                this.responseActionModel.findOneAndUpdate(
+                    {
+                        currentActionState: currentActionState.toString(),
+                    },
+                    {
+                        actionId: actionId,
+                        currentActionState: currentActionState.toString(),
+                        previousActionState: previousActionState.toString(),
+                        actions: actions[actionId].actions[0],
+                    },
+                    { new: true, upsert: true },
+                ),
+            );
+
+            previousActionState = currentActionState;
+            actionId += 1;
+        }
+        await Promise.all(promises);
+        await this.updateDkgResponse();
+    }
+
+    private async updateDkgResponse() {
+        let promises = [];
+        const lastDkgResponse = await this.dkgResponseModel.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+        let responseActions: ResponseAction[];
+        if (lastDkgResponse != null) {
+            responseActions = await this.responseActionModel.find(
+                { actionId: { $gt: lastDkgResponse.actionId } },
+                {},
+                { sort: { actionId: 1 } },
+            );
+        } else {
+            responseActions = await this.responseActionModel.find(
+                {},
+                {},
+                { sort: { actionId: 1 } },
+            );
+        }
+        for (let i = 0; i < responseActions.length; i++) {
+            const responseAction = responseActions[i];
+            promises.push(
+                this.dkgResponseModel.findOneAndUpdate(
+                    { actionId: responseAction.actionId },
+                    getDkgResponse(responseAction),
+                    { new: true, upsert: true },
+                ),
+            );
+        }
+        await Promise.all(promises);
+        promises = [];
+        const rawEvents = await this.queryService.fetchEvents(
+            process.env.RESPONSE_ADDRESS,
+        );
+        if (rawEvents.length > 0) {
+            const lastEvent = rawEvents[rawEvents.length - 1].events;
+            const lastActionState = Field(lastEvent[0].data[0]).toString();
+            const lastActiveResponseAction =
+                await this.responseActionModel.findOne({
+                    currentActionState: lastActionState,
+                });
+            const notActiveDkgResponses = await this.dkgResponseModel.find(
+                {
+                    actionId: { $lte: lastActiveResponseAction.actionId },
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            for (let i = 0; i < notActiveDkgResponses.length; i++) {
+                const notActiveDkgResponse = notActiveDkgResponses[i];
+                notActiveDkgResponse.set('active', true);
+                promises.push(notActiveDkgResponse.save());
             }
             await Promise.all(promises);
         }

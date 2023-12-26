@@ -51,13 +51,14 @@ import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from 'src/constants';
+import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
 
 @Module({
     imports: [
         ScheduleModule.forRoot(),
         MongooseModule.forFeature([
-            { name: Committee.name, schema: CommitteeSchema },
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
+            { name: Committee.name, schema: CommitteeSchema },
             { name: DkgAction.name, schema: DkgActionSchema },
             { name: Dkg.name, schema: DkgSchema },
             { name: Round1Action.name, schema: Round1ActionSchema },
@@ -68,6 +69,7 @@ import { jwtConstants } from 'src/constants';
             { name: RequestAction.name, schema: RequestActionSchema },
             { name: DkgRequest.name, schema: DkgRequestSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
+            { name: DkgResponse.name, schema: DkgResponseSchema },
         ]),
         HttpModule,
         CacheModule.register(),
