@@ -1,7 +1,14 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
-import { Encoding, PrivateKey, PublicKey, Signature } from 'o1js';
+import {
+    Encoding,
+    Field,
+    PrivateKey,
+    PublicKey,
+    Scalar,
+    Signature,
+} from 'o1js';
 import { ServerSignature } from 'src/entities/server-signature.entity';
 import { Utilities } from '../utilities';
 import { AuthenticateDto } from 'src/dtos/authenticate.dto';
