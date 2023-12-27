@@ -29,7 +29,7 @@ export class AuthService {
             const requesterPublicKey = PublicKey.fromBase58(
                 authenticateDto.address,
             );
-            const requesterSignature = Signature.fromBase58(
+            const requesterSignature = Signature.fromJSON(
                 authenticateDto.signature,
             );
             if (

@@ -87,10 +87,12 @@ export class CommitteesController {
             const round1s = await this.round1Model.find({
                 committeeId: committeeId,
                 keyId: keyId,
+                active: true,
             });
             const round2s = await this.round2Model.find({
                 committeeId: committeeId,
                 keyId: keyId,
+                active: true,
             });
             const keyDetail = new KeyDetail(keys[i], round1s, round2s);
             result.push(keyDetail);
