@@ -8,6 +8,12 @@ export class DkgRequest {
     actionId: number;
 
     @Prop({ index: true })
+    committeeId?: number;
+
+    @Prop({ index: true })
+    keyId?: number;
+
+    @Prop({ index: true })
     requestId: string;
 
     @Prop()

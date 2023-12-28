@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectModel, raw } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
     RequestAction,
@@ -103,27 +103,21 @@ export class DkgUsageService implements OnModuleInit {
         const rawEvents = await this.queryService.fetchEvents(
             process.env.REQUEST_ADDRESS,
         );
-        if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActionState = Field(lastEvent[0].data[0]).toString();
-            const lastActiveRequestAction =
-                await this.requestActionModel.findOne({
-                    currentActionState: lastActionState,
+        for (let i = 0; i < rawEvents.length; i++) {
+            const event = this.readRequestEvent(rawEvents[i].events[0].data);
+            const notActive = await this.dkgRequestModel.exists({
+                requestId: event.requestId,
+                active: false,
+            });
+            if (notActive) {
+                const dkgRequest = await this.dkgRequestModel.findOne({
+                    _id: notActive._id,
                 });
-            const notActiveDkgRequests = await this.dkgRequestModel.find(
-                {
-                    actionId: { $lte: lastActiveRequestAction.actionId },
-                    active: false,
-                },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            for (let i = 0; i < notActiveDkgRequests.length; i++) {
-                const notActiveDkgRequest = notActiveDkgRequests[i];
-                notActiveDkgRequest.set('active', true);
-                promises.push(notActiveDkgRequest.save());
+                dkgRequest.set('committeeId', event.committeeId);
+                dkgRequest.set('keyId', event.keyId);
+                dkgRequest.set('active', true);
+                await dkgRequest.save();
             }
-            await Promise.all(promises);
         }
     }
 
@@ -216,5 +210,20 @@ export class DkgUsageService implements OnModuleInit {
             }
             await Promise.all(promises);
         }
+    }
+
+    private readRequestEvent(data: string[]): {
+        requestId: string;
+        committeeId: number;
+        keyId: number;
+    } {
+        const requestId = Field(data[0]).toString();
+        const committeeId = Number(Field(data[1]).toString());
+        const keyId = Number(Field(data[2]).toString());
+        return {
+            requestId: requestId,
+            committeeId: committeeId,
+            keyId: keyId,
+        };
     }
 }
