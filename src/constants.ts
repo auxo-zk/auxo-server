@@ -43,3 +43,9 @@ export const jwtConstants = {
 
 // ms
 export const authTimeLimit = 120 * 1000;
+
+export enum AuthRole {
+    BUILDER,
+    ORGANIZER,
+    INVESTOR,
+}

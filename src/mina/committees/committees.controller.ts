@@ -7,6 +7,7 @@ import {
     HttpStatus,
     NotFoundException,
     Param,
+    ParseIntPipe,
     Post,
     Res,
     UseInterceptors,
@@ -50,7 +51,7 @@ export class CommitteesController {
     @Get(':committeeId')
     @ApiTags('Committee')
     async getCommittee(
-        @Param('committeeId') committeeId: number,
+        @Param('committeeId', ParseIntPipe) committeeId: number,
     ): Promise<Committee> {
         const result = await this.committeeModel.findOne({
             committeeId: committeeId,
@@ -76,7 +77,7 @@ export class CommitteesController {
     @Get(':committeeId/keys')
     @ApiTags('Committee')
     async getKeys(
-        @Param('committeeId') committeeId: number,
+        @Param('committeeId', ParseIntPipe) committeeId: number,
     ): Promise<KeyDetail[]> {
         const keys = await this.keyModel.find({
             committeeId: committeeId,

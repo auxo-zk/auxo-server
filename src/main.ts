@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { MinaModule } from './mina/mina.module';
 import { CommitteesService } from './mina/committees/committees.service';
+import { ValidationPipe } from '@nestjs/common';
 // import * as compression from 'compression';
 // import helmet from 'helmet';
 
@@ -38,6 +39,7 @@ async function bootstrap() {
     // app.use(helmet());
     app.enableCors();
     app.setGlobalPrefix('v0');
+    app.useGlobalPipes(new ValidationPipe({}));
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document);
     await app.listen(3000, '0.0.0.0');

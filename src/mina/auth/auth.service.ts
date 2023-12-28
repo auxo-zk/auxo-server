@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
 import {
@@ -19,44 +23,49 @@ export class AuthService {
     constructor(private readonly jwtService: JwtService) {}
 
     async verifySignature(authenticateDto: AuthenticateDto): Promise<string> {
-        const msgRawFields = Utilities.stringArrayToFields(
-            authenticateDto.serverSignature.msg,
-        );
-        const msgRawString = Encoding.stringFromFields(msgRawFields);
-        const msgRaw = JSON.parse(msgRawString);
-        const time = Date.parse(msgRaw['time']);
-        const now = new Date().getTime();
-        if (now - time >= 0 && now - time <= authTimeLimit) {
-            const privateKey = PrivateKey.fromBase58(
-                process.env.FEE_PAYER_PRIVATE_KEY,
+        try {
+            const msgRawFields = Utilities.stringArrayToFields(
+                authenticateDto.serverSignature.msg,
             );
-            const serverSignature = Signature.fromBase58(
-                authenticateDto.serverSignature.signature,
-            );
-            const requesterPublicKey = PublicKey.fromBase58(
-                authenticateDto.address,
-            );
-            const requesterSignature = Signature.fromJSON(
-                authenticateDto.signature,
-            );
-            if (
-                serverSignature.verify(
-                    privateKey.toPublicKey(),
-                    msgRawFields,
-                ) &&
-                requesterSignature.verify(requesterPublicKey, msgRawFields)
-            ) {
-                const payload = {
-                    sub: authenticateDto.address,
-                    role: authenticateDto.role,
-                };
-                const accessToken = await this.jwtService.signAsync(payload);
-                return accessToken;
+            const msgRawString = Encoding.stringFromFields(msgRawFields);
+            const msgRaw = JSON.parse(msgRawString);
+            const time = Date.parse(msgRaw['time']);
+            const now = new Date().getTime();
+            if (now - time >= 0 && now - time <= authTimeLimit) {
+                const privateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const serverSignature = Signature.fromBase58(
+                    authenticateDto.serverSignature.signature,
+                );
+                const requesterPublicKey = PublicKey.fromBase58(
+                    authenticateDto.address,
+                );
+                const requesterSignature = Signature.fromJSON(
+                    authenticateDto.signature,
+                );
+                if (
+                    serverSignature.verify(
+                        privateKey.toPublicKey(),
+                        msgRawFields,
+                    ) &&
+                    requesterSignature.verify(requesterPublicKey, msgRawFields)
+                ) {
+                    const payload = {
+                        sub: authenticateDto.address,
+                        role: authenticateDto.role,
+                    };
+                    const accessToken =
+                        await this.jwtService.signAsync(payload);
+                    return accessToken;
+                } else {
+                    throw new UnauthorizedException();
+                }
             } else {
                 throw new UnauthorizedException();
             }
-        } else {
-            throw new UnauthorizedException();
+        } catch (err) {
+            throw new BadRequestException();
         }
     }
 
