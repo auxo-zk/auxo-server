@@ -22,6 +22,7 @@ import { Round1Contribution } from '@auxo-dev/dkg/build/esm/src/libs/Committee';
 import { Bit255 } from '@auxo-dev/auxo-libs';
 import { Committee } from 'src/schemas/committee.schema';
 import { DkgActionEnum, KeyStatus } from 'src/constants';
+import { Action } from 'src/interfaces/action.interface';
 
 const KEY_STATUS_ARRAY = [
     'EMPTY',
@@ -106,95 +107,125 @@ export class DkgService implements OnModuleInit {
     // ============ PRIVATE FUNCTIONS ============
 
     private async fetchAllDkgActions() {
-        const promises = [];
-        const actions = await this.queryService.fetchActions(
+        const lastAction = await this.dkgActionModel.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+
+        let actions: Action[] = await this.queryService.fetchActions(
             process.env.DKG_ADDRESS,
         );
-        let previousActionState: Field = Reducer.initialActionState;
-        let actionId = 0;
-        while (actionId < actions.length) {
-            const currentActionState = Field(actions[actionId].hash);
-            promises.push(
-                this.dkgActionModel.findOneAndUpdate(
-                    {
-                        currentActionState: currentActionState.toString(),
-                    },
-                    {
-                        actionId: actionId,
-                        currentActionState: currentActionState.toString(),
-                        previousActionState: previousActionState.toString(),
-                        actions: actions[actionId].actions[0],
-                    },
-                    { new: true, upsert: true },
-                ),
+        let previousActionState: Field;
+        let actionId: number;
+        if (!lastAction) {
+            previousActionState = Reducer.initialActionState;
+            actionId = 0;
+        } else {
+            actions = actions.slice(lastAction.actionId + 1);
+            previousActionState = Field(lastAction.currentActionState);
+            actionId = lastAction.actionId + 1;
+        }
+        for (let i = 0; i < actions.length; i++) {
+            const action = actions[i];
+            const currentActionState = Field(action.hash);
+            await this.dkgActionModel.findOneAndUpdate(
+                {
+                    currentActionState: currentActionState.toString(),
+                },
+                {
+                    actionId: actionId,
+                    currentActionState: currentActionState.toString(),
+                    previousActionState: previousActionState.toString(),
+                    actions: action.actions[0],
+                },
+                { new: true, upsert: true },
             );
-
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await Promise.all(promises);
         await this.updateDkgs();
     }
 
     private async fetchAllRound1Actions() {
-        const promises = [];
-        const actions = await this.queryService.fetchActions(
+        const lastAction = await this.round1ActionModel.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+
+        let actions: Action[] = await this.queryService.fetchActions(
             process.env.ROUND_1_ADDRESS,
         );
-        let previousActionState: Field = Reducer.initialActionState;
-        let actionId = 0;
-        while (actionId < actions.length) {
-            const currentActionState = Field(actions[actionId].hash);
-            promises.push(
-                this.round1ActionModel.findOneAndUpdate(
-                    {
-                        currentActionState: currentActionState.toString(),
-                    },
-                    {
-                        actionId: actionId,
-                        currentActionState: currentActionState.toString(),
-                        previousActionState: previousActionState.toString(),
-                        actions: actions[actionId].actions[0],
-                    },
-                    { new: true, upsert: true },
-                ),
+        let previousActionState: Field;
+        let actionId: number;
+        if (!lastAction) {
+            previousActionState = Reducer.initialActionState;
+            actionId = 0;
+        } else {
+            actions = actions.slice(lastAction.actionId + 1);
+            previousActionState = Field(lastAction.currentActionState);
+            actionId = lastAction.actionId + 1;
+        }
+        for (let i = 0; i < actions.length; i++) {
+            const action = actions[i];
+            const currentActionState = Field(action.hash);
+            await this.round1ActionModel.findOneAndUpdate(
+                {
+                    currentActionState: currentActionState.toString(),
+                },
+                {
+                    actionId: actionId,
+                    currentActionState: currentActionState.toString(),
+                    previousActionState: previousActionState.toString(),
+                    actions: action.actions[0],
+                },
+                { new: true, upsert: true },
             );
-
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await Promise.all(promises);
         await this.updateRound1s();
     }
 
     private async fetchAllRound2Actions() {
-        const promises = [];
-        const actions = await this.queryService.fetchActions(
+        const lastAction = await this.round2ActionModel.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+
+        let actions: Action[] = await this.queryService.fetchActions(
             process.env.ROUND_2_ADDRESS,
         );
-        let previousActionState: Field = Reducer.initialActionState;
-        let actionId = 0;
-        while (actionId < actions.length) {
-            const currentActionState = Field(actions[actionId].hash);
-            promises.push(
-                this.round2ActionModel.findOneAndUpdate(
-                    {
-                        currentActionState: currentActionState.toString(),
-                    },
-                    {
-                        actionId: actionId,
-                        currentActionState: currentActionState.toString(),
-                        previousActionState: previousActionState.toString(),
-                        actions: actions[actionId].actions[0],
-                    },
-                    { new: true, upsert: true },
-                ),
+        let previousActionState: Field;
+        let actionId: number;
+        if (!lastAction) {
+            previousActionState = Reducer.initialActionState;
+            actionId = 0;
+        } else {
+            actions = actions.slice(lastAction.actionId + 1);
+            previousActionState = Field(lastAction.currentActionState);
+            actionId = lastAction.actionId + 1;
+        }
+        for (let i = 0; i < actions.length; i++) {
+            const action = actions[i];
+            const currentActionState = Field(action.hash);
+            await this.round2ActionModel.findOneAndUpdate(
+                {
+                    currentActionState: currentActionState.toString(),
+                },
+                {
+                    actionId: actionId,
+                    currentActionState: currentActionState.toString(),
+                    previousActionState: previousActionState.toString(),
+                    actions: action.actions[0],
+                },
+                { new: true, upsert: true },
             );
-
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await Promise.all(promises);
         await this.updateRound2s();
     }
 

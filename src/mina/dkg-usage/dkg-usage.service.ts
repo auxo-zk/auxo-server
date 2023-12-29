@@ -15,6 +15,7 @@ import {
 import { DkgResponse } from 'src/schemas/response.schema';
 import { RequestActionEnum } from 'src/constants';
 import { Event } from 'src/interfaces/event.interface';
+import { Action } from 'src/interfaces/action.interface';
 
 @Injectable()
 export class DkgUsageService implements OnModuleInit {
@@ -39,33 +40,43 @@ export class DkgUsageService implements OnModuleInit {
     }
 
     private async fetchAllRequestActions() {
-        const promises = [];
-        const actions = await this.queryService.fetchActions(
+        const lastAction = await this.requestActionModel.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+
+        let actions: Action[] = await this.queryService.fetchActions(
             process.env.REQUEST_ADDRESS,
         );
-        let previousActionState: Field = Reducer.initialActionState;
-        let actionId = 0;
-        while (actionId < actions.length) {
-            const currentActionState = Field(actions[actionId].hash);
-            promises.push(
-                this.requestActionModel.findOneAndUpdate(
-                    {
-                        currentActionState: currentActionState.toString(),
-                    },
-                    {
-                        actionId: actionId,
-                        currentActionState: currentActionState.toString(),
-                        previousActionState: previousActionState.toString(),
-                        actions: actions[actionId].actions[0],
-                    },
-                    { new: true, upsert: true },
-                ),
+        let previousActionState: Field;
+        let actionId: number;
+        if (!lastAction) {
+            previousActionState = Reducer.initialActionState;
+            actionId = 0;
+        } else {
+            actions = actions.slice(lastAction.actionId + 1);
+            previousActionState = Field(lastAction.currentActionState);
+            actionId = lastAction.actionId + 1;
+        }
+        for (let i = 0; i < actions.length; i++) {
+            const action = actions[i];
+            const currentActionState = Field(action.hash);
+            await this.requestActionModel.findOneAndUpdate(
+                {
+                    currentActionState: currentActionState.toString(),
+                },
+                {
+                    actionId: actionId,
+                    currentActionState: currentActionState.toString(),
+                    previousActionState: previousActionState.toString(),
+                    actions: action.actions[0],
+                },
+                { new: true, upsert: true },
             );
-
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await Promise.all(promises);
         await this.updateDkgRequests();
     }
 
@@ -144,33 +155,43 @@ export class DkgUsageService implements OnModuleInit {
     }
 
     private async fetchAllResponseActions() {
-        const promises = [];
-        const actions = await this.queryService.fetchActions(
+        const lastAction = await this.responseActionModel.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+
+        let actions: Action[] = await this.queryService.fetchActions(
             process.env.RESPONSE_ADDRESS,
         );
-        let previousActionState: Field = Reducer.initialActionState;
-        let actionId = 0;
-        while (actionId < actions.length) {
-            const currentActionState = Field(actions[actionId].hash);
-            promises.push(
-                this.responseActionModel.findOneAndUpdate(
-                    {
-                        currentActionState: currentActionState.toString(),
-                    },
-                    {
-                        actionId: actionId,
-                        currentActionState: currentActionState.toString(),
-                        previousActionState: previousActionState.toString(),
-                        actions: actions[actionId].actions[0],
-                    },
-                    { new: true, upsert: true },
-                ),
+        let previousActionState: Field;
+        let actionId: number;
+        if (!lastAction) {
+            previousActionState = Reducer.initialActionState;
+            actionId = 0;
+        } else {
+            actions = actions.slice(lastAction.actionId + 1);
+            previousActionState = Field(lastAction.currentActionState);
+            actionId = lastAction.actionId + 1;
+        }
+        for (let i = 0; i < actions.length; i++) {
+            const action = actions[i];
+            const currentActionState = Field(action.hash);
+            await this.responseActionModel.findOneAndUpdate(
+                {
+                    currentActionState: currentActionState.toString(),
+                },
+                {
+                    actionId: actionId,
+                    currentActionState: currentActionState.toString(),
+                    previousActionState: previousActionState.toString(),
+                    actions: action.actions[0],
+                },
+                { new: true, upsert: true },
             );
-
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await Promise.all(promises);
         await this.updateDkgResponse();
     }
 

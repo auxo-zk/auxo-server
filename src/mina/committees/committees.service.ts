@@ -34,6 +34,7 @@ import { MemberRole } from 'src/constants';
 import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
 import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
 import { Key } from 'src/schemas/key.schema';
+import { Action } from 'src/interfaces/action.interface';
 @Injectable()
 export class CommitteesService implements OnModuleInit {
     private readonly logger = new Logger(CommitteesService.name);
@@ -188,32 +189,43 @@ export class CommitteesService implements OnModuleInit {
     // ============ PRIVATE FUNCTIONS ============
 
     private async fetchAllActions(): Promise<void> {
-        const promises = [];
-        const actions = await this.queryService.fetchActions(
+        const lastAction = await this.committeeActionModel.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+
+        let actions: Action[] = await this.queryService.fetchActions(
             process.env.COMMITTEE_ADDRESS,
         );
-        let previousActionState: Field = Reducer.initialActionState;
-        let actionId = 0;
-        while (actionId < actions.length) {
-            const currentActionState = Field(actions[actionId].hash);
-            promises.push(
-                this.committeeActionModel.findOneAndUpdate(
-                    {
-                        currentActionState: currentActionState.toString(),
-                    },
-                    {
-                        actionId: actionId,
-                        currentActionState: currentActionState.toString(),
-                        previousActionState: previousActionState.toString(),
-                        actions: actions[actionId].actions[0],
-                    },
-                    { new: true, upsert: true },
-                ),
+        let previousActionState: Field;
+        let actionId: number;
+        if (!lastAction) {
+            previousActionState = Reducer.initialActionState;
+            actionId = 0;
+        } else {
+            actions = actions.slice(lastAction.actionId + 1);
+            previousActionState = Field(lastAction.currentActionState);
+            actionId = lastAction.actionId + 1;
+        }
+        for (let i = 0; i < actions.length; i++) {
+            const action = actions[i];
+            const currentActionState = Field(action.hash);
+            await this.committeeActionModel.findOneAndUpdate(
+                {
+                    currentActionState: currentActionState.toString(),
+                },
+                {
+                    actionId: actionId,
+                    currentActionState: currentActionState.toString(),
+                    previousActionState: previousActionState.toString(),
+                    actions: action.actions[0],
+                },
+                { new: true, upsert: true },
             );
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await Promise.all(promises);
         await this.updateCommittees();
     }
 
