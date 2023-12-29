@@ -460,14 +460,14 @@ export class CommitteesService implements OnModuleInit {
                     pipeline: [
                         { $match: { committeeId: committeeId, active: true } },
                         {
-                            $project: {
+                            $sort: {
                                 memberId: 1,
-                                contribution: 1,
                             },
                         },
                         {
-                            $sort: {
+                            $project: {
                                 memberId: 1,
+                                contribution: 1,
                             },
                         },
                     ],
@@ -482,14 +482,14 @@ export class CommitteesService implements OnModuleInit {
                     pipeline: [
                         { $match: { committeeId: committeeId, active: true } },
                         {
-                            $project: {
+                            $sort: {
                                 memberId: 1,
-                                contribution: 1,
                             },
                         },
                         {
-                            $sort: {
+                            $project: {
                                 memberId: 1,
+                                contribution: 1,
                             },
                         },
                     ],
@@ -504,14 +504,14 @@ export class CommitteesService implements OnModuleInit {
                     pipeline: [
                         { $match: { committeeId: committeeId } },
                         {
-                            $project: {
-                                requestId: 1,
-                                requester: 1,
+                            $sort: {
+                                memberId: 1,
                             },
                         },
                         {
-                            $sort: {
-                                memberId: 1,
+                            $project: {
+                                requestId: 1,
+                                requester: 1,
                             },
                         },
                     ],
@@ -533,7 +533,8 @@ export class CommitteesService implements OnModuleInit {
                     foreignField: 'requestId',
                     pipeline: [
                         { $match: { active: true } },
-                        { $project: { memberId: 1 } },
+                        { $sort: { memberId: 1 } },
+                        { $project: { memberId: 1, contribution: 1 } },
                     ],
                 },
             },

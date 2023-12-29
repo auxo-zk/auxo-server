@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     IsEnum,
@@ -14,6 +15,7 @@ export class AuthenticateDto {
     address: string;
 
     @IsEnum(AuthRole)
+    @ApiProperty({ description: 'BUILDER | ORGANIZER | INVESTOR' })
     role: number;
 
     signature: { r: string; s: string };
