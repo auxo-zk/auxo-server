@@ -25,7 +25,6 @@ import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Committee } from 'src/schemas/committee.schema';
 import { Key } from 'src/schemas/key.schema';
-import { DkgRequest } from 'src/schemas/request.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
 import { CommitteesService } from './committees.service';
@@ -35,8 +34,6 @@ export class CommitteesController {
     constructor(
         private readonly ipfs: Ipfs,
         private readonly committeesService: CommitteesService,
-        @InjectModel(DkgRequest.name)
-        private readonly dkgRequestModel: Model<DkgRequest>,
     ) {}
 
     @Get()
@@ -71,16 +68,5 @@ export class CommitteesController {
         @Param('committeeId', ParseIntPipe) committeeId: number,
     ): Promise<Key[]> {
         return await this.committeesService.getKeys(committeeId);
-    }
-
-    @Get(':committeeId/requests')
-    @ApiTags('Committee')
-    async getRequests(
-        @Param('committeeId', ParseIntPipe) committeeId: number,
-    ): Promise<DkgRequest[]> {
-        const requests = await this.dkgRequestModel.find({
-            committeeId: committeeId,
-        });
-        return requests;
     }
 }

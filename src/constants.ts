@@ -23,10 +23,15 @@ export const enum RequestActionEnum {
     __LENGTH,
 }
 
-export const enum RequestStatusEnum {
+export const enum RequestStatus {
     NOT_YET_REQUESTED,
     REQUESTING,
-    // RESOLVED, this will be hash of request vector D: H(length + values)
+    RESOLVED,
+}
+
+export enum RequestEventEnum {
+    ACTION_REDUCED,
+    CREATE_REQUEST,
 }
 
 export const enum KeyStatus {

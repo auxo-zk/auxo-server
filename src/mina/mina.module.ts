@@ -52,6 +52,10 @@ import { AuthService } from './auth/auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from 'src/constants';
 import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
+import {
+    DkgRequestRaw,
+    DkgRequestRawSchema,
+} from 'src/schemas/request-raw.schema';
 
 @Module({
     imports: [
@@ -67,6 +71,7 @@ import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
             { name: Round2.name, schema: Round2Schema },
             { name: Key.name, schema: KeySchema },
             { name: RequestAction.name, schema: RequestActionSchema },
+            { name: DkgRequestRaw.name, schema: DkgRequestRawSchema },
             { name: DkgRequest.name, schema: DkgRequestSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
             { name: DkgResponse.name, schema: DkgResponseSchema },
