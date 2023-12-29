@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { IsNumber, IsString } from 'class-validator';
 import { HydratedDocument } from 'mongoose';
 
 @Schema({ versionKey: false })
@@ -35,7 +36,12 @@ export type CommitteeDocument = HydratedDocument<Committee>;
 export const CommitteeSchema = SchemaFactory.createForClass(Committee);
 
 export class Member {
+    @IsNumber()
     memberId: number;
+
+    @IsString()
     alias: string;
+
+    @IsString()
     publicKey: string;
 }

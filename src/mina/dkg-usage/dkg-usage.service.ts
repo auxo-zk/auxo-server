@@ -13,6 +13,8 @@ import {
     getDkgResponse,
 } from 'src/schemas/actions/response-action.schema';
 import { DkgResponse } from 'src/schemas/response.schema';
+import { RequestActionEnum } from 'src/constants';
+import { Event } from 'src/interfaces/event.interface';
 
 @Injectable()
 export class DkgUsageService implements OnModuleInit {
@@ -105,18 +107,38 @@ export class DkgUsageService implements OnModuleInit {
         );
         for (let i = 0; i < rawEvents.length; i++) {
             const event = this.readRequestEvent(rawEvents[i].events[0].data);
-            const notActive = await this.dkgRequestModel.exists({
-                requestId: event.requestId,
-                active: false,
-            });
-            if (notActive) {
-                const dkgRequest = await this.dkgRequestModel.findOne({
-                    _id: notActive._id,
+            if (event != null) {
+                const dkgRequests = await this.dkgRequestModel.find({
+                    requestId: event.requestId,
+                    committeeId: undefined,
+                    keyId: undefined,
                 });
-                dkgRequest.set('committeeId', event.committeeId);
-                dkgRequest.set('keyId', event.keyId);
-                dkgRequest.set('active', true);
-                await dkgRequest.save();
+                for (let j = 0; j < dkgRequests.length; j++) {
+                    const dkgRequest = dkgRequests[j];
+                    dkgRequest.set('committeeId', event.committeeId);
+                    dkgRequest.set('keyId', event.keyId);
+                    await dkgRequest.save();
+                }
+            }
+        }
+        const lastActionHash = this.getLastRequestActionHash(rawEvents);
+        if (lastActionHash != null) {
+            const lastRequestAction = await this.requestActionModel.findOne({
+                currentActionState: lastActionHash,
+            });
+
+            const notActiveDkgRequests = await this.dkgRequestModel.find(
+                {
+                    actionId: { $lte: lastRequestAction.actionId },
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            for (let i = 0; i < notActiveDkgRequests.length; i++) {
+                const notActiveDkgRequest = notActiveDkgRequests[i];
+                notActiveDkgRequest.set('active', true);
+                await notActiveDkgRequest.save();
             }
         }
     }
@@ -217,13 +239,31 @@ export class DkgUsageService implements OnModuleInit {
         committeeId: number;
         keyId: number;
     } {
-        const requestId = Field(data[0]).toString();
-        const committeeId = Number(Field(data[1]).toString());
-        const keyId = Number(Field(data[2]).toString());
-        return {
-            requestId: requestId,
-            committeeId: committeeId,
-            keyId: keyId,
-        };
+        const actionHash = Field(data[data.length - 1]).toString();
+        if (actionHash == '0') {
+            const requestId = Field(data[0]).toString();
+            const committeeId = Number(Field(data[1]).toString());
+            const keyId = Number(Field(data[2]).toString());
+            return {
+                requestId: requestId,
+                committeeId: committeeId,
+                keyId: keyId,
+            };
+        }
+        return null;
+    }
+
+    private getLastRequestActionHash(rawEvents: Event[]): string {
+        let index = rawEvents.length - 1;
+        while (index >= 0) {
+            const rawEvent = rawEvents[index];
+            const data = rawEvent.events[0].data;
+            const actionHash = Field(data[data.length - 1]).toString();
+            if (actionHash != '0') {
+                return actionHash;
+            }
+            index -= 1;
+        }
+        return null;
     }
 }

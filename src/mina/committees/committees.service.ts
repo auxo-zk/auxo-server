@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import {
+    Injectable,
+    OnModuleInit,
+    Logger,
+    BadRequestException,
+} from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import {
     Encoding,
@@ -24,7 +29,11 @@ import { Storage, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { CommitteeStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages';
 import { Ipfs } from 'src/ipfs/ipfs';
-
+import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
+import { MemberRole } from 'src/constants';
+import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
+import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
+import { Key } from 'src/schemas/key.schema';
 @Injectable()
 export class CommitteesService implements OnModuleInit {
     private readonly logger = new Logger(CommitteesService.name);
@@ -40,6 +49,8 @@ export class CommitteesService implements OnModuleInit {
         private readonly committeeActionModel: Model<CommitteeAction>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
+        @InjectModel(Key.name)
+        private readonly keyModel: Model<Key>,
     ) {
         this.nextCommitteeId = 0;
         this.committeeTree = new MerkleTree(
@@ -296,5 +307,181 @@ export class CommitteesService implements OnModuleInit {
             );
             this.nextCommitteeId += 1;
         }
+    }
+
+    // Handle request
+
+    async getAllCommittees(
+        getCommitteesDto: GetCommitteesDto,
+    ): Promise<Committee[]> {
+        let committees: Committee[];
+        if (
+            getCommitteesDto.member != undefined &&
+            getCommitteesDto.role != undefined
+        ) {
+            if (getCommitteesDto.role == MemberRole.OWNER) {
+                committees = await this.committeeModel.aggregate([
+                    { $match: { creator: getCommitteesDto.member } },
+                    {
+                        $lookup: {
+                            from: 'dkgrequests',
+                            as: 'requests',
+                            localField: 'committeeId',
+                            foreignField: 'committeeId',
+                            pipeline: [
+                                { $project: { requestId: 1, requester: 1 } },
+                            ],
+                        },
+                    },
+                ]);
+            } else if (getCommitteesDto.role == MemberRole.MEMBER) {
+                committees = await this.committeeModel.aggregate([
+                    {
+                        $match: {
+                            creator: { $ne: getCommitteesDto.member },
+                            publicKeys: getCommitteesDto.member,
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: 'dkgrequests',
+                            as: 'requests',
+                            localField: 'committeeId',
+                            foreignField: 'committeeId',
+                            pipeline: [
+                                { $project: { requestId: 1, requester: 1 } },
+                            ],
+                        },
+                    },
+                ]);
+            } else {
+                committees = await this.committeeModel.aggregate([
+                    {
+                        $match: {
+                            publicKeys: getCommitteesDto.member,
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: 'dkgrequests',
+                            as: 'requests',
+                            localField: 'committeeId',
+                            foreignField: 'committeeId',
+                            pipeline: [
+                                { $project: { requestId: 1, requester: 1 } },
+                            ],
+                        },
+                    },
+                ]);
+            }
+        } else {
+            committees = await this.committeeModel.aggregate([
+                {
+                    $match: {},
+                },
+                {
+                    $lookup: {
+                        from: 'dkgrequests',
+                        as: 'requests',
+                        localField: 'committeeId',
+                        foreignField: 'committeeId',
+                        pipeline: [
+                            { $project: { requestId: 1, requester: 1 } },
+                        ],
+                    },
+                },
+            ]);
+        }
+        return committees;
+    }
+
+    async createCommittee(
+        createCommitteeDto: CreateCommitteeDto,
+    ): Promise<IpfsResponse> {
+        const result = await this.ipfs.upload(createCommitteeDto);
+        if (result == null) {
+            throw new BadRequestException();
+        }
+        return result;
+    }
+
+    async getCommittee(committeeId: number): Promise<Committee> {
+        const result = await this.committeeModel.aggregate([
+            { $match: { committeeId: committeeId } },
+            {
+                $lookup: {
+                    from: 'dkgrequests',
+                    as: 'requests',
+                    localField: 'committeeId',
+                    foreignField: 'committeeId',
+                    pipeline: [
+                        {
+                            $match: {
+                                active: true,
+                            },
+                        },
+                        { $project: { requestId: 1, requester: 1 } },
+                    ],
+                },
+            },
+        ]);
+
+        if (result.length > 0) {
+            return result[0];
+        } else {
+            return null;
+        }
+    }
+
+    async getKeys(committeeId: number): Promise<Key[]> {
+        const result = await this.keyModel.aggregate([
+            { $match: { committeeId: committeeId } },
+            {
+                $lookup: {
+                    from: 'round1',
+                    as: 'round1s',
+                    localField: 'keyId',
+                    foreignField: 'keyId',
+                    pipeline: [
+                        { $match: { committeeId: committeeId, active: true } },
+                        {
+                            $project: {
+                                memberId: 1,
+                                contribution: 1,
+                            },
+                        },
+                        {
+                            $sort: {
+                                memberId: 1,
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                $lookup: {
+                    from: 'round2',
+                    as: 'round2s',
+                    localField: 'keyId',
+                    foreignField: 'keyId',
+                    pipeline: [
+                        { $match: { committeeId: committeeId, active: true } },
+                        {
+                            $project: {
+                                memberId: 1,
+                                contribution: 1,
+                            },
+                        },
+                        {
+                            $sort: {
+                                memberId: 1,
+                            },
+                        },
+                    ],
+                },
+            },
+        ]);
+
+        return result;
     }
 }

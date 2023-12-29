@@ -49,3 +49,9 @@ export enum AuthRole {
     ORGANIZER,
     INVESTOR,
 }
+
+export enum MemberRole {
+    OWNER,
+    MEMBER,
+    NONE,
+}
