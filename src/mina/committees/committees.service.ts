@@ -35,6 +35,7 @@ import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
 import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
 import { Key } from 'src/schemas/key.schema';
 import { Action } from 'src/interfaces/action.interface';
+import { DkgRequest } from 'src/schemas/request.schema';
 @Injectable()
 export class CommitteesService implements OnModuleInit {
     private readonly logger = new Logger(CommitteesService.name);
@@ -52,6 +53,8 @@ export class CommitteesService implements OnModuleInit {
         private readonly committeeModel: Model<Committee>,
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
+        @InjectModel(DkgRequest.name)
+        private readonly dkgRequestModel: Model<DkgRequest>,
     ) {
         this.nextCommitteeId = 0;
         this.committeeTree = new MerkleTree(
@@ -492,8 +495,49 @@ export class CommitteesService implements OnModuleInit {
                     ],
                 },
             },
+            {
+                $lookup: {
+                    from: 'dkgrequests',
+                    as: 'requests',
+                    localField: 'keyId',
+                    foreignField: 'keyId',
+                    pipeline: [
+                        { $match: { committeeId: committeeId } },
+                        {
+                            $project: {
+                                requestId: 1,
+                                requester: 1,
+                            },
+                        },
+                        {
+                            $sort: {
+                                memberId: 1,
+                            },
+                        },
+                    ],
+                },
+            },
         ]);
 
+        return result;
+    }
+
+    async getRequests(committeeId: number): Promise<DkgRequest[]> {
+        const result = await this.dkgRequestModel.aggregate([
+            { $match: { committeeId: committeeId } },
+            {
+                $lookup: {
+                    from: 'dkgresponses',
+                    as: 'responses',
+                    localField: 'requestId',
+                    foreignField: 'requestId',
+                    pipeline: [
+                        { $match: { active: true } },
+                        { $project: { memberId: 1 } },
+                    ],
+                },
+            },
+        ]);
         return result;
     }
 }

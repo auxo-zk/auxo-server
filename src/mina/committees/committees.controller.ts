@@ -28,6 +28,7 @@ import { Key } from 'src/schemas/key.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
 import { CommitteesService } from './committees.service';
+import { DkgRequest } from 'src/schemas/request.schema';
 
 @Controller('committees')
 export class CommitteesController {
@@ -68,5 +69,13 @@ export class CommitteesController {
         @Param('committeeId', ParseIntPipe) committeeId: number,
     ): Promise<Key[]> {
         return await this.committeesService.getKeys(committeeId);
+    }
+
+    @Get(':committeeId/requests')
+    @ApiTags('Committee')
+    async getRequests(
+        @Param('committeeId', ParseIntPipe) committeeId: number,
+    ): Promise<DkgRequest[]> {
+        return await this.committeesService.getRequests(committeeId);
     }
 }
