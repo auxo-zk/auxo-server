@@ -56,6 +56,8 @@ import {
     DkgRequestRaw,
     DkgRequestRawSchema,
 } from 'src/schemas/request-raw.schema';
+import { StorageController } from './storage/storage.controller';
+import { StorageService } from './storage/storage.service';
 
 @Module({
     imports: [
@@ -103,7 +105,8 @@ import {
         DkgService,
         DkgUsageService,
         AuthService,
+        StorageService,
     ],
-    controllers: [CommitteesController, TestController, AuthController],
+    controllers: [CommitteesController, TestController, AuthController, StorageController],
 })
 export class MinaModule {}
