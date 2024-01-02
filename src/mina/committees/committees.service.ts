@@ -13,6 +13,7 @@ import {
     Mina,
     Poseidon,
     PrivateKey,
+    Provable,
     PublicKey,
     Reducer,
 } from 'o1js';
@@ -39,10 +40,17 @@ import { DkgRequest } from 'src/schemas/request.schema';
 @Injectable()
 export class CommitteesService implements OnModuleInit {
     private readonly logger = new Logger(CommitteesService.name);
-    private nextCommitteeId: number;
-    private committeeTree: MerkleTree;
-    private settingTree: MerkleTree;
-    private actionState: bigint;
+    private _nextCommitteeId: number;
+    private _memberTree: Storage.CommitteeStorage.MemberStorage;
+    private _settingTree: Storage.CommitteeStorage.SettingStorage;
+
+    public get memberTree(): Storage.CommitteeStorage.MemberStorage {
+        return this._memberTree;
+    }
+
+    public get settingTree(): Storage.CommitteeStorage.SettingStorage {
+        return this._settingTree;
+    }
 
     constructor(
         private readonly queryService: QueryService,
@@ -56,32 +64,20 @@ export class CommitteesService implements OnModuleInit {
         @InjectModel(DkgRequest.name)
         private readonly dkgRequestModel: Model<DkgRequest>,
     ) {
-        this.nextCommitteeId = 0;
-        this.committeeTree = new MerkleTree(
-            Storage.CommitteeStorage.LEVEL1_TREE_HEIGHT,
-        );
-        this.settingTree = new MerkleTree(
-            Storage.CommitteeStorage.LEVEL1_TREE_HEIGHT,
-        );
+        this._nextCommitteeId = 0;
+
+        this._memberTree = new Storage.CommitteeStorage.MemberStorage();
+        this._settingTree = new Storage.CommitteeStorage.SettingStorage();
     }
 
-    async onModuleInit(): Promise<void> {
+    async onModuleInit() {
         await this.fetch();
-        const committees = await this.committeeModel.find({ active: true });
-        this.insertLeaves(committees);
+        await this.createTrees();
     }
 
     async update() {
         await this.fetch();
-        const committees = await this.committeeModel.find(
-            {
-                committeeId: { $gte: this.nextCommitteeId },
-                active: true,
-            },
-            {},
-            { sort: { committeeId: 1 } },
-        );
-        this.insertLeaves(committees);
+        await this.createTrees();
     }
 
     async fetch() {
@@ -110,84 +106,83 @@ export class CommitteesService implements OnModuleInit {
         return committeeState;
     }
 
-    async rollup() {
-        const state = await this.fetchZkAppState();
-        let proof = await ZkApp.Committee.CreateCommittee.firstStep(
-            state.actionState,
-            state.committeeTreeRoot,
-            state.settingTreeRoot,
-            state.nextCommitteeId,
-        );
-        const lastReducedAction = await this.committeeActionModel.findOne({
-            currentActionState: state.actionState.toString(),
-        });
-        const notReducedActions = await this.committeeActionModel.find(
-            {
-                actionId: { $gt: lastReducedAction.actionId },
-            },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        const committeeTree = this.committeeTree;
-        const settingTree = this.settingTree;
-        let nextCommitteeId = this.nextCommitteeId;
-        for (let i = 0; i < notReducedActions.length; i++) {
-            const notReducedAction = notReducedActions[i];
-            proof = await ZkApp.Committee.CreateCommittee.nextStep(
-                proof,
-                ZkApp.Committee.CommitteeAction.fromFields(
-                    Utilities.stringArrayToFields(notReducedAction.actions),
-                ),
-                new Storage.CommitteeStorage.Level1Witness(
-                    committeeTree.getWitness(BigInt(nextCommitteeId)),
-                ),
-                new Storage.CommitteeStorage.Level1Witness(
-                    settingTree.getWitness(BigInt(nextCommitteeId)),
-                ),
-            );
-            const committee = await this.committeeModel.findOne({
-                committeeId: nextCommitteeId,
-            });
-            const memberTree = new MerkleTree(memberTreeHeight);
-            for (let j = 0; j < committee.numberOfMembers; j++) {
-                const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
-                memberTree.setLeaf(
-                    BigInt(j),
-                    Poseidon.hash(publicKey.toFields()),
-                );
-            }
-            committeeTree.setLeaf(
-                BigInt(nextCommitteeId),
-                memberTree.getRoot(),
-            );
-            settingTree.setLeaf(
-                BigInt(nextCommitteeId),
-                Poseidon.hash([
-                    Field(committee.threshold),
-                    Field(committee.numberOfMembers),
-                ]),
-            );
-            nextCommitteeId += 1;
-        }
-        const committeeContract = new ZkApp.Committee.CommitteeContract(
-            PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-        );
-        const feePayerPrivateKey = PrivateKey.fromBase58(
-            process.env.FEE_PAYER_PRIVATE_KEY,
-        );
-        const tx = await Mina.transaction(
-            {
-                sender: feePayerPrivateKey.toPublicKey(),
-                fee: '100000000',
-            },
-            () => {
-                committeeContract.rollupIncrements(proof);
-            },
-        );
-        await tx.prove();
-        await tx.sign([feePayerPrivateKey]).send();
-        await this.update();
-    }
+    // async rollup() {
+    //     const state = await this.fetchZkAppState();
+    //     let proof = await ZkApp.Committee.CreateCommittee.firstStep(
+    //         state.actionState,
+    //         state.committeeTreeRoot,
+    //         state.settingTreeRoot,
+    //         state.nextCommitteeId,
+    //     );
+    //     const lastReducedAction = await this.committeeActionModel.findOne({
+    //         currentActionState: state.actionState.toString(),
+    //     });
+    //     const notReducedActions = await this.committeeActionModel.find(
+    //         {
+    //             actionId: { $gt: lastReducedAction.actionId },
+    //         },
+    //         {},
+    //         { sort: { actionId: 1 } },
+    //     );
+    //     const memberTree = this._memberTree;
+    //     const settingTree = this._settingTree;
+    //     let nextCommitteeId = this._nextCommitteeId;
+    //     for (let i = 0; i < notReducedActions.length; i++) {
+    //         const notReducedAction = notReducedActions[i];
+    //         proof = await ZkApp.Committee.CreateCommittee.nextStep(
+    //             proof,
+    //             ZkApp.Committee.CommitteeAction.fromFields(
+    //                 Utilities.stringArrayToFields(notReducedAction.actions),
+    //             ),
+    //             new Storage.CommitteeStorage.Level1Witness(
+    //                 memberTree.getWitness(BigInt(nextCommitteeId)),
+    //             ),
+    //             new Storage.CommitteeStorage.Level1Witness(
+    //                 settingTree.getWitness(BigInt(nextCommitteeId)),
+    //             ),
+    //         );
+    //         const committee = await this.committeeModel.findOne({
+    //             committeeId: nextCommitteeId,
+    //         });
+    //         const memberTreeLevel2 = new MerkleTree(
+    //             Storage.CommitteeStorage.LEVEL2_TREE_HEIGHT,
+    //         );
+    //         for (let j = 0; j < committee.numberOfMembers; j++) {
+    //             const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
+    //             memberTreeLevel2.setLeaf(
+    //                 BigInt(j),
+    //                 Poseidon.hash(publicKey.toFields()),
+    //             );
+    //         }
+    //         memberTree.setLeaf(BigInt(nextCommitteeId), memberTree.getRoot());
+    //         settingTree.setLeaf(
+    //             BigInt(nextCommitteeId),
+    //             Poseidon.hash([
+    //                 Field(committee.threshold),
+    //                 Field(committee.numberOfMembers),
+    //             ]),
+    //         );
+    //         nextCommitteeId += 1;
+    //     }
+    //     const committeeContract = new ZkApp.Committee.CommitteeContract(
+    //         PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+    //     );
+    //     const feePayerPrivateKey = PrivateKey.fromBase58(
+    //         process.env.FEE_PAYER_PRIVATE_KEY,
+    //     );
+    //     const tx = await Mina.transaction(
+    //         {
+    //             sender: feePayerPrivateKey.toPublicKey(),
+    //             fee: '100000000',
+    //         },
+    //         () => {
+    //             committeeContract.rollupIncrements(proof);
+    //         },
+    //     );
+    //     await tx.prove();
+    //     await tx.sign([feePayerPrivateKey]).send();
+    //     await this.update();
+    // }
 
     // ============ PRIVATE FUNCTIONS ============
 
@@ -296,33 +291,67 @@ export class CommitteesService implements OnModuleInit {
         }
     }
 
-    private insertLeaves(committees: Committee[]) {
+    private async createTrees() {
+        const committees = await this.committeeModel.find({ active: true });
         for (let i = 0; i < committees.length; i++) {
             const committee = committees[i];
-            const memberTree = new MerkleTree(
-                Storage.CommitteeStorage.LEVEL2_TREE_HEIGHT,
+            const level1IndexMember = this._memberTree.calculateLevel1Index(
+                Field(committee.committeeId),
             );
-            for (let j = 0; j < committee.numberOfMembers; j++) {
-                const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
-                memberTree.setLeaf(
-                    BigInt(j),
-                    Poseidon.hash(publicKey.toFields()),
+            this._memberTree.updateInternal(
+                level1IndexMember,
+                Storage.CommitteeStorage.EMPTY_LEVEL_2_TREE(),
+            );
+            const level1IndexSetting = this._settingTree.calculateLevel1Index(
+                Field(committee.committeeId),
+            );
+            const settingLeaf = this._settingTree.calculateLeaf({
+                T: Field(committee.threshold),
+                N: Field(committee.numberOfMembers),
+            });
+            this._settingTree.updateLeaf(settingLeaf, level1IndexSetting);
+            for (let j = 0; j < committee.publicKeys.length; j++) {
+                const level2IndexMember = this._memberTree.calculateLevel2Index(
+                    Field(j),
+                );
+                const memberLeaf = this._memberTree.calculateLeaf(
+                    PublicKey.fromBase58(committee.publicKeys[j]),
+                );
+                this._memberTree.updateLeaf(
+                    memberLeaf,
+                    level1IndexMember,
+                    level2IndexMember,
                 );
             }
-            this.committeeTree.setLeaf(
-                BigInt(this.nextCommitteeId),
-                memberTree.getRoot(),
-            );
-            this.settingTree.setLeaf(
-                BigInt(this.nextCommitteeId),
-                Poseidon.hash([
-                    Field(committee.threshold),
-                    Field(committee.numberOfMembers),
-                ]),
-            );
-            this.nextCommitteeId += 1;
         }
     }
+    // private insertLeaves(committees: Committee[]) {
+    //     for (let i = 0; i < committees.length; i++) {
+    //         const committee = committees[i];
+    //         const memberTree = new MerkleTree(
+    //             Storage.CommitteeStorage.LEVEL2_TREE_HEIGHT,
+    //         );
+    //         for (let j = 0; j < committee.numberOfMembers; j++) {
+    //             const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
+    //             memberTree.setLeaf(
+    //                 BigInt(j),
+    //                 Poseidon.hash(publicKey.toFields()),
+    //             );
+    //         }
+    //         this._memberTree.setLeaf(
+    //             BigInt(this._nextCommitteeId),
+    //             memberTree.getRoot(),
+    //         );
+    //         this._settingTree.setLeaf(
+    //             BigInt(this._nextCommitteeId),
+    //             Poseidon.hash([
+    //                 Field(committee.threshold),
+    //                 Field(committee.numberOfMembers),
+    //             ]),
+    //         );
+    //         this._nextCommitteeId += 1;
+    //     }
+    // }
 
     // Handle request
 

@@ -34,18 +34,18 @@ const KEY_STATUS_ARRAY = [
 @Injectable()
 export class DkgService implements OnModuleInit {
     private readonly logger = new Logger(DkgService.name);
-    private readonly dkg: {
+    private readonly _dkg: {
         zkApp: Field;
         keyCounter: MerkleTree;
         keyStatus: Storage.DKGStorage.KeyStatusStorage;
     };
-    private readonly round1: {
+    private readonly _round1: {
         zkApp: Field;
         reduceState: Field;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
     };
-    private readonly round2: {
+    private readonly _round2: {
         zkApp: Field;
         reduceState: Field;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
@@ -71,18 +71,18 @@ export class DkgService implements OnModuleInit {
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
     ) {
-        this.dkg = {
+        this._dkg = {
             zkApp: Field(0),
             keyCounter: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
             keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
         };
-        this.round1 = {
+        this._round1 = {
             zkApp: Field(0),
             reduceState: Field(0),
             contribution: new Storage.DKGStorage.Round1ContributionStorage(),
             publicKey: new Storage.DKGStorage.PublicKeyStorage(),
         };
-        this.round2 = {
+        this._round2 = {
             zkApp: Field(0),
             reduceState: Field(0),
             contribution: new Storage.DKGStorage.Round2ContributionStorage(),
@@ -512,7 +512,7 @@ export class DkgService implements OnModuleInit {
         for (let i = 0; i < keyCounters.length; i++) {
             const keyCounter = keyCounters[i];
             const committeeId = keyCounter._id;
-            this.dkg.keyCounter.setLeaf(
+            this._dkg.keyCounter.setLeaf(
                 BigInt(keyCounter._id),
                 Field(keyCounter.count),
             );
@@ -523,14 +523,14 @@ export class DkgService implements OnModuleInit {
                     keyId,
                 );
                 const key = await this.keyModel.findOne({ _id: keyObjectId });
-                const level1Index = this.dkg.keyStatus.calculateLevel1Index({
+                const level1Index = this._dkg.keyStatus.calculateLevel1Index({
                     committeeId: Field(committeeId),
                     keyId: Field(keyId),
                 });
-                const leaf = this.dkg.keyStatus.calculateLeaf(
+                const leaf = this._dkg.keyStatus.calculateLeaf(
                     key.status as any,
                 );
-                this.dkg.keyStatus.updateLeaf(leaf, level1Index);
+                this._dkg.keyStatus.updateLeaf(leaf, level1Index);
             }
         }
     }
@@ -564,20 +564,20 @@ export class DkgService implements OnModuleInit {
                 });
                 if (key.status >= KeyStatus.ROUND_2_CONTRIBUTION) {
                     const level1IndexContribution =
-                        this.round1.contribution.calculateLevel1Index({
+                        this._round1.contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),
                             keyId: Field(keyId),
                         });
                     const level1IndexPublicKey =
-                        this.round1.publicKey.calculateLevel1Index({
+                        this._round1.publicKey.calculateLevel1Index({
                             committeeId: Field(committeeId),
                             keyId: Field(keyId),
                         });
-                    this.round1.contribution.updateInternal(
+                    this._round1.contribution.updateInternal(
                         level1IndexContribution,
                         Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
                     );
-                    this.round1.publicKey.updateInternal(
+                    this._round1.publicKey.updateInternal(
                         level1IndexPublicKey,
                         Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
                     );
@@ -593,32 +593,32 @@ export class DkgService implements OnModuleInit {
                             );
                         }
                         const level2IndexContribution =
-                            this.round1.contribution.calculateLevel2Index(
+                            this._round1.contribution.calculateLevel2Index(
                                 Field(round1.memberId),
                             );
                         const contributionLeaf =
-                            this.round1.contribution.calculateLeaf(
+                            this._round1.contribution.calculateLeaf(
                                 new Libs.Committee.Round1Contribution({
                                     C: Libs.Committee.CArray.from(tmp),
                                 }),
                             );
-                        this.round1.contribution.updateLeaf(
+                        this._round1.contribution.updateLeaf(
                             contributionLeaf,
                             level1IndexContribution,
                             level2IndexContribution,
                         );
                         const level2IndexPublicKey =
-                            this.round1.contribution.calculateLevel2Index(
+                            this._round1.contribution.calculateLevel2Index(
                                 Field(round1.memberId),
                             );
                         const publicKeyLeaf =
-                            this.round1.publicKey.calculateLeaf(
+                            this._round1.publicKey.calculateLeaf(
                                 Group.from(
                                     round1.contribution[0].x,
                                     round1.contribution[0].y,
                                 ),
                             );
-                        this.round1.publicKey.updateLeaf(
+                        this._round1.publicKey.updateLeaf(
                             publicKeyLeaf,
                             level1IndexPublicKey,
                             level2IndexPublicKey,
@@ -662,20 +662,20 @@ export class DkgService implements OnModuleInit {
                 );
                 if (key.status >= KeyStatus.ACTIVE) {
                     const level1IndexContribution =
-                        this.round2.contribution.calculateLevel1Index({
+                        this._round2.contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),
                             keyId: Field(keyId),
                         });
                     const level1IndexEncryption =
-                        this.round2.contribution.calculateLevel1Index({
+                        this._round2.contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),
                             keyId: Field(keyId),
                         });
-                    this.round2.contribution.updateInternal(
+                    this._round2.contribution.updateInternal(
                         level1IndexContribution,
                         Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
                     );
-                    this.round2.encryption.updateInternal(
+                    this._round2.encryption.updateInternal(
                         level1IndexEncryption,
                         Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
                     );
@@ -728,28 +728,28 @@ export class DkgService implements OnModuleInit {
                             );
                         }
                         const level2IndexContribution =
-                            this.round2.contribution.calculateLevel2Index(
+                            this._round2.contribution.calculateLevel2Index(
                                 Field(round2.memberId),
                             );
                         const contributionLeaf =
-                            this.round2.contribution.calculateLeaf(
+                            this._round2.contribution.calculateLeaf(
                                 contributions[j],
                             );
-                        this.round2.contribution.updateLeaf(
+                        this._round2.contribution.updateLeaf(
                             contributionLeaf,
                             level1IndexContribution,
                             level2IndexContribution,
                         );
                         const level2IndexEncryption =
-                            this.round2.contribution.calculateLevel2Index(
+                            this._round2.contribution.calculateLevel2Index(
                                 Field(round2.memberId),
                             );
                         const encryptionLeaf =
-                            this.round2.encryption.calculateLeaf({
+                            this._round2.encryption.calculateLeaf({
                                 memberId: Field(round2.memberId),
                                 contributions: contributions,
                             });
-                        this.round2.encryption.updateLeaf(
+                        this._round2.encryption.updateLeaf(
                             encryptionLeaf,
                             level1IndexEncryption,
                             level2IndexEncryption,
