@@ -33,7 +33,7 @@ import { Ipfs } from 'src/ipfs/ipfs';
 import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
 import { MemberRole } from 'src/constants';
 import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
-import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
+import { IpfsResponse } from 'src/entities/ipfs-response.interface';
 import { Key } from 'src/schemas/key.schema';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';

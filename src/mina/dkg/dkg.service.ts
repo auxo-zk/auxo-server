@@ -52,6 +52,32 @@ export class DkgService implements OnModuleInit {
         encryption: Storage.DKGStorage.EncryptionStorage;
     };
 
+    public get dkg(): {
+        zkApp: Field;
+        keyCounter: MerkleTree;
+        keyStatus: Storage.DKGStorage.KeyStatusStorage;
+    } {
+        return this._dkg;
+    }
+
+    public get round1(): {
+        zkApp: Field;
+        reduceState: Field;
+        contribution: Storage.DKGStorage.Round1ContributionStorage;
+        publicKey: Storage.DKGStorage.PublicKeyStorage;
+    } {
+        return this._round1;
+    }
+
+    public get round2(): {
+        zkApp: Field;
+        reduceState: Field;
+        contribution: Storage.DKGStorage.Round2ContributionStorage;
+        encryption: Storage.DKGStorage.EncryptionStorage;
+    } {
+        return this._round2;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(DkgAction.name)

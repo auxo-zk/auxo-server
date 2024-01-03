@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { lastValueFrom } from 'rxjs';
-import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
+import { IpfsResponse } from 'src/entities/ipfs-response.interface';
 
 @Injectable()
 export class Ipfs {

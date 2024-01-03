@@ -21,7 +21,7 @@ import { MemberRole } from 'src/constants';
 import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
 import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
 import { KeyDetail } from 'src/entities/key-detail.entity';
-import { IpfsResponse } from 'src/interfaces/ipfs-response.interface';
+import { IpfsResponse } from 'src/entities/ipfs-response.interface';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Committee } from 'src/schemas/committee.schema';
 import { Key } from 'src/schemas/key.schema';
