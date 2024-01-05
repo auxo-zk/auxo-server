@@ -14,9 +14,9 @@ import {
     Signature,
 } from 'o1js';
 import { ServerSignature } from 'src/entities/server-signature.entity';
-import { Utilities } from '../utilities';
 import { AuthenticateDto } from 'src/dtos/authenticate.dto';
 import { authTimeLimit } from 'src/constants';
+import { Utilities } from 'src/mina-contracts/utilities';
 
 @Injectable()
 export class AuthService {

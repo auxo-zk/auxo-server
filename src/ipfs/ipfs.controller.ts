@@ -7,7 +7,7 @@ import {
 import { Ipfs } from './ipfs';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
-import { IpfsResponse } from 'src/entities/ipfs-response.interface';
+import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 
 @Controller('ipfs')
 export class IpfsController {

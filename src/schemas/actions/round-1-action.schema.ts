@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
 import { Round1 } from '../round-1.schema';
 import { ZkApp } from '@auxo-dev/dkg';
-import { Utilities } from 'src/mina/utilities';
+import { Utilities } from 'src/mina-contracts/utilities';
 
 @Schema({ versionKey: false })
 export class Round1Action {

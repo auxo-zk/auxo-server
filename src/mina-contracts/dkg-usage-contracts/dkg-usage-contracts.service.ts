@@ -16,14 +16,14 @@ import { DkgResponse } from 'src/schemas/response.schema';
 import {
     RequestActionEnum,
     RequestEventEnum,
-    RequestStatus,
+    RequestStatusEnum,
 } from 'src/constants';
 import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
 
 @Injectable()
-export class DkgUsageService implements OnModuleInit {
+export class DkgUsageContractsService implements OnModuleInit {
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(RequestAction.name)
@@ -177,12 +177,13 @@ export class DkgUsageService implements OnModuleInit {
             });
         }
         const notResolvedDkgRequests = await this.dkgRequestModel.find({
-            status: { $ne: RequestStatus.RESOLVED },
+            status: { $ne: RequestStatusEnum.RESOLVED },
         });
         for (let i = 0; i < notResolvedDkgRequests.length; i++) {
             const notResolvedDkgRequest = notResolvedDkgRequests[i];
             if (
-                notResolvedDkgRequest.status == RequestStatus.NOT_YET_REQUESTED
+                notResolvedDkgRequest.status ==
+                RequestStatusEnum.NOT_YET_REQUESTED
             ) {
                 const dkgRequestRaw = await this.dkgRequestRawModel.findOne({
                     requestId: notResolvedDkgRequest.requestId,
@@ -201,18 +202,21 @@ export class DkgUsageService implements OnModuleInit {
                     notResolvedDkgRequest.set('R', dkgRequestRaw.R);
                     notResolvedDkgRequest.set(
                         'status',
-                        RequestStatus.REQUESTING,
+                        RequestStatusEnum.REQUESTING,
                     );
                 }
             }
-            if (notResolvedDkgRequest.status == RequestStatus.REQUESTING) {
+            if (notResolvedDkgRequest.status == RequestStatusEnum.REQUESTING) {
                 const dkgRequestRaw = await this.dkgRequestRawModel.findOne({
                     requestId: notResolvedDkgRequest.requestId,
                     actionEnum: RequestActionEnum.RESOLVE,
                 });
                 if (dkgRequestRaw) {
                     notResolvedDkgRequest.set('D', dkgRequestRaw.D);
-                    notResolvedDkgRequest.set('status', RequestStatus.RESOLVED);
+                    notResolvedDkgRequest.set(
+                        'status',
+                        RequestStatusEnum.RESOLVED,
+                    );
                 }
             }
 

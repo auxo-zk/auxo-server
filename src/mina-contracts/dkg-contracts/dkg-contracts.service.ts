@@ -21,7 +21,7 @@ import { Utilities } from '../utilities';
 import { Round1Contribution } from '@auxo-dev/dkg/build/esm/src/libs/Committee';
 import { Bit255 } from '@auxo-dev/auxo-libs';
 import { Committee } from 'src/schemas/committee.schema';
-import { DkgActionEnum, KeyStatus } from 'src/constants';
+import { DkgActionEnum, KeyStatusEnum } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
 
 const KEY_STATUS_ARRAY = [
@@ -32,8 +32,8 @@ const KEY_STATUS_ARRAY = [
     'DEPRECATED',
 ];
 @Injectable()
-export class DkgService implements OnModuleInit {
-    private readonly logger = new Logger(DkgService.name);
+export class DkgContractsService implements OnModuleInit {
+    private readonly logger = new Logger(DkgContractsService.name);
     private readonly _dkg: {
         zkApp: Field;
         keyCounter: MerkleTree;
@@ -482,7 +482,7 @@ export class DkgService implements OnModuleInit {
                         _id: keyObjectId,
                         committeeId: committeeId,
                         keyId: keyId,
-                        status: KeyStatus.ROUND_1_CONTRIBUTION,
+                        status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
                     });
                 }
                 const deprecated = await this.dkgModel.exists({
@@ -494,7 +494,7 @@ export class DkgService implements OnModuleInit {
                     _id: keyObjectId,
                 });
                 if (deprecated) {
-                    key.set('status', KeyStatus.DEPRECATED);
+                    key.set('status', KeyStatusEnum.DEPRECATED);
                 } else {
                     const finalizedRound2 = await this.dkgModel.exists({
                         committeeId: committeeId,
@@ -502,7 +502,7 @@ export class DkgService implements OnModuleInit {
                         actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
                     });
                     if (finalizedRound2) {
-                        key.set('status', KeyStatus.ACTIVE);
+                        key.set('status', KeyStatusEnum.ACTIVE);
                     } else {
                         const finalizedRound1 = await this.dkgModel.exists({
                             committeeId: committeeId,
@@ -510,7 +510,10 @@ export class DkgService implements OnModuleInit {
                             actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
                         });
                         if (finalizedRound1) {
-                            key.set('status', KeyStatus.ROUND_2_CONTRIBUTION);
+                            key.set(
+                                'status',
+                                KeyStatusEnum.ROUND_2_CONTRIBUTION,
+                            );
                         }
                     }
                 }
@@ -588,7 +591,7 @@ export class DkgService implements OnModuleInit {
                     keyId: keyId,
                     active: true,
                 });
-                if (key.status >= KeyStatus.ROUND_2_CONTRIBUTION) {
+                if (key.status >= KeyStatusEnum.ROUND_2_CONTRIBUTION) {
                     const level1IndexContribution =
                         this._round1.contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),
@@ -686,7 +689,7 @@ export class DkgService implements OnModuleInit {
                     {},
                     { sort: { memberId: 1 } },
                 );
-                if (key.status >= KeyStatus.ACTIVE) {
+                if (key.status >= KeyStatusEnum.ACTIVE) {
                     const level1IndexContribution =
                         this._round2.contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),

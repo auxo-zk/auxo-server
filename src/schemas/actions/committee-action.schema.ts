@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 import { Encoding, Field, Provable, PublicKey } from 'o1js';
 import { Committee } from '../committee.schema';
 import { ZkApp } from '@auxo-dev/dkg';
-import { Utilities } from 'src/mina/utilities';
+import { Utilities } from 'src/mina-contracts/utilities';
 
 export const memberTreeHeight = Number(
     process.env.MEMBER_TREE_HEIGHT as string,

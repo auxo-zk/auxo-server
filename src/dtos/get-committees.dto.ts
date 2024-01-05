@@ -1,14 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
-import { AuthRole, MemberRole } from 'src/constants';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { MemberRoleEnum } from 'src/constants';
 
 export class GetCommitteesDto {
     @IsString()
     @IsOptional()
     member?: string;
 
-    @IsEnum(MemberRole)
+    @IsEnum(MemberRoleEnum)
     @Type(() => Number)
     @IsOptional()
     @ApiProperty({ description: 'OWNER | MEMBER | NONE' })

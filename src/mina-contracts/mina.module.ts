@@ -31,13 +31,11 @@ import { Round2, Round2Schema } from 'src/schemas/round-2.schema';
 import { Network } from './network/network';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { QueryService } from './query/query.service';
-import { CronTaskService } from './cron-task/cron-task.service';
-import { CommitteesService } from './committees/committees.service';
-import { DkgService } from './dkg/dkg.service';
+import { CronTasksService } from './cron-tasks/cron-tasks.service';
+import { CommitteeContractService } from './committee-contract/committee-contract.service';
+import { DkgContractsService } from './dkg-contracts/dkg-contracts.service';
 
-import { TestController } from './test/test.controller';
-import { CommitteesController } from './committees/committees.controller';
-import { DkgUsageService } from './dkg-usage/dkg-usage.service';
+import { DkgUsageContractsService } from './dkg-usage-contracts/dkg-usage-contracts.service';
 import {
     RequestAction,
     RequestActionSchema,
@@ -47,8 +45,6 @@ import {
     ResponseActionSchema,
 } from 'src/schemas/actions/response-action.schema';
 import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
-import { AuthController } from './auth/auth.controller';
-import { AuthService } from './auth/auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from 'src/constants';
 import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
@@ -56,8 +52,7 @@ import {
     DkgRequestRaw,
     DkgRequestRawSchema,
 } from 'src/schemas/request-raw.schema';
-import { StoragesController } from './storages/storages.controller';
-import { StoragesService } from './storages/storages.service';
+import { ProjectContractService } from './project-contract/project-contract.service';
 
 @Module({
     imports: [
@@ -79,7 +74,6 @@ import { StoragesService } from './storages/storages.service';
             { name: DkgResponse.name, schema: DkgResponseSchema },
         ]),
         HttpModule,
-        CacheModule.register(),
         BullModule.forRoot({
             redis: {
                 host: 'localhost',
@@ -90,28 +84,17 @@ import { StoragesService } from './storages/storages.service';
             name: 'rollup-committee',
             processors: [join(__dirname, 'rollup-committee-processor.js')],
         }),
-        JwtModule.register({
-            global: true,
-            secret: jwtConstants.secret,
-            signOptions: { expiresIn: '10d' },
-        }),
     ],
     providers: [
         Network,
         QueryService,
-        CronTaskService,
-        CommitteesService,
+        CronTasksService,
+        CommitteeContractService,
         Ipfs,
-        DkgService,
-        DkgUsageService,
-        AuthService,
-        StoragesService,
+        DkgContractsService,
+        DkgUsageContractsService,
+        ProjectContractService,
     ],
-    controllers: [
-        CommitteesController,
-        TestController,
-        AuthController,
-        StoragesController,
-    ],
+    exports: [CommitteeContractService, DkgContractsService],
 })
-export class MinaModule {}
+export class MinaContractsModule {}

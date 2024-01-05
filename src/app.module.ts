@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { MinaModule } from './mina/mina.module';
+import { MinaContractsModule } from './mina-contracts/mina.module';
 import { HttpModule } from '@nestjs/axios';
 
 // import { Committee, CommitteeSchema } from './schemas/committee.schema';
@@ -15,13 +15,15 @@ import { AppService } from './app.service';
 import { AppController } from './app.controller';
 import { Ipfs } from './ipfs/ipfs';
 import { IpfsController } from './ipfs/ipfs.controller';
+import { ApisModule } from './apis/apis.module';
 
 @Module({
     imports: [
         MongooseModule.forRoot(process.env.DB),
         MongooseModule.forFeature([]),
-        MinaModule,
+        MinaContractsModule,
         HttpModule,
+        ApisModule,
     ],
     controllers: [AppController, IpfsController],
     providers: [AppService, Ipfs],

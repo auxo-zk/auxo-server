@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
 import { Dkg } from '../dkg.schema';
 import { ZkApp } from '@auxo-dev/dkg';
-import { Utilities } from 'src/mina/utilities';
+import { Utilities } from 'src/mina-contracts/utilities';
 import { DkgActionEnum } from 'src/constants';
 
 @Schema({ versionKey: false })

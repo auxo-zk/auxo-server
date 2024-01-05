@@ -17,7 +17,6 @@ import {
     PublicKey,
     Reducer,
 } from 'o1js';
-import { CommitteeState } from '../../interfaces/committee-state.interface';
 import { Committee } from 'src/schemas/committee.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, set } from 'mongoose';
@@ -31,15 +30,16 @@ import { Utilities } from '../utilities';
 import { CommitteeStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
-import { MemberRole } from 'src/constants';
+import { MemberRoleEnum } from 'src/constants';
 import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
-import { IpfsResponse } from 'src/entities/ipfs-response.interface';
+import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { Key } from 'src/schemas/key.schema';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
+
 @Injectable()
-export class CommitteesService implements OnModuleInit {
-    private readonly logger = new Logger(CommitteesService.name);
+export class CommitteeContractService implements OnModuleInit {
+    private readonly logger = new Logger(CommitteeContractService.name);
     private _nextCommitteeId: number;
     private _memberTree: Storage.CommitteeStorage.MemberStorage;
     private _settingTree: Storage.CommitteeStorage.SettingStorage;
@@ -93,18 +93,18 @@ export class CommitteesService implements OnModuleInit {
         });
     }
 
-    async fetchZkAppState(): Promise<CommitteeState> {
-        const state = await this.queryService.fetchZkAppState(
-            process.env.COMMITTEE_ADDRESS,
-        );
-        const committeeState: CommitteeState = {
-            nextCommitteeId: state[0],
-            committeeTreeRoot: state[1],
-            settingTreeRoot: state[2],
-            actionState: state[3],
-        };
-        return committeeState;
-    }
+    // async fetchZkAppState(): Promise<CommitteeState> {
+    //     const state = await this.queryService.fetchZkAppState(
+    //         process.env.COMMITTEE_ADDRESS,
+    //     );
+    //     const committeeState: CommitteeState = {
+    //         nextCommitteeId: state[0],
+    //         committeeTreeRoot: state[1],
+    //         settingTreeRoot: state[2],
+    //         actionState: state[3],
+    //     };
+    //     return committeeState;
+    // }
 
     // async rollup() {
     //     const state = await this.fetchZkAppState();
@@ -363,7 +363,7 @@ export class CommitteesService implements OnModuleInit {
             getCommitteesDto.member != undefined &&
             getCommitteesDto.role != undefined
         ) {
-            if (getCommitteesDto.role == MemberRole.OWNER) {
+            if (getCommitteesDto.role == MemberRoleEnum.OWNER) {
                 committees = await this.committeeModel.aggregate([
                     { $match: { creator: getCommitteesDto.member } },
                     {
@@ -378,7 +378,7 @@ export class CommitteesService implements OnModuleInit {
                         },
                     },
                 ]);
-            } else if (getCommitteesDto.role == MemberRole.MEMBER) {
+            } else if (getCommitteesDto.role == MemberRoleEnum.MEMBER) {
                 committees = await this.committeeModel.aggregate([
                     {
                         $match: {

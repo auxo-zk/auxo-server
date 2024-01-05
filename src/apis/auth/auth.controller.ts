@@ -9,8 +9,6 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthenticateDto } from 'src/dtos/authenticate.dto';
 import { AuthService } from './auth.service';
-import { Encoding, Field, PrivateKey, Provable, Signature } from 'o1js';
-import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { ServerSignature } from 'src/entities/server-signature.entity';
 import { AuthGuard } from './auth.guard';
 

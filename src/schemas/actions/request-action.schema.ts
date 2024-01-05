@@ -2,7 +2,7 @@ import { ZkApp } from '@auxo-dev/dkg';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
-import { Utilities } from 'src/mina/utilities';
+import { Utilities } from 'src/mina-contracts/utilities';
 import { DkgRequestRaw } from '../request-raw.schema';
 import { RequestActionEnum } from 'src/constants';
 

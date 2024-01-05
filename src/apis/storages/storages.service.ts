@@ -1,19 +1,14 @@
-import {
-    BadRequestException,
-    Injectable,
-    NotFoundException,
-} from '@nestjs/common';
-import { CommitteesService } from '../committees/committees.service';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Field } from 'o1js';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
-import { DkgService } from '../dkg/dkg.service';
-import { Storage } from '@auxo-dev/dkg';
+import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
+import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contracts.service';
 
 @Injectable()
 export class StoragesService {
     constructor(
-        private readonly committeesService: CommitteesService,
-        private readonly dkgService: DkgService,
+        private readonly committeesService: CommitteeContractService,
+        private readonly dkgService: DkgContractsService,
     ) {}
 
     getMemberTreeLevel1(): MerkleLeaf[] {

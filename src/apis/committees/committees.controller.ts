@@ -1,41 +1,26 @@
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
-    BadRequestException,
     Body,
     Controller,
     Get,
-    HttpStatus,
-    NotFoundException,
     Param,
     ParseIntPipe,
     Post,
     Query,
-    Res,
     UseInterceptors,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
-import { Model } from 'mongoose';
-import { MemberRole } from 'src/constants';
-import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
-import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
-import { KeyDetail } from 'src/entities/key-detail.entity';
-import { IpfsResponse } from 'src/entities/ipfs-response.interface';
-import { Ipfs } from 'src/ipfs/ipfs';
-import { Committee } from 'src/schemas/committee.schema';
-import { Key } from 'src/schemas/key.schema';
-import { Round1 } from 'src/schemas/round-1.schema';
-import { Round2 } from 'src/schemas/round-2.schema';
 import { CommitteesService } from './committees.service';
+import { ApiTags } from '@nestjs/swagger';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
+import { Committee } from 'src/schemas/committee.schema';
+import { IpfsResponse } from 'src/entities/ipfs-response.entity';
+import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
 import { DkgRequest } from 'src/schemas/request.schema';
+import { Key } from 'src/schemas/key.schema';
 
 @Controller('committees')
 export class CommitteesController {
-    constructor(
-        private readonly ipfs: Ipfs,
-        private readonly committeesService: CommitteesService,
-    ) {}
+    constructor(private readonly committeesService: CommitteesService) {}
 
     @Get()
     @ApiTags('Committee')

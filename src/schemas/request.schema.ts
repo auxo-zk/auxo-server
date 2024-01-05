@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { RequestStatus } from 'src/constants';
+import { RequestStatusEnum } from 'src/constants';
 
 @Schema({ versionKey: false })
 export class DkgRequest {
@@ -22,8 +22,8 @@ export class DkgRequest {
     @Prop()
     D?: { x: string; y: string }[];
 
-    @Prop({ default: RequestStatus.NOT_YET_REQUESTED })
-    status: RequestStatus;
+    @Prop({ default: RequestStatusEnum.NOT_YET_REQUESTED })
+    status: RequestStatusEnum;
 }
 
 export type DkgRequestDocument = HydratedDocument<DkgRequest>;

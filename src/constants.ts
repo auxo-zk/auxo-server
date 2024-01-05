@@ -1,14 +1,14 @@
-export const enum CommitteeEventEnum {
+export enum CommitteeEventEnum {
     COMMITTEE_CREATED,
     __LENGTH,
 }
 
-export const enum DkgEventEnum {
+export enum DkgEventEnum {
     KEY_UPDATES_REDUCED,
     __LENGTH,
 }
 
-export const enum DkgActionEnum {
+export enum DkgActionEnum {
     GENERATE_KEY,
     FINALIZE_ROUND_1,
     FINALIZE_ROUND_2,
@@ -16,14 +16,14 @@ export const enum DkgActionEnum {
     __LENGTH,
 }
 
-export const enum RequestActionEnum {
+export enum RequestActionEnum {
     REQUEST,
     UNREQUEST,
     RESOLVE,
     __LENGTH,
 }
 
-export const enum RequestStatus {
+export enum RequestStatusEnum {
     NOT_YET_REQUESTED,
     REQUESTING,
     RESOLVED,
@@ -34,7 +34,7 @@ export enum RequestEventEnum {
     CREATE_REQUEST,
 }
 
-export const enum KeyStatus {
+export enum KeyStatusEnum {
     EMPTY,
     ROUND_1_CONTRIBUTION,
     ROUND_2_CONTRIBUTION,
@@ -49,13 +49,13 @@ export const jwtConstants = {
 // ms
 export const authTimeLimit = 120 * 1000;
 
-export enum AuthRole {
+export enum AuthRoleEnum {
     BUILDER,
     ORGANIZER,
     INVESTOR,
 }
 
-export enum MemberRole {
+export enum MemberRoleEnum {
     OWNER,
     MEMBER,
     NONE,
