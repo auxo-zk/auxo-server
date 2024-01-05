@@ -80,7 +80,7 @@ export class CommitteeContractService implements OnModuleInit {
         await this.createTrees();
     }
 
-    async fetch() {
+    private async fetch() {
         await this.fetchAllActions();
     }
 

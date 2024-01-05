@@ -7,16 +7,17 @@ import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contra
 @Injectable()
 export class StoragesService {
     constructor(
-        private readonly committeesService: CommitteeContractService,
+        private readonly committeeContractsService: CommitteeContractService,
         private readonly dkgService: DkgContractsService,
     ) {}
 
     getMemberTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.committeesService.memberTree.level1.leafCount;
+        const leafCount =
+            this.committeeContractsService.memberTree.level1.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.committeesService.memberTree
+                this.committeeContractsService.memberTree
                     .getLevel1Witness(Field(i))
                     .toJSON(),
             );
@@ -26,13 +27,13 @@ export class StoragesService {
 
     getMemberTreeLevel2(level1Index: number) {
         const result: MerkleLeaf[] = [];
-        if (this.committeesService.memberTree.level2s[level1Index]) {
+        if (this.committeeContractsService.memberTree.level2s[level1Index]) {
             const leafCount =
-                this.committeesService.memberTree.level2s[level1Index]
+                this.committeeContractsService.memberTree.level2s[level1Index]
                     .leafCount;
             for (let i = 0; i < leafCount; i++) {
                 result.push(
-                    this.committeesService.memberTree
+                    this.committeeContractsService.memberTree
                         .getLevel2Witness(Field(level1Index), Field(i))
                         .toJSON(),
                 );
@@ -44,11 +45,12 @@ export class StoragesService {
     }
 
     getSettingTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.committeesService.settingTree.level1.leafCount;
+        const leafCount =
+            this.committeeContractsService.settingTree.level1.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.committeesService.settingTree
+                this.committeeContractsService.settingTree
                     .getWitness(Field(i))
                     .toJSON(),
             );

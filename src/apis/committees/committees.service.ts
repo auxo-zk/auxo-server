@@ -21,14 +21,8 @@ export class CommitteesService {
         private readonly committeeModel: Model<Committee>,
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
-        @InjectModel(Round1.name)
-        private readonly round1Model: Model<Round1>,
-        @InjectModel(Round2.name)
-        private readonly round2Model: Model<Round2>,
         @InjectModel(DkgRequest.name)
         private readonly dkgRequestModel: Model<DkgRequest>,
-        @InjectModel(DkgResponse.name)
-        private readonly dkgResponseModel: Model<DkgResponse>,
     ) {}
 
     async getAllCommittees(

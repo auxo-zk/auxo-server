@@ -123,7 +123,14 @@ export class DkgContractsService implements OnModuleInit {
         await this.createTreesForRound2();
     }
 
-    async fetch() {
+    async update() {
+        await this.fetch();
+        await this.createTreesForDkg();
+        await this.createTreesForRound1();
+        await this.createTreesForRound2();
+    }
+
+    private async fetch() {
         await this.fetchAllDkgActions();
         await this.fetchAllRound1Actions();
         await this.fetchAllRound2Actions();

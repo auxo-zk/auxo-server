@@ -41,7 +41,11 @@ export class DkgUsageContractsService implements OnModuleInit {
         await this.fetch();
     }
 
-    async fetch() {
+    async update() {
+        await this.fetch();
+    }
+
+    private async fetch() {
         await this.fetchAllRequestActions();
         await this.fetchAllResponseActions();
     }
