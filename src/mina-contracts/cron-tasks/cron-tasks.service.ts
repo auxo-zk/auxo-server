@@ -19,15 +19,10 @@ export class CronTasksService {
 
     // 3 minutes
     @Interval(180000)
-    async handleNewBlock(): Promise<void> {
+    async handleUpdateContracts(): Promise<void> {
         // await fetchLastBlock();
         await this.committeeContractsService.update();
         await this.dkgContractsService.update();
         await this.dkgUsageContractsService.update();
-    }
-
-    @Interval(300000)
-    async handleFetchCommitteeEvents(): Promise<void> {
-        // await this.committeesService.fetchCommitteeCreatedEvents();
     }
 }

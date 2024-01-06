@@ -3,7 +3,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
 import { Utilities } from 'src/mina-contracts/utilities';
-import { DkgRequestRaw } from '../request-raw.schema';
+import { RawDkgRequest } from '../raw-request.schema';
 import { RequestActionEnum } from 'src/constants';
 
 @Schema({ versionKey: false })
@@ -24,7 +24,7 @@ export class RequestAction {
 export type RequestActionDocument = HydratedDocument<RequestAction>;
 export const RequestActionSchema = SchemaFactory.createForClass(RequestAction);
 
-export function getDkgRequest(requestAction: RequestAction): DkgRequestRaw {
+export function getDkgRequest(requestAction: RequestAction): RawDkgRequest {
     const action = ZkApp.Request.RequestAction.fromFields(
         Utilities.stringArrayToFields(requestAction.actions),
     );
@@ -42,7 +42,7 @@ export function getDkgRequest(requestAction: RequestAction): DkgRequestRaw {
         const y = action.D.values[i].y.toString();
         D.push({ x: x, y: y });
     }
-    const dkgRequest: DkgRequestRaw = {
+    const dkgRequest: RawDkgRequest = {
         actionId: requestAction.actionId,
         requestId: requestId,
         requester: requester,

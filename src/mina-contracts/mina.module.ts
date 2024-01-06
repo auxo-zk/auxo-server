@@ -49,10 +49,14 @@ import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from 'src/constants';
 import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
 import {
-    DkgRequestRaw,
-    DkgRequestRawSchema,
-} from 'src/schemas/request-raw.schema';
+    RawDkgRequest,
+    RawDkgRequestSchema,
+} from 'src/schemas/raw-request.schema';
 import { ProjectContractService } from './project-contract/project-contract.service';
+import {
+    ProjectAction,
+    ProjectActionSchema,
+} from 'src/schemas/actions/project-action.schema';
 
 @Module({
     imports: [
@@ -68,10 +72,11 @@ import { ProjectContractService } from './project-contract/project-contract.serv
             { name: Round2.name, schema: Round2Schema },
             { name: Key.name, schema: KeySchema },
             { name: RequestAction.name, schema: RequestActionSchema },
-            { name: DkgRequestRaw.name, schema: DkgRequestRawSchema },
+            { name: RawDkgRequest.name, schema: RawDkgRequestSchema },
             { name: DkgRequest.name, schema: DkgRequestSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
             { name: DkgResponse.name, schema: DkgResponseSchema },
+            { name: ProjectAction.name, schema: ProjectActionSchema },
         ]),
         HttpModule,
         BullModule.forRoot({

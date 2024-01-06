@@ -7,7 +7,7 @@ import {
 } from 'src/schemas/actions/request-action.schema';
 import { QueryService } from '../query/query.service';
 import { Field, Reducer } from 'o1js';
-import { DkgRequestRaw } from 'src/schemas/request-raw.schema';
+import { RawDkgRequest } from 'src/schemas/raw-request.schema';
 import {
     ResponseAction,
     getDkgResponse,
@@ -28,8 +28,8 @@ export class DkgUsageContractsService implements OnModuleInit {
         private readonly queryService: QueryService,
         @InjectModel(RequestAction.name)
         private readonly requestActionModel: Model<RequestAction>,
-        @InjectModel(DkgRequestRaw.name)
-        private readonly dkgRequestRawModel: Model<DkgRequestRaw>,
+        @InjectModel(RawDkgRequest.name)
+        private readonly rawDkgRequestModel: Model<RawDkgRequest>,
         @InjectModel(DkgRequest.name)
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(ResponseAction.name)
@@ -88,21 +88,21 @@ export class DkgUsageContractsService implements OnModuleInit {
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await this.updateDkgRequestRaws();
+        await this.updateRawDkgRequests();
         await this.updateDkgRequests();
     }
 
-    private async updateDkgRequestRaws() {
+    private async updateRawDkgRequests() {
         let promises = [];
-        const lastDkgRequestRaw = await this.dkgRequestRawModel.findOne(
+        const lastRawDkgRequest = await this.rawDkgRequestModel.findOne(
             {},
             {},
             { sort: { actionId: -1 } },
         );
         let requestActions: RequestAction[];
-        if (lastDkgRequestRaw != null) {
+        if (lastRawDkgRequest != null) {
             requestActions = await this.requestActionModel.find(
-                { actionId: { $gt: lastDkgRequestRaw.actionId } },
+                { actionId: { $gt: lastRawDkgRequest.actionId } },
                 {},
                 { sort: { actionId: 1 } },
             );
@@ -116,7 +116,7 @@ export class DkgUsageContractsService implements OnModuleInit {
         for (let i = 0; i < requestActions.length; i++) {
             const requestAction = requestActions[i];
             promises.push(
-                this.dkgRequestRawModel.findOneAndUpdate(
+                this.rawDkgRequestModel.findOneAndUpdate(
                     { actionId: requestAction.actionId },
                     getDkgRequest(requestAction),
                     { new: true, upsert: true },
@@ -132,16 +132,16 @@ export class DkgUsageContractsService implements OnModuleInit {
         for (let i = 0; i < rawEvents.length; i++) {
             const event = this.readRequestEvent(rawEvents[i].events[0].data);
             if (event.requestEventEnum == RequestEventEnum.CREATE_REQUEST) {
-                const dkgRequestRaws = await this.dkgRequestRawModel.find({
+                const rawDkgRequests = await this.rawDkgRequestModel.find({
                     requestId: event.requestId,
                     committeeId: undefined,
                     keyId: undefined,
                 });
-                for (let j = 0; j < dkgRequestRaws.length; j++) {
-                    const dkgRequestRaw = dkgRequestRaws[j];
-                    dkgRequestRaw.set('committeeId', event.committeeId);
-                    dkgRequestRaw.set('keyId', event.keyId);
-                    await dkgRequestRaw.save();
+                for (let j = 0; j < rawDkgRequests.length; j++) {
+                    const rawDkgRequest = rawDkgRequests[j];
+                    rawDkgRequest.set('committeeId', event.committeeId);
+                    rawDkgRequest.set('keyId', event.keyId);
+                    await rawDkgRequest.save();
                 }
             } else {
                 lastActionHash = event.actionHash;
@@ -152,7 +152,7 @@ export class DkgUsageContractsService implements OnModuleInit {
                 currentActionState: lastActionHash,
             });
 
-            const notActiveDkgRequestRaws = await this.dkgRequestRawModel.find(
+            const notActiveRawDkgRequests = await this.rawDkgRequestModel.find(
                 {
                     actionId: { $lte: lastRequestAction.actionId },
                     active: false,
@@ -160,10 +160,10 @@ export class DkgUsageContractsService implements OnModuleInit {
                 {},
                 { sort: { actionId: 1 } },
             );
-            for (let i = 0; i < notActiveDkgRequestRaws.length; i++) {
-                const notActiveDkgRequestRaw = notActiveDkgRequestRaws[i];
-                notActiveDkgRequestRaw.set('active', true);
-                await notActiveDkgRequestRaw.save();
+            for (let i = 0; i < notActiveRawDkgRequests.length; i++) {
+                const notActiveRawDkgRequest = notActiveRawDkgRequests[i];
+                notActiveRawDkgRequest.set('active', true);
+                await notActiveRawDkgRequest.save();
             }
         }
     }
@@ -172,7 +172,7 @@ export class DkgUsageContractsService implements OnModuleInit {
         const existedRequestIds = await this.dkgRequestModel
             .find({})
             .distinct('requestId');
-        const notExistedRequestIds = await this.dkgRequestRawModel
+        const notExistedRequestIds = await this.rawDkgRequestModel
             .find({ requestId: { $nin: existedRequestIds } })
             .distinct('requestId');
         for (let i = 0; i < notExistedRequestIds.length; i++) {
@@ -189,21 +189,21 @@ export class DkgUsageContractsService implements OnModuleInit {
                 notResolvedDkgRequest.status ==
                 RequestStatusEnum.NOT_YET_REQUESTED
             ) {
-                const dkgRequestRaw = await this.dkgRequestRawModel.findOne({
+                const rawDkgRequest = await this.rawDkgRequestModel.findOne({
                     requestId: notResolvedDkgRequest.requestId,
                     actionEnum: RequestActionEnum.REQUEST,
                 });
-                if (dkgRequestRaw) {
+                if (rawDkgRequest) {
                     notResolvedDkgRequest.set(
                         'committeeId',
-                        dkgRequestRaw.committeeId,
+                        rawDkgRequest.committeeId,
                     );
-                    notResolvedDkgRequest.set('keyId', dkgRequestRaw.keyId);
+                    notResolvedDkgRequest.set('keyId', rawDkgRequest.keyId);
                     notResolvedDkgRequest.set(
                         'requester',
-                        dkgRequestRaw.requester,
+                        rawDkgRequest.requester,
                     );
-                    notResolvedDkgRequest.set('R', dkgRequestRaw.R);
+                    notResolvedDkgRequest.set('R', rawDkgRequest.R);
                     notResolvedDkgRequest.set(
                         'status',
                         RequestStatusEnum.REQUESTING,
@@ -211,12 +211,12 @@ export class DkgUsageContractsService implements OnModuleInit {
                 }
             }
             if (notResolvedDkgRequest.status == RequestStatusEnum.REQUESTING) {
-                const dkgRequestRaw = await this.dkgRequestRawModel.findOne({
+                const rawDkgRequest = await this.rawDkgRequestModel.findOne({
                     requestId: notResolvedDkgRequest.requestId,
                     actionEnum: RequestActionEnum.RESOLVE,
                 });
-                if (dkgRequestRaw) {
-                    notResolvedDkgRequest.set('D', dkgRequestRaw.D);
+                if (rawDkgRequest) {
+                    notResolvedDkgRequest.set('D', rawDkgRequest.D);
                     notResolvedDkgRequest.set(
                         'status',
                         RequestStatusEnum.RESOLVED,

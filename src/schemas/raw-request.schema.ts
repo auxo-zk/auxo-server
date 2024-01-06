@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 import { RequestActionEnum } from 'src/constants';
 
 @Schema({ versionKey: false })
-export class DkgRequestRaw {
+export class RawDkgRequest {
     @Prop({ required: true, unique: true, index: true })
     actionId: number;
 
@@ -32,5 +32,5 @@ export class DkgRequestRaw {
     active?: boolean;
 }
 
-export type DkgRequestRawDocument = HydratedDocument<DkgRequestRaw>;
-export const DkgRequestRawSchema = SchemaFactory.createForClass(DkgRequestRaw);
+export type RawDkgRequestDocument = HydratedDocument<RawDkgRequest>;
+export const RawDkgRequestSchema = SchemaFactory.createForClass(RawDkgRequest);
