@@ -57,6 +57,8 @@ import {
     ProjectAction,
     ProjectActionSchema,
 } from 'src/schemas/actions/project-action.schema';
+import { RawProject, RawProjectSchema } from 'src/schemas/raw-project.schema';
+import { Project, ProjectSchema } from 'src/schemas/project.schema';
 
 @Module({
     imports: [
@@ -77,6 +79,8 @@ import {
             { name: ResponseAction.name, schema: ResponseActionSchema },
             { name: DkgResponse.name, schema: DkgResponseSchema },
             { name: ProjectAction.name, schema: ProjectActionSchema },
+            { name: RawProject.name, schema: RawProjectSchema },
+            { name: Project.name, schema: ProjectSchema },
         ]),
         HttpModule,
         BullModule.forRoot({

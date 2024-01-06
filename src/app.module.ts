@@ -19,7 +19,10 @@ import { ApisModule } from './apis/apis.module';
 
 @Module({
     imports: [
-        MongooseModule.forRoot(process.env.DB),
+        MongooseModule.forRoot(process.env.DB, {
+            connectTimeoutMS: 10000000,
+            socketTimeoutMS: 10000000,
+        }),
         MongooseModule.forFeature([]),
         MinaContractsModule,
         HttpModule,

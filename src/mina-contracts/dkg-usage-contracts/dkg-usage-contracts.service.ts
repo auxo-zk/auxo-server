@@ -3,7 +3,7 @@ import { InjectModel, raw } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
     RequestAction,
-    getDkgRequest,
+    getRawDkgRequest,
 } from 'src/schemas/actions/request-action.schema';
 import { QueryService } from '../query/query.service';
 import { Field, Reducer } from 'o1js';
@@ -118,7 +118,7 @@ export class DkgUsageContractsService implements OnModuleInit {
             promises.push(
                 this.rawDkgRequestModel.findOneAndUpdate(
                     { actionId: requestAction.actionId },
-                    getDkgRequest(requestAction),
+                    getRawDkgRequest(requestAction),
                     { new: true, upsert: true },
                 ),
             );

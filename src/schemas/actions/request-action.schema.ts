@@ -24,7 +24,7 @@ export class RequestAction {
 export type RequestActionDocument = HydratedDocument<RequestAction>;
 export const RequestActionSchema = SchemaFactory.createForClass(RequestAction);
 
-export function getDkgRequest(requestAction: RequestAction): RawDkgRequest {
+export function getRawDkgRequest(requestAction: RequestAction): RawDkgRequest {
     const action = ZkApp.Request.RequestAction.fromFields(
         Utilities.stringArrayToFields(requestAction.actions),
     );

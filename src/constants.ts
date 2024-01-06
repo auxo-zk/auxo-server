@@ -34,6 +34,11 @@ export enum RequestEventEnum {
     CREATE_REQUEST,
 }
 
+export enum ProjectActionEnum {
+    CREATE_PROJECT,
+    UPDATE_PROJECT,
+}
+
 export enum KeyStatusEnum {
     EMPTY,
     ROUND_1_CONTRIBUTION,

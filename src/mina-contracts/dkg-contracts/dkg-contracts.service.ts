@@ -99,7 +99,7 @@ export class DkgContractsService implements OnModuleInit {
     ) {
         this._dkg = {
             zkApp: Field(0),
-            keyCounter: Storage.DKGStorage.EMPTY_LEVEL_1_TREE(),
+            keyCounter: new MerkleTree(Storage.DKGStorage.LEVEL1_TREE_HEIGHT),
             keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
         };
         this._round1 = {

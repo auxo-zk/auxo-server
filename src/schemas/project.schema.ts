@@ -1,19 +1,26 @@
-import { Prop, Schema } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
 
 @Schema({ versionKey: false })
 export class Project {
     @Prop({ required: true, unique: true, index: true })
-    committeeId: number;
+    projectId: number;
 
     @Prop()
     members: string[];
 
     @Prop()
-    ipfsHash: string;
+    payeeAccount: string;
 
     @Prop()
-    payeeAccount: string;
+    ipfsHash: string;
+
+    @Prop({ type: Object })
+    ipfsData: object;
 
     @Prop({ required: true, default: false, index: true })
     active?: boolean;
 }
+
+export type ProjectDocument = HydratedDocument<Project>;
+export const ProjectSchema = SchemaFactory.createForClass(Project);
