@@ -15,14 +15,15 @@ export class CreateProjectDto {
     description: string;
 
     @ValidateNested()
-    @Type(() => Member)
-    members: Member[];
+    @Type(() => ProjectMember)
+    members: ProjectMember[];
 
-    @IsArray({ each: true })
+    @IsArray()
+    @IsString({ each: true })
     documents: string[];
 }
 
-class Member {
+export class ProjectMember {
     @IsString()
     name: string;
 

@@ -19,14 +19,8 @@ export class Committee {
     @Prop()
     ipfsHash: string;
 
-    @Prop()
-    name?: string;
-
-    @Prop()
-    creator?: string;
-
-    @Prop()
-    members?: Member[];
+    @Prop({ type: Object })
+    ipfsData?: object;
 
     @Prop({ required: true, default: false, index: true })
     active?: boolean;
@@ -34,14 +28,3 @@ export class Committee {
 
 export type CommitteeDocument = HydratedDocument<Committee>;
 export const CommitteeSchema = SchemaFactory.createForClass(Committee);
-
-export class Member {
-    @IsNumber()
-    memberId: number;
-
-    @IsString()
-    alias: string;
-
-    @IsString()
-    publicKey: string;
-}

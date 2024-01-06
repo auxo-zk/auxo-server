@@ -18,6 +18,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from 'src/constants';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
+import { ProjectsService } from './projects/projects.service';
+import { ProjectsController } from './projects/projects.controller';
+import { Project, ProjectSchema } from 'src/schemas/project.schema';
 
 @Module({
     imports: [
@@ -29,6 +32,7 @@ import { AuthController } from './auth/auth.controller';
             { name: Round2.name, schema: Round2Schema },
             { name: DkgRequest.name, schema: DkgRequestSchema },
             { name: DkgResponse.name, schema: DkgResponseSchema },
+            { name: Project.name, schema: ProjectSchema },
         ]),
         HttpModule,
         CacheModule.register(),
@@ -38,7 +42,18 @@ import { AuthController } from './auth/auth.controller';
             signOptions: { expiresIn: '10d' },
         }),
     ],
-    controllers: [CommitteesController, StoragesController, AuthController],
-    providers: [Ipfs, CommitteesService, StoragesService, AuthService],
+    controllers: [
+        CommitteesController,
+        StoragesController,
+        AuthController,
+        ProjectsController,
+    ],
+    providers: [
+        Ipfs,
+        CommitteesService,
+        StoragesService,
+        AuthService,
+        ProjectsService,
+    ],
 })
 export class ApisModule {}

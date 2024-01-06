@@ -131,15 +131,20 @@ export class DkgContractsService implements OnModuleInit {
     }
 
     private async fetch() {
-        await this.fetchAllDkgActions();
-        await this.fetchAllRound1Actions();
-        await this.fetchAllRound2Actions();
-        await this.updateKeys();
+        try {
+            await this.fetchDkgActions();
+            await this.fetchRound1Actions();
+            await this.fetchRound2Actions();
+            await this.updateDkgs();
+            await this.updateRound1s();
+            await this.updateRound2s();
+            await this.updateKeys();
+        } catch (err) {}
     }
 
     // ============ PRIVATE FUNCTIONS ============
 
-    private async fetchAllDkgActions() {
+    private async fetchDkgActions() {
         const lastAction = await this.dkgActionModel.findOne(
             {},
             {},
@@ -177,10 +182,9 @@ export class DkgContractsService implements OnModuleInit {
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await this.updateDkgs();
     }
 
-    private async fetchAllRound1Actions() {
+    private async fetchRound1Actions() {
         const lastAction = await this.round1ActionModel.findOne(
             {},
             {},
@@ -218,10 +222,9 @@ export class DkgContractsService implements OnModuleInit {
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await this.updateRound1s();
     }
 
-    private async fetchAllRound2Actions() {
+    private async fetchRound2Actions() {
         const lastAction = await this.round2ActionModel.findOne(
             {},
             {},
@@ -259,7 +262,6 @@ export class DkgContractsService implements OnModuleInit {
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await this.updateRound2s();
     }
 
     private async updateDkgs() {

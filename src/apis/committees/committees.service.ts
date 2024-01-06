@@ -35,7 +35,7 @@ export class CommitteesService {
         ) {
             if (getCommitteesDto.role == MemberRoleEnum.OWNER) {
                 committees = await this.committeeModel.aggregate([
-                    { $match: { creator: getCommitteesDto.member } },
+                    { $match: { 'ipfsData.creator': getCommitteesDto.member } },
                     {
                         $lookup: {
                             from: 'dkgrequests',
@@ -52,7 +52,9 @@ export class CommitteesService {
                 committees = await this.committeeModel.aggregate([
                     {
                         $match: {
-                            creator: { $ne: getCommitteesDto.member },
+                            'ipfsData.creator': {
+                                $ne: getCommitteesDto.member,
+                            },
                             publicKeys: getCommitteesDto.member,
                         },
                     },

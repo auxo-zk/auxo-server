@@ -46,11 +46,16 @@ export class DkgUsageContractsService implements OnModuleInit {
     }
 
     private async fetch() {
-        await this.fetchAllRequestActions();
-        await this.fetchAllResponseActions();
+        try {
+            await this.fetchRequestActions();
+            await this.fetchResponseActions();
+            await this.updateRawDkgRequests();
+            await this.updateDkgRequests();
+            await this.updateDkgResponse();
+        } catch (err) {}
     }
 
-    private async fetchAllRequestActions() {
+    private async fetchRequestActions() {
         const lastAction = await this.requestActionModel.findOne(
             {},
             {},
@@ -88,8 +93,6 @@ export class DkgUsageContractsService implements OnModuleInit {
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await this.updateRawDkgRequests();
-        await this.updateDkgRequests();
     }
 
     private async updateRawDkgRequests() {
@@ -228,7 +231,7 @@ export class DkgUsageContractsService implements OnModuleInit {
         }
     }
 
-    private async fetchAllResponseActions() {
+    private async fetchResponseActions() {
         const lastAction = await this.responseActionModel.findOne(
             {},
             {},
@@ -266,7 +269,6 @@ export class DkgUsageContractsService implements OnModuleInit {
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await this.updateDkgResponse();
     }
 
     private async updateDkgResponse() {

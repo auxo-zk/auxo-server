@@ -31,10 +31,14 @@ export class ProjectContractService implements OnModuleInit {
     }
 
     private async fetch() {
-        await this.fetchAllProjectActions();
+        try {
+            await this.fetchProjectActions();
+            await this.updateRawProjects();
+            await this.updateProjects();
+        } catch (err) {}
     }
 
-    private async fetchAllProjectActions() {
+    private async fetchProjectActions() {
         const lastAction = await this.projectActionModel.findOne(
             {},
             {},
@@ -71,8 +75,6 @@ export class ProjectContractService implements OnModuleInit {
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await this.updateRawProjects();
-        await this.updateProjects();
     }
 
     private async updateRawProjects() {

@@ -81,7 +81,10 @@ export class CommitteeContractService implements OnModuleInit {
     }
 
     private async fetch() {
-        await this.fetchAllActions();
+        try {
+            await this.fetchCommitteeActions();
+            await this.updateCommittees();
+        } catch (err) {}
     }
 
     async compile() {
@@ -186,7 +189,7 @@ export class CommitteeContractService implements OnModuleInit {
 
     // ============ PRIVATE FUNCTIONS ============
 
-    private async fetchAllActions(): Promise<void> {
+    private async fetchCommitteeActions(): Promise<void> {
         const lastAction = await this.committeeActionModel.findOne(
             {},
             {},
@@ -224,7 +227,6 @@ export class CommitteeContractService implements OnModuleInit {
             previousActionState = currentActionState;
             actionId += 1;
         }
-        await this.updateCommittees();
     }
 
     private async updateCommittees() {
@@ -254,10 +256,7 @@ export class CommitteeContractService implements OnModuleInit {
             const committeeAction = committeeActions[i];
             const committeeId = committeeAction.actionId;
             const committee = getCommittee(committeeAction);
-            const ipfsData = await this.ipfs.getData(committee.ipfsHash);
-            committee.name = ipfsData['name'];
-            committee.creator = ipfsData['creator'];
-            committee.members = ipfsData['members'];
+            committee.ipfsData = await this.ipfs.getData(committee.ipfsHash);
             promises.push(
                 this.committeeModel.findOneAndUpdate(
                     { committeeId: committeeId },
