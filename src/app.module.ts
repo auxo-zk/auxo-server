@@ -3,19 +3,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { MinaContractsModule } from './mina-contracts/mina.module';
 import { HttpModule } from '@nestjs/axios';
 
-// import { Committee, CommitteeSchema } from './schemas/committee.schema';
-// import {
-//     CommitteeAction,
-//     CommitteeActionSchema,
-// } from './schemas/committee-action.schema';
-// import { Key, KeySchema } from './schemas/key.schema';
-
 import { AppService } from './app.service';
 
 import { AppController } from './app.controller';
 import { Ipfs } from './ipfs/ipfs';
 import { IpfsController } from './ipfs/ipfs.controller';
 import { ApisModule } from './apis/apis.module';
+import { MinIoService } from './min-io/min-io.service';
+import { MinIoController } from './min-io/min-io.controller';
 
 @Module({
     imports: [
@@ -28,7 +23,7 @@ import { ApisModule } from './apis/apis.module';
         HttpModule,
         ApisModule,
     ],
-    controllers: [AppController, IpfsController],
-    providers: [AppService, Ipfs],
+    controllers: [AppController, IpfsController, MinIoController],
+    providers: [AppService, Ipfs, MinIoService],
 })
 export class AppModule {}

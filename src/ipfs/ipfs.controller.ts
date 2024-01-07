@@ -1,6 +1,8 @@
 import {
     Controller,
+    FileTypeValidator,
     ForbiddenException,
+    ParseFilePipe,
     Post,
     UploadedFile,
     UseInterceptors,
@@ -25,7 +27,14 @@ export class IpfsController {
     })
     @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 1048576 } }))
     async uploadFile(
-        @UploadedFile() file: Express.Multer.File,
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [
+                    new FileTypeValidator({ fileType: 'application/json' }),
+                ],
+            }),
+        )
+        file: Express.Multer.File,
     ): Promise<IpfsResponse> {
         return await this.ipfs.uploadFile(file);
     }
