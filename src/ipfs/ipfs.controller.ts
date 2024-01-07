@@ -1,5 +1,6 @@
 import {
     Controller,
+    ForbiddenException,
     Post,
     UploadedFile,
     UseInterceptors,
@@ -22,11 +23,10 @@ export class IpfsController {
             properties: { file: { type: 'string', format: 'binary' } },
         },
     })
-    @UseInterceptors(FileInterceptor('file'))
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 1048576 } }))
     async uploadFile(
         @UploadedFile() file: Express.Multer.File,
     ): Promise<IpfsResponse> {
-        const response = await this.ipfs.uploadFile(file);
-        return response;
+        return await this.ipfs.uploadFile(file);
     }
 }

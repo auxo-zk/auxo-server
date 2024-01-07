@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { lastValueFrom } from 'rxjs';
 import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 
@@ -53,7 +53,7 @@ export class Ipfs {
         if (response.status == HttpStatus.OK) {
             return response.data;
         } else {
-            return null;
+            throw new BadRequestException();
         }
     }
 
