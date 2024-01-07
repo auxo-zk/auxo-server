@@ -25,7 +25,7 @@ export class CommitteesService {
         private readonly dkgRequestModel: Model<DkgRequest>,
     ) {}
 
-    async getAllCommittees(
+    async getCommittees(
         getCommitteesDto: GetCommitteesDto,
     ): Promise<Committee[]> {
         let committees: Committee[];

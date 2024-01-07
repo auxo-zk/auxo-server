@@ -1,10 +1,20 @@
-import { Body, Controller, Get, Post, UseInterceptors } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    ParseIntPipe,
+    Post,
+    Query,
+    UseInterceptors,
+} from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { ApiTags } from '@nestjs/swagger';
 import { CreateProjectDto } from 'src/dtos/create-project.dto';
 import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { Project } from 'src/schemas/project.schema';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { GetProjectsDto } from 'src/dtos/get-projects.dto';
 
 @Controller('projects')
 export class ProjectsController {
@@ -14,8 +24,18 @@ export class ProjectsController {
     @ApiTags('Project')
     @CacheTTL(30000)
     @UseInterceptors(CacheInterceptor)
-    async getAllProjects(): Promise<Project[]> {
-        return await this.projectsService.getAllProjects();
+    async getProjects(
+        @Query() getProjectsDto: GetProjectsDto,
+    ): Promise<Project[]> {
+        return await this.projectsService.getProjects(getProjectsDto);
+    }
+
+    @Get('/:projectId')
+    @ApiTags('Project')
+    async getProject(
+        @Param('projectId', ParseIntPipe) projectId: number,
+    ): Promise<Project> {
+        return await this.projectsService.getProject(projectId);
     }
 
     @Post()

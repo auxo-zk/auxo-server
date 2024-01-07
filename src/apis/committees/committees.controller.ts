@@ -26,10 +26,10 @@ export class CommitteesController {
     @ApiTags('Committee')
     @CacheTTL(30000)
     @UseInterceptors(CacheInterceptor)
-    async getAllCommittees(
+    async getCommittees(
         @Query() getCommitteesDto: GetCommitteesDto,
     ): Promise<Committee[]> {
-        return await this.committeesService.getAllCommittees(getCommitteesDto);
+        return await this.committeesService.getCommittees(getCommitteesDto);
     }
 
     @Post()
