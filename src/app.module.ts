@@ -9,8 +9,6 @@ import { AppController } from './app.controller';
 import { Ipfs } from './ipfs/ipfs';
 import { IpfsController } from './ipfs/ipfs.controller';
 import { ApisModule } from './apis/apis.module';
-import { MinIoService } from './min-io/min-io.service';
-import { MinIoController } from './min-io/min-io.controller';
 
 @Module({
     imports: [
@@ -23,7 +21,7 @@ import { MinIoController } from './min-io/min-io.controller';
         HttpModule,
         ApisModule,
     ],
-    controllers: [AppController, IpfsController, MinIoController],
-    providers: [AppService, Ipfs, MinIoService],
+    controllers: [AppController, IpfsController],
+    providers: [AppService, Ipfs],
 })
 export class AppModule {}
