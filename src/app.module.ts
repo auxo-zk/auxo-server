@@ -9,6 +9,8 @@ import { AppController } from './app.controller';
 import { Ipfs } from './ipfs/ipfs';
 import { IpfsController } from './ipfs/ipfs.controller';
 import { ApisModule } from './apis/apis.module';
+import { ObjectStorageService } from './object-storage/object-storage.service';
+import { ObjectStorageController } from './object-storage/object-storage.controller';
 
 @Module({
     imports: [
@@ -21,7 +23,7 @@ import { ApisModule } from './apis/apis.module';
         HttpModule,
         ApisModule,
     ],
-    controllers: [AppController, IpfsController],
-    providers: [AppService, Ipfs],
+    controllers: [AppController, IpfsController, ObjectStorageController],
+    providers: [AppService, Ipfs, ObjectStorageService],
 })
 export class AppModule {}
