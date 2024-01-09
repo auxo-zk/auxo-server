@@ -56,6 +56,15 @@ export class CommitteesController {
         return await this.committeesService.getKeys(committeeId);
     }
 
+    @Get(':committeeId/keys/:keyId')
+    @ApiTags('Committee')
+    async getKey(
+        @Param('committeeId', ParseIntPipe) committeeId: number,
+        @Param('keyId', ParseIntPipe) keyId: number,
+    ): Promise<Key> {
+        return await this.committeesService.getKey(committeeId, keyId);
+    }
+
     @Get(':committeeId/requests')
     @ApiTags('Committee')
     async getRequests(

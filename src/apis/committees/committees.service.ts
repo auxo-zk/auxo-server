@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { MemberRoleEnum } from 'src/constants';
@@ -221,6 +225,84 @@ export class CommitteesService {
         ]);
 
         return result;
+    }
+
+    async getKey(committeeId: number, keyId: number): Promise<Key> {
+        const result = await this.keyModel.aggregate([
+            { $match: { committeeId: committeeId, keyId: keyId } },
+            {
+                $lookup: {
+                    from: 'round1',
+                    as: 'round1s',
+                    localField: 'keyId',
+                    foreignField: 'keyId',
+                    pipeline: [
+                        { $match: { committeeId: committeeId, active: true } },
+                        {
+                            $sort: {
+                                memberId: 1,
+                            },
+                        },
+                        {
+                            $project: {
+                                memberId: 1,
+                                contribution: 1,
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                $lookup: {
+                    from: 'round2',
+                    as: 'round2s',
+                    localField: 'keyId',
+                    foreignField: 'keyId',
+                    pipeline: [
+                        { $match: { committeeId: committeeId, active: true } },
+                        {
+                            $sort: {
+                                memberId: 1,
+                            },
+                        },
+                        {
+                            $project: {
+                                memberId: 1,
+                                contribution: 1,
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                $lookup: {
+                    from: 'dkgrequests',
+                    as: 'requests',
+                    localField: 'keyId',
+                    foreignField: 'keyId',
+                    pipeline: [
+                        { $match: { committeeId: committeeId } },
+                        {
+                            $sort: {
+                                memberId: 1,
+                            },
+                        },
+                        {
+                            $project: {
+                                requestId: 1,
+                                requester: 1,
+                            },
+                        },
+                    ],
+                },
+            },
+        ]);
+
+        if (result.length == 1) {
+            return result[0];
+        } else {
+            throw new NotFoundException();
+        }
     }
 
     async getRequests(committeeId: number): Promise<DkgRequest[]> {
