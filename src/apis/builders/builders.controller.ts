@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     Param,
     Post,
@@ -15,6 +16,7 @@ import { Builder } from 'src/schemas/builder.schema';
 import { Project } from 'src/schemas/project.schema';
 import { CreateDraftDto } from 'src/dtos/create-draft.dto';
 import { Draft } from 'src/schemas/draft.schema';
+import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
 
 @Controller('builders')
 export class BuildersController {
@@ -40,6 +42,44 @@ export class BuildersController {
     @UseGuards(AuthGuard)
     async getDrafts(@Request() req: any): Promise<Draft[]> {
         return await this.buildersService.getDrafts(req.user);
+    }
+
+    @Get('drafts/:draftId')
+    @ApiTags('Builder')
+    @ApiBearerAuth('access-token')
+    @UseGuards(AuthGuard)
+    async getDraft(
+        @Param('draftId') draftId: string,
+        @Request() req: any,
+    ): Promise<Draft> {
+        return await this.buildersService.getDraft(draftId, req.user);
+    }
+
+    @Post('drafts/:draftId')
+    @ApiTags('Builder')
+    @ApiBearerAuth('access-token')
+    @UseGuards(AuthGuard)
+    async updateDraft(
+        @Param('draftId') draftId: string,
+        @Body() updateDraftDto: UpdateDraftDto,
+        @Request() req: any,
+    ): Promise<Draft> {
+        return await this.buildersService.updateDraft(
+            draftId,
+            updateDraftDto,
+            req.user,
+        );
+    }
+
+    @Delete('drafts/:draftId')
+    @ApiTags('Builder')
+    @ApiBearerAuth('access-token')
+    @UseGuards(AuthGuard)
+    async deleteDraft(
+        @Param('draftId') draftId: string,
+        @Request() req: any,
+    ): Promise<void> {
+        await this.buildersService.deleteDraft(draftId, req.user);
     }
 
     @Post('drafts')

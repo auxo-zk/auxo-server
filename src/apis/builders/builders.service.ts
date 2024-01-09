@@ -1,9 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AuthRoleEnum } from 'src/constants';
 import { CreateDraftDto } from 'src/dtos/create-draft.dto';
 import { UpdateBuilderDto } from 'src/dtos/update-builder-profile.dto';
+import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { Builder } from 'src/schemas/builder.schema';
 import { Draft } from 'src/schemas/draft.schema';
@@ -54,8 +59,18 @@ export class BuildersService {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
-            console.log(jwtPayload.sub);
             return await this.draftModel.find({ address: jwtPayload.sub });
+        }
+    }
+
+    async getDraft(draftId: string, jwtPayload: JwtPayload): Promise<Draft> {
+        if (jwtPayload.role != AuthRoleEnum.BUILDER) {
+            throw new UnauthorizedException();
+        } else {
+            return await this.draftModel.findOne({
+                _id: draftId,
+                address: jwtPayload.sub,
+            });
         }
     }
 
@@ -77,6 +92,58 @@ export class BuildersService {
                 members: createDraftDto.members,
                 documents: createDraftDto.documents,
             });
+        }
+    }
+
+    async updateDraft(
+        draftId: string,
+        updateDraftDto: UpdateDraftDto,
+        jwtPayload: JwtPayload,
+    ): Promise<Draft> {
+        if (jwtPayload.role != AuthRoleEnum.BUILDER) {
+            throw new UnauthorizedException();
+        } else {
+            const exist = await this.draftModel.exists({
+                _id: draftId,
+                address: jwtPayload.sub,
+            });
+            if (exist) {
+                return await this.draftModel.findOneAndUpdate(
+                    { _id: draftId, address: jwtPayload.sub },
+                    {
+                        name: updateDraftDto.name,
+                        publicKey: updateDraftDto.publicKey,
+                        description: updateDraftDto.description,
+                        problemStatement: updateDraftDto.problemStatement,
+                        solution: updateDraftDto.solution,
+                        challengeAndRisks: updateDraftDto.challengeAndRisks,
+                        members: updateDraftDto.members,
+                        documents: updateDraftDto.documents,
+                    },
+                    { new: true, upsert: true },
+                );
+            } else {
+                throw new NotFoundException();
+            }
+        }
+    }
+
+    async deleteDraft(draftId: string, jwtPayload: JwtPayload): Promise<void> {
+        if (jwtPayload.role != AuthRoleEnum.BUILDER) {
+            throw new UnauthorizedException();
+        } else {
+            const exist = await this.draftModel.exists({
+                _id: draftId,
+                address: jwtPayload.sub,
+            });
+            if (exist) {
+                await this.draftModel.deleteOne({
+                    _id: draftId,
+                    address: jwtPayload.sub,
+                });
+            } else {
+                throw new NotFoundException();
+            }
         }
     }
 }
