@@ -86,6 +86,17 @@ export class StoragesService {
         return result;
     }
 
+    getRound1ZkApps(): MerkleLeaf[] {
+        const leafCount = this.dkgService.round1.zkApp.addresses.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgService.round1.zkApp.getWitness(Field(i)).toJSON(),
+            );
+        }
+        return result;
+    }
+
     getRound1ContributionTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.dkgService.round1.contribution.level1.leafCount;
         const result: MerkleLeaf[] = [];
@@ -147,6 +158,17 @@ export class StoragesService {
         } else {
             throw new NotFoundException();
         }
+    }
+
+    getRound2ZkApps(): MerkleLeaf[] {
+        const leafCount = this.dkgService.round2.zkApp.addresses.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgService.round2.zkApp.getWitness(Field(i)).toJSON(),
+            );
+        }
+        return result;
     }
 
     getRound2ContributionTreeLevel1(): MerkleLeaf[] {

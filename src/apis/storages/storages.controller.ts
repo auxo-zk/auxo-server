@@ -45,6 +45,12 @@ export class StoragesController {
         return this.storagesService.getKeyStatusTreeLevel1();
     }
 
+    @Get('round1/zkapps')
+    @ApiTags('Storage')
+    getRound1ZkApps(): MerkleLeaf[] {
+        return this.storagesService.getRound1ZkApps();
+    }
+
     @Get('round1/contribution/level1')
     @ApiTags('Storage')
     getRound1ContributionTreeLevel1(): MerkleLeaf[] {
@@ -73,6 +79,12 @@ export class StoragesController {
         @Param('level1Index', ParseIntPipe) level1Index: number,
     ) {
         return this.storagesService.getRound1PublickeyTreeLevel2(level1Index);
+    }
+
+    @Get('round2/zkapps')
+    @ApiTags('Storage')
+    getRound2ZkApps(): MerkleLeaf[] {
+        return this.storagesService.getRound2ZkApps();
     }
 
     @Get('round2/contribution/level1')

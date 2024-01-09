@@ -45,13 +45,13 @@ export class DkgContractsService implements OnModuleInit {
         keyStatus: Storage.DKGStorage.KeyStatusStorage;
     };
     private readonly _round1: {
-        zkApp: Field;
+        zkApp: Storage.SharedStorage.AddressStorage;
         reduceState: Field;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
     };
     private readonly _round2: {
-        zkApp: Field;
+        zkApp: Storage.SharedStorage.AddressStorage;
         reduceState: Field;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
         encryption: Storage.DKGStorage.EncryptionStorage;
@@ -66,7 +66,7 @@ export class DkgContractsService implements OnModuleInit {
     }
 
     public get round1(): {
-        zkApp: Field;
+        zkApp: Storage.SharedStorage.AddressStorage;
         reduceState: Field;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
@@ -75,7 +75,7 @@ export class DkgContractsService implements OnModuleInit {
     }
 
     public get round2(): {
-        zkApp: Field;
+        zkApp: Storage.SharedStorage.AddressStorage;
         reduceState: Field;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
         encryption: Storage.DKGStorage.EncryptionStorage;
@@ -108,13 +108,13 @@ export class DkgContractsService implements OnModuleInit {
             keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
         };
         this._round1 = {
-            zkApp: Field(0),
+            zkApp: new Storage.SharedStorage.AddressStorage(),
             reduceState: Field(0),
             contribution: new Storage.DKGStorage.Round1ContributionStorage(),
             publicKey: new Storage.DKGStorage.PublicKeyStorage(),
         };
         this._round2 = {
-            zkApp: Field(0),
+            zkApp: new Storage.SharedStorage.AddressStorage(),
             reduceState: Field(0),
             contribution: new Storage.DKGStorage.Round2ContributionStorage(),
             encryption: new Storage.DKGStorage.EncryptionStorage(),
@@ -614,6 +614,23 @@ export class DkgContractsService implements OnModuleInit {
         }
     }
     private async createTreesForRound1() {
+        const committeeAddress = PublicKey.fromBase58(
+            process.env.COMMITTEE_ADDRESS,
+        );
+        const dkgAddress = PublicKey.fromBase58(process.env.DKG_ADDRESS);
+        this._round1.zkApp.addresses.setLeaf(
+            this._round1.zkApp
+                .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
+                .toBigInt(),
+            this._round1.zkApp.calculateLeaf(committeeAddress),
+        );
+        this._round1.zkApp.addresses.setLeaf(
+            this._round1.zkApp
+                .calculateIndex(Constants.ZkAppEnum.DKG)
+                .toBigInt(),
+            this._round1.zkApp.calculateLeaf(dkgAddress),
+        );
+
         const keyCounters: { _id: number; count: number }[] =
             await this.dkgModel.aggregate([
                 {
@@ -708,6 +725,30 @@ export class DkgContractsService implements OnModuleInit {
         }
     }
     private async createTreesForRound2() {
+        const committeeAddress = PublicKey.fromBase58(
+            process.env.COMMITTEE_ADDRESS,
+        );
+        const dkgAddress = PublicKey.fromBase58(process.env.DKG_ADDRESS);
+        const round1Address = PublicKey.fromBase58(process.env.ROUND_1_ADDRESS);
+        this._round2.zkApp.addresses.setLeaf(
+            this._round2.zkApp
+                .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
+                .toBigInt(),
+            this._round2.zkApp.calculateLeaf(committeeAddress),
+        );
+        this._round2.zkApp.addresses.setLeaf(
+            this._round2.zkApp
+                .calculateIndex(Constants.ZkAppEnum.DKG)
+                .toBigInt(),
+            this._round2.zkApp.calculateLeaf(dkgAddress),
+        );
+        this._round2.zkApp.addresses.setLeaf(
+            this._round2.zkApp
+                .calculateIndex(Constants.ZkAppEnum.ROUND1)
+                .toBigInt(),
+            this._round2.zkApp.calculateLeaf(round1Address),
+        );
+
         const keyCounters: { _id: number; count: number }[] =
             await this.dkgModel.aggregate([
                 {
