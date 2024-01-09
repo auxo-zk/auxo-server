@@ -12,6 +12,9 @@ export class Key {
     @Prop({ required: true })
     keyId: number;
 
+    @Prop()
+    publicKey?: string;
+
     @Prop({ index: true })
     status: KeyStatusEnum;
 }

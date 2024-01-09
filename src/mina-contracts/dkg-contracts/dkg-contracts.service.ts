@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
-import { Field, Group, MerkleTree, Provable, Reducer } from 'o1js';
+import { Field, Group, MerkleTree, Provable, PublicKey, Reducer } from 'o1js';
 import { Model, ObjectId } from 'mongoose';
 import { DkgAction, getDkg } from 'src/schemas/actions/dkg-action.schema';
 import { InjectModel, raw } from '@nestjs/mongoose';
@@ -16,9 +16,13 @@ import { Dkg } from 'src/schemas/dkg.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';
 import { Key } from 'src/schemas/key.schema';
-import { Constants, Libs, Storage, ZkApp } from '@auxo-dev/dkg';
+import {
+    calculatePublicKey,
+    Libs,
+    Round1Contribution,
+    Storage,
+} from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-import { Round1Contribution } from '@auxo-dev/dkg/build/esm/src/libs/Committee';
 import { Bit255 } from '@auxo-dev/auxo-libs';
 import { Committee } from 'src/schemas/committee.schema';
 import { DkgActionEnum, KeyStatusEnum } from 'src/constants';
@@ -524,6 +528,32 @@ export class DkgContractsService implements OnModuleInit {
                                 KeyStatusEnum.ROUND_2_CONTRIBUTION,
                             );
                         }
+                    }
+                    if (
+                        key.status >= KeyStatusEnum.ROUND_2_CONTRIBUTION &&
+                        !key.publicKey
+                    ) {
+                        const round1s = await this.round1Model.find({
+                            committeeId: committeeId,
+                            keyId: keyId,
+                            active: true,
+                        });
+
+                        const round1Contributions = round1s.map(
+                            (e) =>
+                                new Round1Contribution({
+                                    C: new Libs.Committee.CArray(
+                                        e.contribution.map((g) =>
+                                            Group.from(g.x, g.y),
+                                        ),
+                                    ),
+                                }),
+                        );
+
+                        const publicKey = PublicKey.fromGroup(
+                            calculatePublicKey(round1Contributions),
+                        );
+                        key.set('publicKey', publicKey.toBase58());
                     }
                 }
                 await key.save();
