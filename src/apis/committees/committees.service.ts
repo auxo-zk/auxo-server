@@ -94,6 +94,25 @@ export class CommitteesService {
                     },
                 ]);
             }
+        } else if (getCommitteesDto.member != undefined) {
+            committees = await this.committeeModel.aggregate([
+                {
+                    $match: {
+                        publicKeys: getCommitteesDto.member,
+                    },
+                },
+                {
+                    $lookup: {
+                        from: 'dkgrequests',
+                        as: 'requests',
+                        localField: 'committeeId',
+                        foreignField: 'committeeId',
+                        pipeline: [
+                            { $project: { requestId: 1, requester: 1 } },
+                        ],
+                    },
+                },
+            ]);
         } else {
             committees = await this.committeeModel.aggregate([
                 {
