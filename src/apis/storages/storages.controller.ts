@@ -27,6 +27,12 @@ export class StoragesController {
         return this.storagesService.getSettingTreeLevel1();
     }
 
+    @Get('dkg/zkapps')
+    @ApiTags('Storage')
+    getDKGZkApps(): MerkleLeaf[] {
+        return this.storagesService.getDKGZkApps();
+    }
+
     @Get('dkg/key-counter/level1')
     @ApiTags('Storage')
     getKeyCounterTreeLevel1(): MerkleLeaf[] {

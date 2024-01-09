@@ -58,6 +58,17 @@ export class StoragesService {
         return result;
     }
 
+    getDKGZkApps(): MerkleLeaf[] {
+        const leafCount = this.dkgService.dkg.zkApp.addresses.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgService.dkg.zkApp.getWitness(Field(i)).toJSON(),
+            );
+        }
+        return result;
+    }
+
     getKeyCounterTreeLevel1(): MerkleLeaf[] {
         return null;
     }

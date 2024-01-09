@@ -18,6 +18,7 @@ import { Round2 } from 'src/schemas/round-2.schema';
 import { Key } from 'src/schemas/key.schema';
 import {
     calculatePublicKey,
+    Constants,
     Libs,
     Round1Contribution,
     Storage,
@@ -39,7 +40,7 @@ const KEY_STATUS_ARRAY = [
 export class DkgContractsService implements OnModuleInit {
     private readonly logger = new Logger(DkgContractsService.name);
     private readonly _dkg: {
-        zkApp: Field;
+        zkApp: Storage.SharedStorage.AddressStorage;
         keyCounter: MerkleTree;
         keyStatus: Storage.DKGStorage.KeyStatusStorage;
     };
@@ -57,7 +58,7 @@ export class DkgContractsService implements OnModuleInit {
     };
 
     public get dkg(): {
-        zkApp: Field;
+        zkApp: Storage.SharedStorage.AddressStorage;
         keyCounter: MerkleTree;
         keyStatus: Storage.DKGStorage.KeyStatusStorage;
     } {
@@ -102,7 +103,7 @@ export class DkgContractsService implements OnModuleInit {
         private readonly committeeModel: Model<Committee>,
     ) {
         this._dkg = {
-            zkApp: Field(0),
+            zkApp: new Storage.SharedStorage.AddressStorage(),
             keyCounter: new MerkleTree(Storage.DKGStorage.LEVEL1_TREE_HEIGHT),
             keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
         };
@@ -562,6 +563,16 @@ export class DkgContractsService implements OnModuleInit {
     }
 
     private async createTreesForDkg() {
+        const committeeAddress = PublicKey.fromBase58(
+            process.env.COMMITTEE_ADDRESS,
+        );
+        this._dkg.zkApp.addresses.setLeaf(
+            this._dkg.zkApp
+                .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
+                .toBigInt(),
+            this._dkg.zkApp.calculateLeaf(committeeAddress),
+        );
+
         const keyCounters: { _id: number; count: number }[] =
             await this.dkgModel.aggregate([
                 {
