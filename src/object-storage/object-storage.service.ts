@@ -24,7 +24,7 @@ export class ObjectStorageService {
 
     async uploadFile(file: Express.Multer.File): Promise<string> {
         const key =
-            SHA256(Date.now().toString() + '-' + file.originalname) +
+            SHA256(Date.now().toString() + '-' + file.originalname).toString() +
             '.' +
             file.originalname.split('.').pop();
         const command = new PutObjectCommand({
