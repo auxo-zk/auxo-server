@@ -13,6 +13,8 @@ import { AuthGuard } from '../auth/auth.guard';
 import { UpdateBuilderDto } from 'src/dtos/update-builder-profile.dto';
 import { Builder } from 'src/schemas/builder.schema';
 import { Project } from 'src/schemas/project.schema';
+import { CreateDraftDto } from 'src/dtos/create-draft.dto';
+import { Draft } from 'src/schemas/draft.schema';
 
 @Controller('builders')
 export class BuildersController {
@@ -42,5 +44,24 @@ export class BuildersController {
     @ApiTags('Builder')
     async getProjects(@Param('address') address: string): Promise<Project[]> {
         return await this.buildersService.getProjects(address);
+    }
+
+    @Get('drafts')
+    @ApiTags('Builder')
+    @ApiBearerAuth('access-token')
+    @UseGuards(AuthGuard)
+    async getDrafts(@Request() req: any): Promise<Draft[]> {
+        return await this.buildersService.getDrafts(req.user);
+    }
+
+    @Post('drafts')
+    @ApiTags('Builder')
+    @ApiBearerAuth('access-token')
+    @UseGuards(AuthGuard)
+    async createDraft(
+        @Body() createDraftDto: CreateDraftDto,
+        @Request() req: any,
+    ): Promise<Draft> {
+        return await this.buildersService.createDraft(createDraftDto, req.user);
     }
 }

@@ -23,6 +23,7 @@ import { Project, ProjectSchema } from 'src/schemas/project.schema';
 import { BuildersService } from './builders/builders.service';
 import { BuildersController } from './builders/builders.controller';
 import { Builder, BuilderSchema } from 'src/schemas/builder.schema';
+import { Draft, DraftSchema } from 'src/schemas/draft.schema';
 
 @Module({
     imports: [
@@ -36,6 +37,7 @@ import { Builder, BuilderSchema } from 'src/schemas/builder.schema';
             { name: DkgResponse.name, schema: DkgResponseSchema },
             { name: Project.name, schema: ProjectSchema },
             { name: Builder.name, schema: BuilderSchema },
+            { name: Draft.name, schema: DraftSchema },
         ]),
         HttpModule,
         CacheModule.register(),
