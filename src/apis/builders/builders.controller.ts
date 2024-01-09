@@ -20,12 +20,6 @@ import { Draft } from 'src/schemas/draft.schema';
 export class BuildersController {
     constructor(private readonly buildersService: BuildersService) {}
 
-    @Get(':address')
-    @ApiTags('Builder')
-    async getBuilder(@Param('address') address: string): Promise<Builder> {
-        return await this.buildersService.getBuilder(address);
-    }
-
     @Post()
     @ApiTags('Builder')
     @ApiBearerAuth('access-token')
@@ -38,12 +32,6 @@ export class BuildersController {
             updateBuilderDto,
             req.user,
         );
-    }
-
-    @Get(':address/projects')
-    @ApiTags('Builder')
-    async getProjects(@Param('address') address: string): Promise<Project[]> {
-        return await this.buildersService.getProjects(address);
     }
 
     @Get('drafts')
@@ -63,5 +51,17 @@ export class BuildersController {
         @Request() req: any,
     ): Promise<Draft> {
         return await this.buildersService.createDraft(createDraftDto, req.user);
+    }
+
+    @Get(':address/projects')
+    @ApiTags('Builder')
+    async getProjects(@Param('address') address: string): Promise<Project[]> {
+        return await this.buildersService.getProjects(address);
+    }
+
+    @Get(':address')
+    @ApiTags('Builder')
+    async getBuilder(@Param('address') address: string): Promise<Builder> {
+        return await this.buildersService.getBuilder(address);
     }
 }
