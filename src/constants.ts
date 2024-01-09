@@ -47,10 +47,6 @@ export enum KeyStatusEnum {
     DEPRECATED,
 }
 
-export const jwtConstants = {
-    secret: 'vkl',
-};
-
 // ms
 export const authTimeLimit = 120 * 1000;
 

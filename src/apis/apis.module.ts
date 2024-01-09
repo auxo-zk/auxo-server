@@ -15,12 +15,13 @@ import { HttpModule } from '@nestjs/axios';
 import { StoragesService } from './storages/storages.service';
 import { StoragesController } from './storages/storages.controller';
 import { JwtModule } from '@nestjs/jwt';
-import { jwtConstants } from 'src/constants';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { ProjectsService } from './projects/projects.service';
 import { ProjectsController } from './projects/projects.controller';
 import { Project, ProjectSchema } from 'src/schemas/project.schema';
+import { BuildersService } from './builders/builders.service';
+import { BuildersController } from './builders/builders.controller';
 
 @Module({
     imports: [
@@ -38,7 +39,7 @@ import { Project, ProjectSchema } from 'src/schemas/project.schema';
         CacheModule.register(),
         JwtModule.register({
             global: true,
-            secret: jwtConstants.secret,
+            secret: process.env.JWT_SECRET,
             signOptions: { expiresIn: '10d' },
         }),
     ],
@@ -47,6 +48,7 @@ import { Project, ProjectSchema } from 'src/schemas/project.schema';
         StoragesController,
         AuthController,
         ProjectsController,
+        BuildersController,
     ],
     providers: [
         Ipfs,
@@ -54,6 +56,7 @@ import { Project, ProjectSchema } from 'src/schemas/project.schema';
         StoragesService,
         AuthService,
         ProjectsService,
+        BuildersService,
     ],
 })
 export class ApisModule {}
