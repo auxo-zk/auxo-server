@@ -22,6 +22,7 @@ import { ProjectsController } from './projects/projects.controller';
 import { Project, ProjectSchema } from 'src/schemas/project.schema';
 import { BuildersService } from './builders/builders.service';
 import { BuildersController } from './builders/builders.controller';
+import { Builder, BuilderSchema } from 'src/schemas/builder.schema';
 
 @Module({
     imports: [
@@ -34,6 +35,7 @@ import { BuildersController } from './builders/builders.controller';
             { name: DkgRequest.name, schema: DkgRequestSchema },
             { name: DkgResponse.name, schema: DkgResponseSchema },
             { name: Project.name, schema: ProjectSchema },
+            { name: Builder.name, schema: BuilderSchema },
         ]),
         HttpModule,
         CacheModule.register(),

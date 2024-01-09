@@ -17,6 +17,7 @@ import { ServerSignature } from 'src/entities/server-signature.entity';
 import { AuthenticateDto } from 'src/dtos/authenticate.dto';
 import { authTimeLimit } from 'src/constants';
 import { Utilities } from 'src/mina-contracts/utilities';
+import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -51,7 +52,7 @@ export class AuthService {
                     ) &&
                     requesterSignature.verify(requesterPublicKey, msgRawFields)
                 ) {
-                    const payload = {
+                    const payload: JwtPayload = {
                         sub: authenticateDto.address,
                         role: authenticateDto.role,
                     };

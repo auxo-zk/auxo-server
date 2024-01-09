@@ -46,7 +46,6 @@ import {
 } from 'src/schemas/actions/response-action.schema';
 import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
 import { JwtModule } from '@nestjs/jwt';
-import { jwtConstants } from 'src/constants';
 import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
 import {
     RawDkgRequest,
