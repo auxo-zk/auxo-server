@@ -36,7 +36,7 @@ export class StoragesController {
     @Get('dkg/key-counter/level1')
     @ApiTags('Storage')
     getKeyCounterTreeLevel1(): MerkleLeaf[] {
-        return null;
+        return this.storagesService.getKeyCounterTreeLevel1();
     }
 
     @Get('dkg/key-status/level1')

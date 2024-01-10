@@ -70,7 +70,16 @@ export class StoragesService {
     }
 
     getKeyCounterTreeLevel1(): MerkleLeaf[] {
-        return null;
+        const leafCount = this.dkgService.dkg.keyCounter.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgService.dkg.keyCounter
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
     }
 
     getKeyStatusTreeLevel1(): MerkleLeaf[] {

@@ -41,7 +41,7 @@ export class DkgContractsService implements OnModuleInit {
     private readonly logger = new Logger(DkgContractsService.name);
     private readonly _dkg: {
         zkApp: Storage.SharedStorage.AddressStorage;
-        keyCounter: MerkleTree;
+        keyCounter: Storage.CommitteeStorage.KeyCounterStorage;
         keyStatus: Storage.DKGStorage.KeyStatusStorage;
     };
     private readonly _round1: {
@@ -59,7 +59,7 @@ export class DkgContractsService implements OnModuleInit {
 
     public get dkg(): {
         zkApp: Storage.SharedStorage.AddressStorage;
-        keyCounter: MerkleTree;
+        keyCounter: Storage.CommitteeStorage.KeyCounterStorage;
         keyStatus: Storage.DKGStorage.KeyStatusStorage;
     } {
         return this._dkg;
@@ -104,7 +104,7 @@ export class DkgContractsService implements OnModuleInit {
     ) {
         this._dkg = {
             zkApp: new Storage.SharedStorage.AddressStorage(),
-            keyCounter: new MerkleTree(Storage.DKGStorage.LEVEL1_TREE_HEIGHT),
+            keyCounter: new Storage.CommitteeStorage.KeyCounterStorage(),
             keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
         };
         this._round1 = {
@@ -591,9 +591,10 @@ export class DkgContractsService implements OnModuleInit {
         for (let i = 0; i < keyCounters.length; i++) {
             const keyCounter = keyCounters[i];
             const committeeId = keyCounter._id;
-            this._dkg.keyCounter.setLeaf(
-                BigInt(keyCounter._id),
-                Field(keyCounter.count),
+
+            this._dkg.keyCounter.updateLeaf(
+                this._dkg.keyCounter.calculateLeaf(Field(keyCounter.count)),
+                this._dkg.keyCounter.calculateLevel1Index(Field(committeeId)),
             );
 
             for (let keyId = 0; keyId < keyCounter.count; keyId++) {
