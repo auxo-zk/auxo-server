@@ -5,6 +5,7 @@ import { AuthRoleEnum } from 'src/constants';
 import { UpdateOrganizerDto } from 'src/dtos/update-organizer.dto';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { ObjectStorageService } from 'src/object-storage/object-storage.service';
+import { Campaign } from 'src/schemas/campaign.schema';
 import { Organizer } from 'src/schemas/organizer.schema';
 
 @Injectable()
@@ -13,6 +14,8 @@ export class OrganizersService {
         private readonly objectStorageService: ObjectStorageService,
         @InjectModel(Organizer.name)
         private readonly organizerModel: Model<Organizer>,
+        @InjectModel(Campaign.name)
+        private readonly campaignModel: Model<Campaign>,
     ) {}
 
     async updateOrganizer(
@@ -60,5 +63,9 @@ export class OrganizersService {
             (await this.organizerModel.findOne({ address: address })) ||
             ({} as any)
         );
+    }
+
+    async getCampaigns(address: string): Promise<Campaign[]> {
+        return await this.campaignModel.find({ owner: address });
     }
 }

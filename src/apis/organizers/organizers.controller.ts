@@ -17,6 +17,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { UpdateOrganizerDto } from 'src/dtos/update-organizer.dto';
 import { Organizer } from 'src/schemas/organizer.schema';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Campaign } from 'src/schemas/campaign.schema';
 
 @Controller('organizers')
 export class OrganizersController {
@@ -60,6 +61,12 @@ export class OrganizersController {
         @Request() req: any,
     ): Promise<string> {
         return await this.organizersService.updateAvatar(avatar, req.user);
+    }
+
+    @Get(':address/campaigns')
+    @ApiTags('Organizer')
+    async getCampaigns(@Param('address') address: string): Promise<Campaign[]> {
+        return await this.organizersService.getCampaigns(address);
     }
 
     @Get(':address')

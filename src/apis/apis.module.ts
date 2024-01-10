@@ -28,6 +28,7 @@ import { OrganizersController } from './organizers/organizers.controller';
 import { OrganizersService } from './organizers/organizers.service';
 import { Organizer, OrganizerSchema } from 'src/schemas/organizer.schema';
 import { ObjectStorageService } from 'src/object-storage/object-storage.service';
+import { Campaign, CampaignSchema } from 'src/schemas/campaign.schema';
 
 @Module({
     imports: [
@@ -43,6 +44,7 @@ import { ObjectStorageService } from 'src/object-storage/object-storage.service'
             { name: Builder.name, schema: BuilderSchema },
             { name: Draft.name, schema: DraftSchema },
             { name: Organizer.name, schema: OrganizerSchema },
+            { name: Campaign.name, schema: CampaignSchema },
         ]),
         HttpModule,
         CacheModule.register(),
