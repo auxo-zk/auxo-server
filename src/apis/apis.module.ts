@@ -29,6 +29,8 @@ import { OrganizersService } from './organizers/organizers.service';
 import { Organizer, OrganizerSchema } from 'src/schemas/organizer.schema';
 import { ObjectStorageService } from 'src/object-storage/object-storage.service';
 import { Campaign, CampaignSchema } from 'src/schemas/campaign.schema';
+import { CampaignsService } from './campaigns/campaigns.service';
+import { CampaignsController } from './campaigns/campaigns.controller';
 
 @Module({
     imports: [
@@ -61,6 +63,7 @@ import { Campaign, CampaignSchema } from 'src/schemas/campaign.schema';
         ProjectsController,
         BuildersController,
         OrganizersController,
+        CampaignsController,
     ],
     providers: [
         Ipfs,
@@ -71,6 +74,7 @@ import { Campaign, CampaignSchema } from 'src/schemas/campaign.schema';
         BuildersService,
         OrganizersService,
         ObjectStorageService,
+        CampaignsService,
     ],
 })
 export class ApisModule {}

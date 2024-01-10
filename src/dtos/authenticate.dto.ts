@@ -1,8 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsString, ValidateNested } from 'class-validator';
+import {
+    IsArray,
+    IsEnum,
+    IsNumberString,
+    IsString,
+    ValidateNested,
+} from 'class-validator';
 import { AuthRoleEnum } from 'src/constants';
-import { ServerSignature } from 'src/entities/server-signature.entity';
+
+class ServerSignature {
+    @IsArray()
+    @IsNumberString({}, { each: true })
+    msg: string[];
+
+    @IsString()
+    signature: string;
+}
 
 export class AuthenticateDto {
     @IsString()

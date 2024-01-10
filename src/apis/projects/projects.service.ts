@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateProjectDto } from 'src/dtos/create-project.dto';
@@ -26,7 +30,12 @@ export class ProjectsService {
     }
 
     async getProject(projectId: number): Promise<Project> {
-        return await this.projectModel.findOne({ projectId: projectId });
+        const exist = await this.projectModel.exists({ projectId: projectId });
+        if (exist) {
+            return await this.projectModel.findOne({ projectId: projectId });
+        } else {
+            throw new NotFoundException();
+        }
     }
 
     async createProject(
