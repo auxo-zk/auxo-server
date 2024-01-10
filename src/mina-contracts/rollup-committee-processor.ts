@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { Job, DoneCallback } from 'bull';
 import { AppModule } from 'src/app.module';
-import { MinaContractsModule } from './mina.module';
+import { MinaContractsModule } from './mina-contracts.module';
 import { CommitteeContractService } from './committee-contract/committee-contract.service';
 import { Logger } from '@nestjs/common';
 

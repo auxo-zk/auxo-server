@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { MinaContractsModule } from './mina-contracts/mina.module';
+import { MinaContractsModule } from './mina-contracts/mina-contracts.module';
 import { HttpModule } from '@nestjs/axios';
 
 import { AppService } from './app.service';

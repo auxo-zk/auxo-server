@@ -5,10 +5,6 @@ import { Committee } from '../committee.schema';
 import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 
-export const memberTreeHeight = Number(
-    process.env.MEMBER_TREE_HEIGHT as string,
-);
-
 @Schema({ versionKey: false })
 export class CommitteeAction {
     @Prop({ required: true, unique: true, index: true, _id: true })

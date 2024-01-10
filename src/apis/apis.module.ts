@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MinaContractsModule } from 'src/mina-contracts/mina.module';
+import { MinaContractsModule } from 'src/mina-contracts/mina-contracts.module';
 import { CommitteesController } from './committees/committees.controller';
 import { CommitteesService } from './committees/committees.service';
 import { MongooseModule } from '@nestjs/mongoose';

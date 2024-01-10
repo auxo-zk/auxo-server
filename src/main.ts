@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { MinaContractsModule } from './mina-contracts/mina.module';
+import { MinaContractsModule } from './mina-contracts/mina-contracts.module';
 import { CommitteeContractService } from './mina-contracts/committee-contract/committee-contract.service';
 import { ValidationPipe } from '@nestjs/common';
 // import * as compression from 'compression';

@@ -23,7 +23,6 @@ import { Model, set } from 'mongoose';
 import {
     CommitteeAction,
     getCommittee,
-    memberTreeHeight,
 } from 'src/schemas/actions/committee-action.schema';
 import { Storage, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
@@ -59,10 +58,6 @@ export class CommitteeContractService implements OnModuleInit {
         private readonly committeeActionModel: Model<CommitteeAction>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
-        @InjectModel(Key.name)
-        private readonly keyModel: Model<Key>,
-        @InjectModel(DkgRequest.name)
-        private readonly dkgRequestModel: Model<DkgRequest>,
     ) {
         this._nextCommitteeId = 0;
 

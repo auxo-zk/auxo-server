@@ -39,12 +39,26 @@ export enum ProjectActionEnum {
     UPDATE_PROJECT,
 }
 
+export enum CampaignActionEnum {
+    CREATE_CAMPAIGN,
+    UPDATE_CAMPAIGN,
+}
+
 export enum KeyStatusEnum {
     EMPTY,
     ROUND_1_CONTRIBUTION,
     ROUND_2_CONTRIBUTION,
     ACTIVE,
     DEPRECATED,
+}
+
+export const enum CampaignStatusEnum {
+    NOT_STARTED,
+    APPLICATION,
+    FUNDING,
+    ALLOCATED,
+    FINALIZE_ROUND_1,
+    __LENGTH,
 }
 
 // ms

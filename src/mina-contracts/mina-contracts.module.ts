@@ -59,6 +59,15 @@ import {
 import { RawProject, RawProjectSchema } from 'src/schemas/raw-project.schema';
 import { Project, ProjectSchema } from 'src/schemas/project.schema';
 import { CampaignContractService } from './campaign-contract/campaign-contract.service';
+import {
+    CampaignAction,
+    CampaignActionSchema,
+} from 'src/schemas/actions/campaign-action.schema';
+import { Campaign, CampaignSchema } from 'src/schemas/campaign.schema';
+import {
+    RawCampaign,
+    RawCampaignSchema,
+} from 'src/schemas/raw-campaign.schema';
 
 @Module({
     imports: [
@@ -81,6 +90,9 @@ import { CampaignContractService } from './campaign-contract/campaign-contract.s
             { name: ProjectAction.name, schema: ProjectActionSchema },
             { name: RawProject.name, schema: RawProjectSchema },
             { name: Project.name, schema: ProjectSchema },
+            { name: CampaignAction.name, schema: CampaignActionSchema },
+            { name: RawCampaign.name, schema: RawCampaignSchema },
+            { name: Campaign.name, schema: CampaignSchema },
         ]),
         HttpModule,
         BullModule.forRoot({
