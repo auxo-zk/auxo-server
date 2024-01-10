@@ -2,14 +2,18 @@ import {
     Body,
     Controller,
     Delete,
+    FileTypeValidator,
     Get,
     Param,
+    ParseFilePipe,
     Post,
     Request,
+    UploadedFile,
     UseGuards,
+    UseInterceptors,
 } from '@nestjs/common';
 import { BuildersService } from './builders.service';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
 import { Builder } from 'src/schemas/builder.schema';
@@ -17,6 +21,7 @@ import { Project } from 'src/schemas/project.schema';
 import { CreateDraftDto } from 'src/dtos/create-draft.dto';
 import { Draft } from 'src/schemas/draft.schema';
 import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('builders')
 export class BuildersController {
@@ -34,6 +39,32 @@ export class BuildersController {
             updateBuilderDto,
             req.user,
         );
+    }
+
+    @Post('update-avatar')
+    @ApiTags('Builder')
+    @ApiBearerAuth('access-token')
+    @UseGuards(AuthGuard)
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: { avatar: { type: 'string', format: 'binary' } },
+        },
+    })
+    @UseInterceptors(
+        FileInterceptor('avatar', { limits: { fileSize: 10485760 } }),
+    )
+    async updateAvatar(
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [new FileTypeValidator({ fileType: 'image/*' })],
+            }),
+        )
+        avatar: Express.Multer.File,
+        @Request() req: any,
+    ): Promise<string> {
+        return await this.buildersService.updateAvatar(avatar, req.user);
     }
 
     @Get('drafts')

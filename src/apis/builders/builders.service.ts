@@ -10,6 +10,7 @@ import { CreateDraftDto } from 'src/dtos/create-draft.dto';
 import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
 import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
+import { ObjectStorageService } from 'src/object-storage/object-storage.service';
 import { Builder } from 'src/schemas/builder.schema';
 import { Draft } from 'src/schemas/draft.schema';
 import { Project } from 'src/schemas/project.schema';
@@ -17,6 +18,7 @@ import { Project } from 'src/schemas/project.schema';
 @Injectable()
 export class BuildersService {
     constructor(
+        private readonly objectStorageService: ObjectStorageService,
         @InjectModel(Builder.name)
         private readonly builderModel: Model<Builder>,
         @InjectModel(Project.name)
@@ -30,6 +32,26 @@ export class BuildersService {
             (await this.builderModel.findOne({ address: address })) ||
             ({} as any)
         );
+    }
+
+    async updateAvatar(
+        avatar: Express.Multer.File,
+        jwtPayload: JwtPayload,
+    ): Promise<string> {
+        if (jwtPayload.role != AuthRoleEnum.BUILDER) {
+            throw new UnauthorizedException();
+        } else {
+            const avatarUrl =
+                await this.objectStorageService.uploadFile(avatar);
+            await this.builderModel.findOneAndUpdate(
+                { address: jwtPayload.sub },
+                {
+                    img: avatarUrl,
+                },
+                { new: true, upsert: true },
+            );
+            return avatarUrl;
+        }
     }
 
     async updateBuilder(
@@ -47,7 +69,6 @@ export class BuildersService {
                     role: updateBuilderDto.role,
                     link: updateBuilderDto.link,
                     description: updateBuilderDto.description,
-                    img: updateBuilderDto.img,
                 },
                 { new: true, upsert: true },
             );

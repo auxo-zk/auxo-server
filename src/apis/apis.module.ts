@@ -27,6 +27,7 @@ import { Draft, DraftSchema } from 'src/schemas/draft.schema';
 import { OrganizersController } from './organizers/organizers.controller';
 import { OrganizersService } from './organizers/organizers.service';
 import { Organizer, OrganizerSchema } from 'src/schemas/organizer.schema';
+import { ObjectStorageService } from 'src/object-storage/object-storage.service';
 
 @Module({
     imports: [
@@ -67,6 +68,7 @@ import { Organizer, OrganizerSchema } from 'src/schemas/organizer.schema';
         ProjectsService,
         BuildersService,
         OrganizersService,
+        ObjectStorageService,
     ],
 })
 export class ApisModule {}

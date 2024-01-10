@@ -12,7 +12,4 @@ export class UpdateBuilderDto {
 
     @IsString()
     description: string;
-
-    @IsUrl()
-    img: string;
 }

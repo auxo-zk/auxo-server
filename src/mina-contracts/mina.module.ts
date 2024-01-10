@@ -58,6 +58,7 @@ import {
 } from 'src/schemas/actions/project-action.schema';
 import { RawProject, RawProjectSchema } from 'src/schemas/raw-project.schema';
 import { Project, ProjectSchema } from 'src/schemas/project.schema';
+import { CampaignContractService } from './campaign-contract/campaign-contract.service';
 
 @Module({
     imports: [
@@ -102,6 +103,7 @@ import { Project, ProjectSchema } from 'src/schemas/project.schema';
         DkgContractsService,
         DkgUsageContractsService,
         ProjectContractService,
+        CampaignContractService,
     ],
     exports: [CommitteeContractService, DkgContractsService],
 })
