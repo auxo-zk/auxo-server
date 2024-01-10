@@ -9,7 +9,4 @@ export class UpdateOrganizerDto {
 
     @IsString()
     description: string;
-
-    @IsUrl()
-    img: string;
 }

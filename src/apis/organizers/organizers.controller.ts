@@ -1,17 +1,22 @@
 import {
     Body,
     Controller,
+    FileTypeValidator,
     Get,
     Param,
+    ParseFilePipe,
     Post,
     Request,
+    UploadedFile,
     UseGuards,
+    UseInterceptors,
 } from '@nestjs/common';
 import { OrganizersService } from './organizers.service';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { UpdateOrganizerDto } from 'src/dtos/update-organizer.dto';
 import { Organizer } from 'src/schemas/organizer.schema';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('organizers')
 export class OrganizersController {
@@ -29,6 +34,32 @@ export class OrganizersController {
             updateOrganizerDto,
             req.user,
         );
+    }
+
+    @Post('update-avatar')
+    @ApiTags('Builder')
+    @ApiBearerAuth('access-token')
+    @UseGuards(AuthGuard)
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: { avatar: { type: 'string', format: 'binary' } },
+        },
+    })
+    @UseInterceptors(
+        FileInterceptor('avatar', { limits: { fileSize: 10485760 } }),
+    )
+    async updateAvatar(
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [new FileTypeValidator({ fileType: 'image/*' })],
+            }),
+        )
+        avatar: Express.Multer.File,
+        @Request() req: any,
+    ): Promise<string> {
+        return await this.organizersService.updateAvatar(avatar, req.user);
     }
 
     @Get(':address')
