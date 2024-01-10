@@ -37,7 +37,7 @@ export class OrganizersController {
     }
 
     @Post('update-avatar')
-    @ApiTags('Builder')
+    @ApiTags('Organizer')
     @ApiBearerAuth('access-token')
     @UseGuards(AuthGuard)
     @ApiConsumes('multipart/form-data')
