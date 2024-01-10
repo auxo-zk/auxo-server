@@ -24,6 +24,9 @@ import { BuildersService } from './builders/builders.service';
 import { BuildersController } from './builders/builders.controller';
 import { Builder, BuilderSchema } from 'src/schemas/builder.schema';
 import { Draft, DraftSchema } from 'src/schemas/draft.schema';
+import { OrganizersController } from './organizers/organizers.controller';
+import { OrganizersService } from './organizers/organizers.service';
+import { Organizer, OrganizerSchema } from 'src/schemas/organizer.schema';
 
 @Module({
     imports: [
@@ -38,6 +41,7 @@ import { Draft, DraftSchema } from 'src/schemas/draft.schema';
             { name: Project.name, schema: ProjectSchema },
             { name: Builder.name, schema: BuilderSchema },
             { name: Draft.name, schema: DraftSchema },
+            { name: Organizer.name, schema: OrganizerSchema },
         ]),
         HttpModule,
         CacheModule.register(),
@@ -53,6 +57,7 @@ import { Draft, DraftSchema } from 'src/schemas/draft.schema';
         AuthController,
         ProjectsController,
         BuildersController,
+        OrganizersController,
     ],
     providers: [
         Ipfs,
@@ -61,6 +66,7 @@ import { Draft, DraftSchema } from 'src/schemas/draft.schema';
         AuthService,
         ProjectsService,
         BuildersService,
+        OrganizersService,
     ],
 })
 export class ApisModule {}
