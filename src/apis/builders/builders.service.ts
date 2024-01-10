@@ -7,7 +7,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AuthRoleEnum } from 'src/constants';
 import { CreateDraftDto } from 'src/dtos/create-draft.dto';
-import { UpdateBuilderDto } from 'src/dtos/update-builder-profile.dto';
+import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
 import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { Builder } from 'src/schemas/builder.schema';
@@ -26,7 +26,10 @@ export class BuildersService {
     ) {}
 
     async getBuilder(address: string): Promise<Builder> {
-        return await this.builderModel.findOne({ address: address });
+        return (
+            (await this.builderModel.findOne({ address: address })) ||
+            ({} as any)
+        );
     }
 
     async updateBuilder(
@@ -67,10 +70,12 @@ export class BuildersService {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
-            return await this.draftModel.findOne({
-                _id: draftId,
-                address: jwtPayload.sub,
-            });
+            return (
+                (await this.draftModel.findOne({
+                    _id: draftId,
+                    address: jwtPayload.sub,
+                })) || ({} as any)
+            );
         }
     }
 

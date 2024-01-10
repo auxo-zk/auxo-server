@@ -11,7 +11,7 @@ import {
 import { BuildersService } from './builders.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
-import { UpdateBuilderDto } from 'src/dtos/update-builder-profile.dto';
+import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
 import { Builder } from 'src/schemas/builder.schema';
 import { Project } from 'src/schemas/project.schema';
 import { CreateDraftDto } from 'src/dtos/create-draft.dto';
