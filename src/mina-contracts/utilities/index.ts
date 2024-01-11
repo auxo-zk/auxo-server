@@ -28,7 +28,7 @@ export class Utilities {
         );
     }
 
-    static getKeyObjectId(committeeId: number, keyId: number): ObjectId {
-        return new mongoose.Schema.Types.ObjectId(committeeId + '_' + keyId);
+    static getKeyObjectId(committeeId: number, keyId: number): string {
+        return committeeId + '_' + keyId;
     }
 }
