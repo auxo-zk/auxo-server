@@ -642,12 +642,11 @@ export class DkgContractsService implements OnModuleInit {
         );
 
         // Create reduce tree
-        const lastActiveAction = await this.round1Model.find(
-            {
+        const lastActiveAction = await this.round1Model
+            .find({
                 active: true,
-            },
-            { sort: { actionId: -1 } },
-        )[0];
+            })
+            .slice(-1)[0];
         console.log('Last Active Action:', lastActiveAction);
         const round1s = lastActiveAction
             ? await this.round1ActionModel.find(
