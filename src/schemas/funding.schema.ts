@@ -15,6 +15,9 @@ export class Funding {
     @Prop()
     M: { x: string; y: string }[];
 
+    @Prop()
+    result?: string[];
+
     @Prop({ required: true, default: false, index: true })
     active?: boolean;
 }
