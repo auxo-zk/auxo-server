@@ -26,7 +26,11 @@ import {
 import { Utilities } from '../utilities';
 import { Bit255 } from '@auxo-dev/auxo-libs';
 import { Committee } from 'src/schemas/committee.schema';
-import { DkgActionEnum, KeyStatusEnum } from 'src/constants';
+import {
+    ActionReduceStatusEnum,
+    DkgActionEnum,
+    KeyStatusEnum,
+} from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
 
 const KEY_STATUS_ARRAY = [
@@ -46,13 +50,13 @@ export class DkgContractsService implements OnModuleInit {
     };
     private readonly _round1: {
         zkApp: Storage.SharedStorage.AddressStorage;
-        reduceState: Field;
+        reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
     };
     private readonly _round2: {
         zkApp: Storage.SharedStorage.AddressStorage;
-        reduceState: Field;
+        reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
         encryption: Storage.DKGStorage.EncryptionStorage;
     };
@@ -67,7 +71,7 @@ export class DkgContractsService implements OnModuleInit {
 
     public get round1(): {
         zkApp: Storage.SharedStorage.AddressStorage;
-        reduceState: Field;
+        reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
     } {
@@ -76,7 +80,7 @@ export class DkgContractsService implements OnModuleInit {
 
     public get round2(): {
         zkApp: Storage.SharedStorage.AddressStorage;
-        reduceState: Field;
+        reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
         encryption: Storage.DKGStorage.EncryptionStorage;
     } {
@@ -109,13 +113,13 @@ export class DkgContractsService implements OnModuleInit {
         };
         this._round1 = {
             zkApp: new Storage.SharedStorage.AddressStorage(),
-            reduceState: Field(0),
+            reduceState: new Storage.SharedStorage.ReduceStorage(),
             contribution: new Storage.DKGStorage.Round1ContributionStorage(),
             publicKey: new Storage.DKGStorage.PublicKeyStorage(),
         };
         this._round2 = {
             zkApp: new Storage.SharedStorage.AddressStorage(),
-            reduceState: Field(0),
+            reduceState: new Storage.SharedStorage.ReduceStorage(),
             contribution: new Storage.DKGStorage.Round2ContributionStorage(),
             encryption: new Storage.DKGStorage.EncryptionStorage(),
         };
@@ -619,6 +623,8 @@ export class DkgContractsService implements OnModuleInit {
             process.env.COMMITTEE_ADDRESS,
         );
         const dkgAddress = PublicKey.fromBase58(process.env.DKG_ADDRESS);
+
+        // Create zkApp tree
         this._round1.zkApp.addresses.setLeaf(
             this._round1.zkApp
                 .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
@@ -632,6 +638,36 @@ export class DkgContractsService implements OnModuleInit {
             this._round1.zkApp.calculateLeaf(dkgAddress),
         );
 
+        // Create reduce tree
+        const lastActiveAction = await this.round1Model.findOne(
+            {
+                active: true,
+            },
+            { sort: { actionId: -1 } },
+        );
+        const round1s = await this.round1ActionModel.find(
+            {
+                actionId: { $lte: lastActiveAction.actionId },
+            },
+            { sort: { actionId: 1 } },
+        );
+
+        round1s.map((action) => {
+            this._round1.reduceState.updateLeaf(
+                this._round1.reduceState.calculateIndex(
+                    Field(action.currentActionState),
+                ),
+                this._round1.reduceState.calculateLeaf(
+                    Number(ActionReduceStatusEnum.REDUCED),
+                ),
+            );
+        });
+        console.log(
+            'Round 1 reduceState:',
+            this._round1.reduceState.actions.getRoot(),
+        );
+
+        // Create contribution and publicKey tree
         const keyCounters: { _id: number; count: number }[] =
             await this.dkgModel.aggregate([
                 {

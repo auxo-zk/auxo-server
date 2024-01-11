@@ -16,6 +16,11 @@ export enum DkgActionEnum {
     __LENGTH,
 }
 
+export enum ActionReduceStatusEnum {
+    NOT_EXISTED,
+    REDUCED,
+}
+
 export enum RequestActionEnum {
     REQUEST,
     UNREQUEST,
