@@ -42,6 +42,23 @@ export class CommitteesService {
                     { $match: { 'ipfsData.creator': getCommitteesDto.member } },
                     {
                         $lookup: {
+                            from: 'keys',
+                            as: 'keys',
+                            localField: 'committeeId',
+                            foreignField: 'committeeId',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        keyId: 1,
+                                        publicKey: 1,
+                                        status: 1,
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        $lookup: {
                             from: 'dkgrequests',
                             as: 'requests',
                             localField: 'committeeId',
@@ -64,6 +81,23 @@ export class CommitteesService {
                     },
                     {
                         $lookup: {
+                            from: 'keys',
+                            as: 'keys',
+                            localField: 'committeeId',
+                            foreignField: 'committeeId',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        keyId: 1,
+                                        publicKey: 1,
+                                        status: 1,
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        $lookup: {
                             from: 'dkgrequests',
                             as: 'requests',
                             localField: 'committeeId',
@@ -79,6 +113,23 @@ export class CommitteesService {
                     {
                         $match: {
                             publicKeys: getCommitteesDto.member,
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: 'keys',
+                            as: 'keys',
+                            localField: 'committeeId',
+                            foreignField: 'committeeId',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        keyId: 1,
+                                        publicKey: 1,
+                                        status: 1,
+                                    },
+                                },
+                            ],
                         },
                     },
                     {
@@ -103,6 +154,23 @@ export class CommitteesService {
                 },
                 {
                     $lookup: {
+                        from: 'keys',
+                        as: 'keys',
+                        localField: 'committeeId',
+                        foreignField: 'committeeId',
+                        pipeline: [
+                            {
+                                $project: {
+                                    keyId: 1,
+                                    publicKey: 1,
+                                    status: 1,
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    $lookup: {
                         from: 'dkgrequests',
                         as: 'requests',
                         localField: 'committeeId',
@@ -117,6 +185,23 @@ export class CommitteesService {
             committees = await this.committeeModel.aggregate([
                 {
                     $match: {},
+                },
+                {
+                    $lookup: {
+                        from: 'keys',
+                        as: 'keys',
+                        localField: 'committeeId',
+                        foreignField: 'committeeId',
+                        pipeline: [
+                            {
+                                $project: {
+                                    keyId: 1,
+                                    publicKey: 1,
+                                    status: 1,
+                                },
+                            },
+                        ],
+                    },
                 },
                 {
                     $lookup: {
@@ -147,6 +232,23 @@ export class CommitteesService {
     async getCommittee(committeeId: number): Promise<Committee> {
         const result = await this.committeeModel.aggregate([
             { $match: { committeeId: committeeId } },
+            {
+                $lookup: {
+                    from: 'keys',
+                    as: 'keys',
+                    localField: 'committeeId',
+                    foreignField: 'committeeId',
+                    pipeline: [
+                        {
+                            $project: {
+                                keyId: 1,
+                                publicKey: 1,
+                                status: 1,
+                            },
+                        },
+                    ],
+                },
+            },
             {
                 $lookup: {
                     from: 'dkgrequests',
