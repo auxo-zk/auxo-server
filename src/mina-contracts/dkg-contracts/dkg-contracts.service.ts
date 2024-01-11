@@ -645,12 +645,14 @@ export class DkgContractsService implements OnModuleInit {
             },
             { sort: { actionId: -1 } },
         );
-        const round1s = await this.round1ActionModel.find(
-            {
-                actionId: { $lte: lastActiveAction.actionId },
-            },
-            { sort: { actionId: 1 } },
-        );
+        const round1s = lastActiveAction
+            ? await this.round1ActionModel.find(
+                  {
+                      actionId: { $lte: lastActiveAction.actionId },
+                  },
+                  { sort: { actionId: 1 } },
+              )
+            : [];
 
         round1s.map((action) => {
             this._round1.reduceState.updateLeaf(
