@@ -642,21 +642,22 @@ export class DkgContractsService implements OnModuleInit {
         );
 
         // Create reduce tree
-        const lastActiveAction = await this.round1Model
-            .find({
+        const lastActiveAction = await this.round1Model.findOne(
+            {
                 active: true,
-            })
-            .slice(-1)[0];
-        console.log('Last Active Action:', lastActiveAction);
+            },
+            {},
+            { sort: { actionId: -1 } },
+        );
         const round1s = lastActiveAction
             ? await this.round1ActionModel.find(
                   {
                       actionId: { $lte: lastActiveAction.actionId },
                   },
+                  {},
                   { sort: { actionId: 1 } },
               )
             : [];
-        console.log('Round 1 actions:', round1s);
         round1s.map((action) => {
             this._round1.reducedActions.push(Field(action.currentActionState));
             this._round1.reduceState.updateLeaf(
@@ -668,10 +669,6 @@ export class DkgContractsService implements OnModuleInit {
                 ),
             );
         });
-        console.log(
-            'Round 1 reduceState:',
-            this._round1.reduceState.actions.getRoot(),
-        );
 
         // Create contribution and publicKey tree
         const keyCounters: { _id: number; count: number }[] =
