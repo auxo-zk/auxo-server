@@ -110,11 +110,9 @@ export class StoragesService {
         const indexes = this.dkgService.round1.reducedActions;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < indexes.length; i++) {
-            result.push(
-                this.dkgService.round1.reduceState
-                    .getWitness(indexes[i])
-                    .toJSON(),
-            );
+            result[indexes[i].toString()] = this.dkgService.round1.reduceState
+                .getWitness(indexes[i])
+                .toJSON();
         }
         return result;
     }
