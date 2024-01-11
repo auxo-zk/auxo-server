@@ -9,6 +9,7 @@ import { CreateCampaignDto } from 'src/dtos/create-campaign.dto';
 import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Campaign } from 'src/schemas/campaign.schema';
+import { Participation } from 'src/schemas/participation.schema';
 
 @Injectable()
 export class CampaignsService {
@@ -16,6 +17,8 @@ export class CampaignsService {
         private readonly ipfs: Ipfs,
         @InjectModel(Campaign.name)
         private readonly campaignModel: Model<Campaign>,
+        @InjectModel(Participation.name)
+        private readonly participationModel: Model<Participation>,
     ) {}
 
     async createCampaign(
@@ -45,5 +48,30 @@ export class CampaignsService {
         } else {
             throw new NotFoundException();
         }
+    }
+
+    async getProjects(campaignId: number) {
+        const result = await this.participationModel.aggregate([
+            {
+                $match: {
+                    campaignId: campaignId,
+                },
+            },
+            {
+                $lookup: {
+                    from: 'projects',
+                    as: 'project',
+                    foreignField: 'projectId',
+                    localField: 'projectId',
+                },
+            },
+            {
+                $unwind: '$project',
+            },
+            {
+                $replaceRoot: { newRoot: '$project' },
+            },
+        ]);
+        return result;
     }
 }
