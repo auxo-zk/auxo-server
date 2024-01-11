@@ -652,7 +652,7 @@ export class DkgContractsService implements OnModuleInit {
             const committeeId = keyCounter._id;
             for (let keyId = 0; keyId < keyCounter.count; keyId++) {
                 const key = await this.keyModel.findOne({
-                    _id: committeeId + '_' + keyId,
+                    _id: Utilities.getKeyObjectId(committeeId, keyId),
                 });
                 const round1s = await this.round1Model.find({
                     committeeId: committeeId,

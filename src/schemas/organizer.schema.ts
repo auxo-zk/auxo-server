@@ -1,5 +1,4 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { IsNumber, IsString } from 'class-validator';
 import { HydratedDocument } from 'mongoose';
 
 @Schema({ versionKey: false })

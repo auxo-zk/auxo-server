@@ -68,6 +68,15 @@ import {
     RawCampaign,
     RawCampaignSchema,
 } from 'src/schemas/raw-campaign.schema';
+import { ParticipationContractService } from './participation-contract/participation-contract.service';
+import {
+    ParticipationAction,
+    ParticipationActionSchema,
+} from 'src/schemas/actions/participation-action.schema';
+import {
+    Participation,
+    ParticipationSchema,
+} from 'src/schemas/participation.schema';
 
 @Module({
     imports: [
@@ -93,6 +102,14 @@ import {
             { name: CampaignAction.name, schema: CampaignActionSchema },
             { name: RawCampaign.name, schema: RawCampaignSchema },
             { name: Campaign.name, schema: CampaignSchema },
+            {
+                name: ParticipationAction.name,
+                schema: ParticipationActionSchema,
+            },
+            {
+                name: Participation.name,
+                schema: ParticipationSchema,
+            },
         ]),
         HttpModule,
         BullModule.forRoot({
@@ -116,7 +133,9 @@ import {
         DkgUsageContractsService,
         ProjectContractService,
         CampaignContractService,
+        ParticipationContractService,
     ],
     exports: [CommitteeContractService, DkgContractsService],
+    controllers: [],
 })
 export class MinaContractsModule {}

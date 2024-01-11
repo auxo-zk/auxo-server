@@ -1,3 +1,4 @@
+import mongoose, { ObjectId } from 'mongoose';
 import { AccountUpdate, Field } from 'o1js';
 export class Utilities {
     static stringArrayToFields(input: string[]): Field[] {
@@ -27,7 +28,7 @@ export class Utilities {
         );
     }
 
-    static getKeyObjectId(committeeId: number, keyId: number): string {
-        return committeeId + '_' + keyId;
+    static getKeyObjectId(committeeId: number, keyId: number): ObjectId {
+        return new mongoose.Schema.Types.ObjectId(committeeId + '_' + keyId);
     }
 }

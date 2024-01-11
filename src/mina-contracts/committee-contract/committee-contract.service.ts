@@ -225,7 +225,6 @@ export class CommitteeContractService implements OnModuleInit {
     }
 
     private async updateCommittees() {
-        let promises = [];
         const lastCommittee = await this.committeeModel.findOne(
             {},
             {},
@@ -252,16 +251,12 @@ export class CommitteeContractService implements OnModuleInit {
             const committeeId = committeeAction.actionId;
             const committee = getCommittee(committeeAction);
             committee.ipfsData = await this.ipfs.getData(committee.ipfsHash);
-            promises.push(
-                this.committeeModel.findOneAndUpdate(
-                    { committeeId: committeeId },
-                    committee,
-                    { new: true, upsert: true },
-                ),
+            await this.committeeModel.findOneAndUpdate(
+                { committeeId: committeeId },
+                committee,
+                { new: true, upsert: true },
             );
         }
-        await Promise.all(promises);
-        promises = [];
         const rawEvents = await this.queryService.fetchEvents(
             process.env.COMMITTEE_ADDRESS,
         );
@@ -279,9 +274,8 @@ export class CommitteeContractService implements OnModuleInit {
             for (let i = 0; i < notActiveCommittees.length; i++) {
                 const notActiveCommittee = notActiveCommittees[i];
                 notActiveCommittee.set('active', true);
-                promises.push(notActiveCommittee.save());
+                await notActiveCommittee.save();
             }
-            await Promise.all(promises);
         }
     }
 

@@ -26,13 +26,13 @@ export type CampaignActionDocument = HydratedDocument<CampaignAction>;
 export const CampaignActionSchema =
     SchemaFactory.createForClass(CampaignAction);
 
-export function getRawCampaign(committeeAction: CampaignAction): RawCampaign {
+export function getRawCampaign(campaignAction: CampaignAction): RawCampaign {
     const action = ZkApp.Campaign.CampaignAction.fromFields(
-        Utilities.stringArrayToFields(committeeAction.actions),
+        Utilities.stringArrayToFields(campaignAction.actions),
     );
     if (action.campaignId.equals(Field(-1))) {
         return {
-            actionId: committeeAction.actionId,
+            actionId: campaignAction.actionId,
             ipfsHash: action.ipfsHash.toString(),
             owner: action.owner.toBase58(),
             status: Number(action.campaignStatus.toString()),
@@ -42,7 +42,7 @@ export function getRawCampaign(committeeAction: CampaignAction): RawCampaign {
         };
     } else {
         return {
-            actionId: committeeAction.actionId,
+            actionId: campaignAction.actionId,
             campaignId: Number(action.campaignId.toString()),
             ipfsHash: action.ipfsHash.toString(),
             owner: action.owner.toBase58(),
