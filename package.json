@@ -22,7 +22,7 @@
     "dependencies": {
         "@auxo-dev/auxo-libs": "^0.3.5",
         "@auxo-dev/dkg": "^0.2.9",
-        "@auxo-dev/platform": "^0.1.2",
+        "@auxo-dev/platform": "^0.1.3",
         "@aws-sdk/client-s3": "^3.485.0",
         "@nestjs/axios": "^3.0.1",
         "@nestjs/bull": "^10.0.1",

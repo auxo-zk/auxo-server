@@ -202,7 +202,6 @@ export class DkgContractsService implements OnModuleInit {
             {},
             { sort: { actionId: -1 } },
         );
-
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.ROUND_1_ADDRESS,
         );
@@ -667,10 +666,6 @@ export class DkgContractsService implements OnModuleInit {
                 ),
             );
         });
-        console.log(
-            'Round 1 reduceState:',
-            this._round1.reduceState.actions.getRoot(),
-        );
 
         // Create contribution and publicKey tree
         const keyCounters: { _id: number; count: number }[] =

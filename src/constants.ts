@@ -8,6 +8,11 @@ export enum DkgEventEnum {
     __LENGTH,
 }
 
+export enum FundingEventEnum {
+    ACTIONS_REDUCED,
+    REQUEST_SENT,
+}
+
 export enum DkgActionEnum {
     GENERATE_KEY,
     FINALIZE_ROUND_1,

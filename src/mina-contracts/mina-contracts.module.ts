@@ -77,6 +77,13 @@ import {
     Participation,
     ParticipationSchema,
 } from 'src/schemas/participation.schema';
+import { FundingContractService } from './funding-contract/funding-contract.service';
+import {
+    FundingAction,
+    FundingActionSchema,
+} from 'src/schemas/actions/funding-action.schema';
+import { Funding, FundingSchema } from 'src/schemas/funding.schema';
+import { FundingResult, FundingResultSchema } from 'src/schemas/result.schema';
 
 @Module({
     imports: [
@@ -110,6 +117,9 @@ import {
                 name: Participation.name,
                 schema: ParticipationSchema,
             },
+            { name: FundingAction.name, schema: FundingActionSchema },
+            { name: Funding.name, schema: FundingSchema },
+            { name: FundingResult.name, schema: FundingResultSchema },
         ]),
         HttpModule,
         BullModule.forRoot({
@@ -134,6 +144,7 @@ import {
         ProjectContractService,
         CampaignContractService,
         ParticipationContractService,
+        FundingContractService,
     ],
     exports: [CommitteeContractService, DkgContractsService],
     controllers: [],
