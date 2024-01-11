@@ -106,6 +106,19 @@ export class StoragesService {
         return result;
     }
 
+    getRound1ReduceTree(): MerkleLeaf[] {
+        const indexes = this.dkgService.round1.reducedActions;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < indexes.length; i++) {
+            result.push(
+                this.dkgService.round1.reduceState
+                    .getWitness(indexes[i])
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
     getRound1ContributionTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.dkgService.round1.contribution.level1.leafCount;
         const result: MerkleLeaf[] = [];

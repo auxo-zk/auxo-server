@@ -53,6 +53,7 @@ export class DkgContractsService implements OnModuleInit {
         reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
+        reducedActions: Field[];
     };
     private readonly _round2: {
         zkApp: Storage.SharedStorage.AddressStorage;
@@ -74,6 +75,7 @@ export class DkgContractsService implements OnModuleInit {
         reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
+        reducedActions: Field[];
     } {
         return this._round1;
     }
@@ -116,6 +118,7 @@ export class DkgContractsService implements OnModuleInit {
             reduceState: new Storage.SharedStorage.ReduceStorage(),
             contribution: new Storage.DKGStorage.Round1ContributionStorage(),
             publicKey: new Storage.DKGStorage.PublicKeyStorage(),
+            reducedActions: [],
         };
         this._round2 = {
             zkApp: new Storage.SharedStorage.AddressStorage(),
@@ -653,8 +656,8 @@ export class DkgContractsService implements OnModuleInit {
                   { sort: { actionId: 1 } },
               )
             : [];
-
         round1s.map((action) => {
+            this._round1.reducedActions.push(Field(action.currentActionState));
             this._round1.reduceState.updateLeaf(
                 this._round1.reduceState.calculateIndex(
                     Field(action.currentActionState),

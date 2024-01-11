@@ -51,6 +51,12 @@ export class StoragesController {
         return this.storagesService.getRound1ZkApps();
     }
 
+    @Get('round1/reduce')
+    @ApiTags('Storage')
+    getRound1ReduceTree(): MerkleLeaf[] {
+        return this.storagesService.getRound1ReduceTree();
+    }
+
     @Get('round1/contribution/level1')
     @ApiTags('Storage')
     getRound1ContributionTreeLevel1(): MerkleLeaf[] {
