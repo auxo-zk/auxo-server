@@ -648,6 +648,7 @@ export class DkgContractsService implements OnModuleInit {
             },
             { sort: { actionId: -1 } },
         );
+        console.log('Last Active Action:', lastActiveAction);
         const round1s = lastActiveAction
             ? await this.round1ActionModel.find(
                   {
@@ -656,6 +657,7 @@ export class DkgContractsService implements OnModuleInit {
                   { sort: { actionId: 1 } },
               )
             : [];
+        console.log('Round 1 actions:', round1s);
         round1s.map((action) => {
             this._round1.reducedActions.push(Field(action.currentActionState));
             this._round1.reduceState.updateLeaf(
