@@ -30,6 +30,10 @@ export class CampaignContractService implements OnModuleInit {
         await this.fetch();
     }
 
+    async update() {
+        await this.fetch();
+    }
+
     private async fetch() {
         try {
             await this.fetchCampaignActions();
