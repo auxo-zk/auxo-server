@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class UpdateDraftDto {
     @IsString()
@@ -27,10 +27,12 @@ export class UpdateDraftDto {
     challengeAndRisks?: string;
 
     @Type(() => Member)
-    @ValidateNested()
+    @ValidateNested({ each: true })
     @IsOptional()
+    @IsArray()
     members?: Member[];
 
+    @IsArray()
     @IsString({ each: true })
     @IsOptional()
     documents?: string[];

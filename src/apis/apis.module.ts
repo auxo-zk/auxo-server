@@ -31,6 +31,10 @@ import { ObjectStorageService } from 'src/object-storage/object-storage.service'
 import { Campaign, CampaignSchema } from 'src/schemas/campaign.schema';
 import { CampaignsService } from './campaigns/campaigns.service';
 import { CampaignsController } from './campaigns/campaigns.controller';
+import {
+    Participation,
+    ParticipationSchema,
+} from 'src/schemas/participation.schema';
 
 @Module({
     imports: [
@@ -47,6 +51,7 @@ import { CampaignsController } from './campaigns/campaigns.controller';
             { name: Draft.name, schema: DraftSchema },
             { name: Organizer.name, schema: OrganizerSchema },
             { name: Campaign.name, schema: CampaignSchema },
+            { name: Participation.name, schema: ParticipationSchema },
         ]),
         HttpModule,
         CacheModule.register(),

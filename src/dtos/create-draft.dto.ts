@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class CreateDraftDto {
     @IsString()
@@ -29,8 +29,10 @@ export class CreateDraftDto {
     @Type(() => Member)
     @ValidateNested()
     @IsOptional()
+    @IsArray()
     members?: Member[];
 
+    @IsArray()
     @IsString({ each: true })
     @IsOptional()
     documents?: string[];

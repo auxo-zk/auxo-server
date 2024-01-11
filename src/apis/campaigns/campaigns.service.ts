@@ -29,15 +29,19 @@ export class CampaignsService {
     }
 
     async getCampaigns(owner: string): Promise<Campaign[]> {
-        return await this.campaignModel.find({ owner: owner });
+        return await this.campaignModel.find({ owner: owner, active: true });
     }
 
     async getCampaign(campaignId: number): Promise<Campaign> {
         const exist = await this.campaignModel.exists({
             campaignId: campaignId,
+            active: true,
         });
         if (exist) {
-            return await this.campaignModel.findOne({ campaignId: campaignId });
+            return await this.campaignModel.findOne({
+                campaignId: campaignId,
+                active: true,
+            });
         } else {
             throw new NotFoundException();
         }
