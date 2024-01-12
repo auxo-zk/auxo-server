@@ -77,6 +77,20 @@ export class DkgUsageContractsService implements OnModuleInit {
             await this.updateDkgRequests();
             await this.updateDkgResponse();
             await this.createTrees();
+            // console.log(this._dkgRequest.requester.level1.getRoot());
+            // console.log(this._dkgRequest.requestStatus.level1.getRoot());
+            // Provable.log(
+            //     await this.queryService.fetchZkAppState(
+            //         process.env.REQUEST_ADDRESS,
+            //     ),
+            // );
+
+            // console.log(this._dkgResponse.contribution.level1.getRoot());
+            // Provable.log(
+            //     await this.queryService.fetchZkAppState(
+            //         process.env.RESPONSE_ADDRESS,
+            //     ),
+            // );
         } catch (err) {}
     }
 
@@ -220,6 +234,7 @@ export class DkgUsageContractsService implements OnModuleInit {
                 const rawDkgRequest = await this.rawDkgRequestModel.findOne({
                     requestId: notResolvedDkgRequest.requestId,
                     actionEnum: RequestActionEnum.REQUEST,
+                    active: true,
                 });
                 if (rawDkgRequest) {
                     notResolvedDkgRequest.set(
@@ -242,6 +257,7 @@ export class DkgUsageContractsService implements OnModuleInit {
                 const rawDkgRequest = await this.rawDkgRequestModel.findOne({
                     requestId: notResolvedDkgRequest.requestId,
                     actionEnum: RequestActionEnum.RESOLVE,
+                    active: true,
                 });
                 if (rawDkgRequest) {
                     notResolvedDkgRequest.set('D', rawDkgRequest.D);
