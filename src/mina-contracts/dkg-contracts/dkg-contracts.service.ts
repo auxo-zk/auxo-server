@@ -414,7 +414,7 @@ export class DkgContractsService implements OnModuleInit {
 
         let round2Actions: Round2Action[];
         if (lastRound2Contribution != null) {
-            round2Actions = await this.round1ActionModel.find(
+            round2Actions = await this.round2ActionModel.find(
                 { actionId: { $gt: lastRound2Contribution.actionId } },
                 {},
                 { sort: { actionId: 1 } },
