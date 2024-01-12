@@ -60,7 +60,6 @@ export class CommitteeContractService implements OnModuleInit {
         private readonly committeeModel: Model<Committee>,
     ) {
         this._nextCommitteeId = 0;
-
         this._memberTree = new Storage.CommitteeStorage.MemberStorage();
         this._settingTree = new Storage.CommitteeStorage.SettingStorage();
     }

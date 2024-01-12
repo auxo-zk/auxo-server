@@ -6,7 +6,7 @@ import {
     getRawDkgRequest,
 } from 'src/schemas/actions/request-action.schema';
 import { QueryService } from '../query/query.service';
-import { Field, Reducer } from 'o1js';
+import { Field, Group, Provable, PublicKey, Reducer } from 'o1js';
 import { RawDkgRequest } from 'src/schemas/raw-request.schema';
 import {
     ResponseAction,
@@ -21,9 +21,21 @@ import {
 import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
+import { ResponseContribution, Storage, ZkApp } from '@auxo-dev/dkg';
 
 @Injectable()
 export class DkgUsageContractsService implements OnModuleInit {
+    private readonly _dkgRequest: {
+        requester: Storage.RequestStorage.RequesterStorage;
+        requestStatus: Storage.RequestStorage.RequestStatusStorage;
+    };
+
+    private readonly _dkgResponse: {
+        zkApp: Storage.SharedStorage.AddressStorage;
+        reducedActions: Field[];
+        contribution: Storage.RequestStorage.ResponseContributionStorage;
+    };
+
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(RequestAction.name)
@@ -36,7 +48,19 @@ export class DkgUsageContractsService implements OnModuleInit {
         private readonly responseActionModel: Model<ResponseAction>,
         @InjectModel(DkgResponse.name)
         private readonly dkgResponseModel: Model<DkgResponse>,
-    ) {}
+    ) {
+        this._dkgRequest = {
+            requester: new Storage.RequestStorage.RequesterStorage(),
+            requestStatus: new Storage.RequestStorage.RequestStatusStorage(),
+        };
+        this._dkgResponse = {
+            zkApp: new Storage.SharedStorage.AddressStorage(),
+            reducedActions: [],
+            contribution:
+                new Storage.RequestStorage.ResponseContributionStorage(),
+        };
+    }
+
     async onModuleInit() {
         await this.fetch();
     }
@@ -52,6 +76,7 @@ export class DkgUsageContractsService implements OnModuleInit {
             await this.updateRawDkgRequests();
             await this.updateDkgRequests();
             await this.updateDkgResponse();
+            await this.createTrees();
         } catch (err) {}
     }
 
@@ -176,7 +201,7 @@ export class DkgUsageContractsService implements OnModuleInit {
             .find({})
             .distinct('requestId');
         const notExistedRequestIds = await this.rawDkgRequestModel
-            .find({ requestId: { $nin: existedRequestIds } })
+            .find({ requestId: { $nin: existedRequestIds }, active: true })
             .distinct('requestId');
         for (let i = 0; i < notExistedRequestIds.length; i++) {
             await this.dkgRequestModel.create({
@@ -357,17 +382,71 @@ export class DkgUsageContractsService implements OnModuleInit {
         }
     }
 
-    private getLastRequestActionHash(rawEvents: Event[]): string {
-        let index = rawEvents.length - 1;
-        while (index >= 0) {
-            const rawEvent = rawEvents[index];
-            const data = rawEvent.events[0].data;
-            const actionHash = Field(data[data.length - 1]).toString();
-            if (actionHash != '0') {
-                return actionHash;
+    async createTrees() {
+        const dkgRequests = await this.dkgRequestModel.find({
+            status: {
+                $gte: RequestStatusEnum.REQUESTING,
+            },
+        });
+        for (let i = 0; i < dkgRequests.length; i++) {
+            const dkgRequest = dkgRequests[i];
+            const level1Index = this._dkgRequest.requester.calculateLevel1Index(
+                Field(dkgRequest.requestId),
+            );
+            const requesterLeaf = this._dkgRequest.requester.calculateLeaf(
+                PublicKey.fromBase58(dkgRequest.requester),
+            );
+            const requestVector = ZkApp.Request.RequestVector.empty();
+            dkgRequest.D.map((d, index) => {
+                requestVector.set(Field(index), Group.from(d.x, d.y));
+            });
+            // const requestStatusLeaf = dkgRequest.status == RequestStatusEnum.REQUESTING? this._dkgRequest.requestStatus.calculateLeaf()
+            const requestStatusLeaf =
+                this._dkgRequest.requestStatus.calculateLeaf(
+                    Field(
+                        dkgRequest.status == RequestStatusEnum.REQUESTING
+                            ? RequestStatusEnum.REQUESTING
+                            : requestVector.hash(),
+                    ),
+                );
+            // const requestContribution  =
+            this._dkgRequest.requestStatus.updateLeaf(
+                requestStatusLeaf,
+                level1Index,
+            );
+            this._dkgRequest.requester.updateLeaf(requesterLeaf, level1Index);
+
+            const dkgResponses = await this.dkgResponseModel.find({
+                requestId: dkgRequest.requestId,
+                active: true,
+            });
+            this._dkgResponse.contribution.updateInternal(
+                level1Index,
+                Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+            );
+            for (let j = 0; j < dkgResponses.length; j++) {
+                const dkgResponse = dkgResponses[j];
+                const level2Index =
+                    this._dkgResponse.contribution.calculateLevel2Index(
+                        Field(dkgResponse.memberId),
+                    );
+                const responseContribution = ResponseContribution.empty();
+                dkgResponse.contribution.map((c, index) => {
+                    responseContribution.D.set(
+                        Field(index),
+                        Group.from(c.x, c.y),
+                    );
+                });
+                const leaf =
+                    this._dkgResponse.contribution.calculateLeaf(
+                        responseContribution,
+                    );
+                this._dkgResponse.contribution.updateLeaf(
+                    leaf,
+                    level1Index,
+                    level2Index,
+                );
             }
-            index -= 1;
         }
-        return null;
     }
 }
