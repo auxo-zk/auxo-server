@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { Field } from 'o1js';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
@@ -345,19 +349,30 @@ export class StoragesService {
     }
 
     getResponseContributionTreeLevel2(level1Index: string): MerkleLeaf[] {
-        const result: MerkleLeaf[] = [];
-        const index = Field(level1Index);
-        const leafCount =
-            this.dkgUsageContractService.dkgResponse.contribution.level2s[
-                level1Index
-            ].leafCount;
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.dkgUsageContractService.dkgResponse.contribution
-                    .getLevel2Witness(index, Field(i))
-                    .toJSON(),
-            );
+        try {
+            const result: MerkleLeaf[] = [];
+            const index = Field(level1Index);
+            if (
+                this.dkgUsageContractService.dkgResponse.contribution.level2s[
+                    level1Index
+                ]
+            ) {
+                const leafCount =
+                    this.dkgUsageContractService.dkgResponse.contribution
+                        .level2s[level1Index].leafCount;
+                for (let i = 0; i < leafCount; i++) {
+                    result.push(
+                        this.dkgUsageContractService.dkgResponse.contribution
+                            .getLevel2Witness(index, Field(i))
+                            .toJSON(),
+                    );
+                }
+                return result;
+            } else {
+                throw new NotFoundException();
+            }
+        } catch (err) {
+            throw new BadRequestException();
         }
-        return result;
     }
 }
