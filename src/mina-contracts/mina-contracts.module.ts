@@ -146,7 +146,11 @@ import { FundingResult, FundingResultSchema } from 'src/schemas/result.schema';
         ParticipationContractService,
         FundingContractService,
     ],
-    exports: [CommitteeContractService, DkgContractsService],
+    exports: [
+        CommitteeContractService,
+        DkgContractsService,
+        DkgUsageContractsService,
+    ],
     controllers: [],
 })
 export class MinaContractsModule {}

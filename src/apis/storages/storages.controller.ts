@@ -30,7 +30,7 @@ export class StoragesController {
     @Get('dkg/zkapps')
     @ApiTags('Storage')
     getDKGZkApps(): MerkleLeaf[] {
-        return this.storagesService.getDKGZkApps();
+        return this.storagesService.getDKGZkAppTree();
     }
 
     @Get('dkg/key-counter/level1')
@@ -48,7 +48,7 @@ export class StoragesController {
     @Get('round1/zkapps')
     @ApiTags('Storage')
     getRound1ZkApps(): MerkleLeaf[] {
-        return this.storagesService.getRound1ZkApps();
+        return this.storagesService.getRound1ZkAppTree();
     }
 
     @Get('round1/reduce')
@@ -90,7 +90,7 @@ export class StoragesController {
     @Get('round2/zkapps')
     @ApiTags('Storage')
     getRound2ZkApps(): MerkleLeaf[] {
-        return this.storagesService.getRound2ZkApps();
+        return this.storagesService.getRound2ZkAppTree();
     }
 
     @Get('round2/reduce')
@@ -127,5 +127,45 @@ export class StoragesController {
         @Param('level1Index', ParseIntPipe) level1Index: number,
     ) {
         return this.storagesService.getRound2EncryptionTreeLevel2(level1Index);
+    }
+
+    @Get('request/requester/level1')
+    @ApiTags('Storage')
+    getRequesterTreeLevel1(): { [key: string]: MerkleLeaf } {
+        return this.storagesService.getRequesterTreeLevel1();
+    }
+
+    @Get('request/request-status/level1')
+    @ApiTags('Storage')
+    getRequestStatusTreeLevel1(): { [key: string]: MerkleLeaf } {
+        return this.storagesService.getRequestStatusTreeLevel1();
+    }
+
+    @Get('response/zkapps')
+    @ApiTags('Storage')
+    getResponseZkApps(): MerkleLeaf[] {
+        return this.storagesService.getResponseZkApTree();
+    }
+
+    @Get('response/reduce')
+    @ApiTags('Storage')
+    getResponseReduceTree(): { [key: string]: MerkleLeaf } {
+        return this.storagesService.getResponseReduceTree();
+    }
+
+    @Get('response/contribution/level1')
+    @ApiTags('Storage')
+    getResponseContributionTreeLevel1(): { [key: string]: MerkleLeaf } {
+        return this.storagesService.getResponseContributionTreeLevel1();
+    }
+
+    @Get('response/contribution/level2/:level1Index')
+    @ApiTags('Storage')
+    getResponseContributionTreeLevel2(
+        @Param('level1Index') level1Index: string,
+    ): MerkleLeaf[] {
+        return this.storagesService.getResponseContributionTreeLevel2(
+            level1Index,
+        );
     }
 }

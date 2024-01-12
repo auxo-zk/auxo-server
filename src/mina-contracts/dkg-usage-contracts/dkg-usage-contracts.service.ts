@@ -14,6 +14,7 @@ import {
 } from 'src/schemas/actions/response-action.schema';
 import { DkgResponse } from 'src/schemas/response.schema';
 import {
+    ActionReduceStatusEnum,
     RequestActionEnum,
     RequestEventEnum,
     RequestStatusEnum,
@@ -21,10 +22,12 @@ import {
 import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
-import { ResponseContribution, Storage, ZkApp } from '@auxo-dev/dkg';
+import { Constants, ResponseContribution, Storage, ZkApp } from '@auxo-dev/dkg';
 
 @Injectable()
 export class DkgUsageContractsService implements OnModuleInit {
+    private readonly _requestIds: string[];
+
     private readonly _dkgRequest: {
         requester: Storage.RequestStorage.RequesterStorage;
         requestStatus: Storage.RequestStorage.RequestStatusStorage;
@@ -33,8 +36,28 @@ export class DkgUsageContractsService implements OnModuleInit {
     private readonly _dkgResponse: {
         zkApp: Storage.SharedStorage.AddressStorage;
         reducedActions: Field[];
+        reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.RequestStorage.ResponseContributionStorage;
     };
+
+    public get requestIds(): string[] {
+        return this._requestIds;
+    }
+    public get dkgRequest(): {
+        requester: Storage.RequestStorage.RequesterStorage;
+        requestStatus: Storage.RequestStorage.RequestStatusStorage;
+    } {
+        return this._dkgRequest;
+    }
+
+    public get dkgResponse(): {
+        zkApp: Storage.SharedStorage.AddressStorage;
+        reducedActions: Field[];
+        reduceState: Storage.SharedStorage.ReduceStorage;
+        contribution: Storage.RequestStorage.ResponseContributionStorage;
+    } {
+        return this._dkgResponse;
+    }
 
     constructor(
         private readonly queryService: QueryService,
@@ -49,6 +72,7 @@ export class DkgUsageContractsService implements OnModuleInit {
         @InjectModel(DkgResponse.name)
         private readonly dkgResponseModel: Model<DkgResponse>,
     ) {
+        this._requestIds = [];
         this._dkgRequest = {
             requester: new Storage.RequestStorage.RequesterStorage(),
             requestStatus: new Storage.RequestStorage.RequestStatusStorage(),
@@ -56,6 +80,7 @@ export class DkgUsageContractsService implements OnModuleInit {
         this._dkgResponse = {
             zkApp: new Storage.SharedStorage.AddressStorage(),
             reducedActions: [],
+            reduceState: new Storage.SharedStorage.ReduceStorage(),
             contribution:
                 new Storage.RequestStorage.ResponseContributionStorage(),
         };
@@ -77,21 +102,9 @@ export class DkgUsageContractsService implements OnModuleInit {
             await this.updateDkgRequests();
             await this.updateDkgResponse();
             await this.createTrees();
-            // console.log(this._dkgRequest.requester.level1.getRoot());
-            // console.log(this._dkgRequest.requestStatus.level1.getRoot());
-            // Provable.log(
-            //     await this.queryService.fetchZkAppState(
-            //         process.env.REQUEST_ADDRESS,
-            //     ),
-            // );
-
-            // console.log(this._dkgResponse.contribution.level1.getRoot());
-            // Provable.log(
-            //     await this.queryService.fetchZkAppState(
-            //         process.env.RESPONSE_ADDRESS,
-            //     ),
-            // );
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     private async fetchRequestActions() {
@@ -399,6 +412,71 @@ export class DkgUsageContractsService implements OnModuleInit {
     }
 
     async createTrees() {
+        // create zkapp tree for response
+        this._dkgResponse.zkApp.addresses.setLeaf(
+            this._dkgResponse.zkApp
+                .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
+                .toBigInt(),
+            this._dkgResponse.zkApp.calculateLeaf(
+                PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+            ),
+        );
+        this._dkgResponse.zkApp.addresses.setLeaf(
+            this._dkgResponse.zkApp
+                .calculateIndex(Constants.ZkAppEnum.DKG)
+                .toBigInt(),
+            this._dkgResponse.zkApp.calculateLeaf(
+                PublicKey.fromBase58(process.env.DKG_ADDRESS),
+            ),
+        );
+        this._dkgResponse.zkApp.addresses.setLeaf(
+            this._dkgResponse.zkApp
+                .calculateIndex(Constants.ZkAppEnum.ROUND1)
+                .toBigInt(),
+            this._dkgResponse.zkApp.calculateLeaf(
+                PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+            ),
+        );
+        this._dkgResponse.zkApp.addresses.setLeaf(
+            this._dkgResponse.zkApp
+                .calculateIndex(Constants.ZkAppEnum.ROUND2)
+                .toBigInt(),
+            this._dkgResponse.zkApp.calculateLeaf(
+                PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+            ),
+        );
+
+        // Create reduce tree for response
+        const lastActiveAction = await this.dkgResponseModel.findOne(
+            {
+                active: true,
+            },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const responses = lastActiveAction
+            ? await this.responseActionModel.find(
+                  {
+                      actionId: { $lte: lastActiveAction.actionId },
+                  },
+                  {},
+                  { sort: { actionId: 1 } },
+              )
+            : [];
+        responses.map((action) => {
+            this._dkgResponse.reducedActions.push(
+                Field(action.currentActionState),
+            );
+            this._dkgResponse.reduceState.updateLeaf(
+                this._dkgResponse.reduceState.calculateIndex(
+                    Field(action.currentActionState),
+                ),
+                this._dkgResponse.reduceState.calculateLeaf(
+                    Number(ActionReduceStatusEnum.REDUCED),
+                ),
+            );
+        });
+
         const dkgRequests = await this.dkgRequestModel.find({
             status: {
                 $gte: RequestStatusEnum.REQUESTING,
@@ -416,7 +494,6 @@ export class DkgUsageContractsService implements OnModuleInit {
             dkgRequest.D.map((d, index) => {
                 requestVector.set(Field(index), Group.from(d.x, d.y));
             });
-            // const requestStatusLeaf = dkgRequest.status == RequestStatusEnum.REQUESTING? this._dkgRequest.requestStatus.calculateLeaf()
             const requestStatusLeaf =
                 this._dkgRequest.requestStatus.calculateLeaf(
                     Field(
@@ -432,6 +509,7 @@ export class DkgUsageContractsService implements OnModuleInit {
             );
             this._dkgRequest.requester.updateLeaf(requesterLeaf, level1Index);
 
+            // create remaining trees
             const dkgResponses = await this.dkgResponseModel.find({
                 requestId: dkgRequest.requestId,
                 active: true,
@@ -462,6 +540,9 @@ export class DkgUsageContractsService implements OnModuleInit {
                     level1Index,
                     level2Index,
                 );
+            }
+            if (!this._requestIds.includes(dkgRequest.requestId)) {
+                this._requestIds.push(dkgRequest.requestId);
             }
         }
     }
