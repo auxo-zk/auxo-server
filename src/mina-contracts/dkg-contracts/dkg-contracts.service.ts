@@ -60,6 +60,7 @@ export class DkgContractsService implements OnModuleInit {
         reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
         encryption: Storage.DKGStorage.EncryptionStorage;
+        reducedActions: Field[];
     };
 
     public get dkg(): {
@@ -85,6 +86,7 @@ export class DkgContractsService implements OnModuleInit {
         reduceState: Storage.SharedStorage.ReduceStorage;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
         encryption: Storage.DKGStorage.EncryptionStorage;
+        reducedActions: Field[];
     } {
         return this._round2;
     }
@@ -125,6 +127,7 @@ export class DkgContractsService implements OnModuleInit {
             reduceState: new Storage.SharedStorage.ReduceStorage(),
             contribution: new Storage.DKGStorage.Round2ContributionStorage(),
             encryption: new Storage.DKGStorage.EncryptionStorage(),
+            reducedActions: [],
         };
     }
 
@@ -645,6 +648,7 @@ export class DkgContractsService implements OnModuleInit {
             {
                 active: true,
             },
+            {},
             { sort: { actionId: -1 } },
         );
         const round1s = lastActiveAction
@@ -652,6 +656,7 @@ export class DkgContractsService implements OnModuleInit {
                   {
                       actionId: { $lte: lastActiveAction.actionId },
                   },
+                  {},
                   { sort: { actionId: 1 } },
               )
             : [];
@@ -767,6 +772,8 @@ export class DkgContractsService implements OnModuleInit {
         );
         const dkgAddress = PublicKey.fromBase58(process.env.DKG_ADDRESS);
         const round1Address = PublicKey.fromBase58(process.env.ROUND_1_ADDRESS);
+
+        // Create zkApp tree
         this._round2.zkApp.addresses.setLeaf(
             this._round2.zkApp
                 .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
@@ -786,6 +793,36 @@ export class DkgContractsService implements OnModuleInit {
             this._round2.zkApp.calculateLeaf(round1Address),
         );
 
+        // Create reduce tree
+        const lastActiveAction = await this.round2Model.findOne(
+            {
+                active: true,
+            },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const round1s = lastActiveAction
+            ? await this.round2ActionModel.find(
+                  {
+                      actionId: { $lte: lastActiveAction.actionId },
+                  },
+                  {},
+                  { sort: { actionId: 1 } },
+              )
+            : [];
+        round1s.map((action) => {
+            this._round2.reducedActions.push(Field(action.currentActionState));
+            this._round2.reduceState.updateLeaf(
+                this._round2.reduceState.calculateIndex(
+                    Field(action.currentActionState),
+                ),
+                this._round2.reduceState.calculateLeaf(
+                    Number(ActionReduceStatusEnum.REDUCED),
+                ),
+            );
+        });
+
+        // Create contribution and encryption tree
         const keyCounters: { _id: number; count: number }[] =
             await this.dkgModel.aggregate([
                 {

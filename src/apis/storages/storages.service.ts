@@ -106,15 +106,13 @@ export class StoragesService {
         return result;
     }
 
-    getRound1ReduceTree(): MerkleLeaf[] {
+    getRound1ReduceTree(): { [key: string]: MerkleLeaf } {
         const indexes = this.dkgService.round1.reducedActions;
-        const result: MerkleLeaf[] = [];
+        const result: { [key: string]: MerkleLeaf } = {};
         for (let i = 0; i < indexes.length; i++) {
-            result.push(
-                this.dkgService.round1.reduceState
-                    .getWitness(indexes[i])
-                    .toJSON(),
-            );
+            result[indexes[i].toString()] = this.dkgService.round1.reduceState
+                .getWitness(indexes[i])
+                .toJSON();
         }
         return result;
     }
@@ -189,6 +187,17 @@ export class StoragesService {
             result.push(
                 this.dkgService.round2.zkApp.getWitness(Field(i)).toJSON(),
             );
+        }
+        return result;
+    }
+
+    getRound2ReduceTree(): { [key: string]: MerkleLeaf } {
+        const indexes = this.dkgService.round2.reducedActions;
+        const result: { [key: string]: MerkleLeaf } = {};
+        for (let i = 0; i < indexes.length; i++) {
+            result[indexes[i].toString()] = this.dkgService.round2.reduceState
+                .getWitness(indexes[i])
+                .toJSON();
         }
         return result;
     }
