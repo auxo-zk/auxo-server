@@ -168,4 +168,34 @@ export class StoragesController {
             level1Index,
         );
     }
+
+    @Get('campaign/info/level1')
+    @ApiTags('Storage')
+    getCampaignInfoTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getCampaignInfoTreeLevel1();
+    }
+
+    @Get('campaign/owner/level1')
+    @ApiTags('Storage')
+    getCampaignOwnerTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getCampaignOwnerTreeLevel1();
+    }
+
+    @Get('campaign/status/level1')
+    @ApiTags('Storage')
+    getCampaignStatusTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getCampaignStatusTreeLevel1();
+    }
+
+    @Get('campaign/config/level1')
+    @ApiTags('Storage')
+    getCampaignConfigTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getCampaignConfigTreeLevel1();
+    }
+
+    @Get('campaign/zkapps')
+    @ApiTags('Storage')
+    getCampaignZkApps(): MerkleLeaf[] {
+        return this.storagesService.getCampaignZkAppTree();
+    }
 }

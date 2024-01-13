@@ -385,4 +385,70 @@ export class StoragesService {
             throw new BadRequestException();
         }
     }
+
+    getCampaignInfoTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.campaignContractService.info.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.campaignContractService.info
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getCampaignOwnerTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.campaignContractService.owner.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.campaignContractService.owner
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getCampaignStatusTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.campaignContractService.status.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.campaignContractService.status
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getCampaignConfigTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.campaignContractService.config.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.campaignContractService.config
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getCampaignZkAppTree(): MerkleLeaf[] {
+        const leafCount =
+            this.campaignContractService.zkApp.addresses.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.campaignContractService.zkApp
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 }
