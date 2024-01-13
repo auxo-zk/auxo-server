@@ -248,4 +248,28 @@ export class StoragesController {
     ): MerkleLeaf[] {
         return this.storagesService.getProjectMemberTreeLevel2(level1Index);
     }
+
+    @Get('funding/total-m/level1')
+    @ApiTags('Storage')
+    getFundingTotalMTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getFundingTotalMTreeLevel1();
+    }
+
+    @Get('funding/total-r/level1')
+    @ApiTags('Storage')
+    getFundingTotalRTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getFundingTotalRTreeLevel1();
+    }
+
+    @Get('funding/request-id/level1')
+    @ApiTags('Storage')
+    getFundingRequestIdTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getFundingRequestIdTreeLevel1();
+    }
+
+    @Get('funding/zkapps')
+    @ApiTags('Storage')
+    getFundingZkApps(): MerkleLeaf[] {
+        return this.storagesService.getFundingZkAppTree();
+    }
 }

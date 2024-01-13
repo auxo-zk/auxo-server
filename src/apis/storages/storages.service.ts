@@ -565,4 +565,55 @@ export class StoragesService {
         }
         return result;
     }
+
+    getFundingTotalMTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.fundingContractService.totalM.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.fundingContractService.totalM
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getFundingTotalRTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.fundingContractService.totalR.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.fundingContractService.totalR
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getFundingRequestIdTreeLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.fundingContractService.requestId.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.fundingContractService.requestId
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getFundingZkAppTree(): MerkleLeaf[] {
+        const leafCount = this.fundingContractService.zkApp.addresses.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.fundingContractService.zkApp.getWitness(Field(i)).toJSON(),
+            );
+        }
+        return result;
+    }
 }
