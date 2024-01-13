@@ -20,6 +20,19 @@ export class ParticipationContractService implements OnModuleInit {
     private readonly _info: Storage.ParticipationStorage.InfoStorage;
     private readonly _zkApp: Storage.SharedStorage.AddressStorage;
 
+    public get counter(): Storage.ParticipationStorage.CounterStorage {
+        return this._counter;
+    }
+    public get index(): Storage.ParticipationStorage.IndexStorage {
+        return this._index;
+    }
+    public get info(): Storage.ParticipationStorage.InfoStorage {
+        return this._info;
+    }
+    public get zkApp(): Storage.SharedStorage.AddressStorage {
+        return this._zkApp;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,

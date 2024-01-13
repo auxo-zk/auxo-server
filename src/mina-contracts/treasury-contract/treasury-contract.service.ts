@@ -16,6 +16,13 @@ export class TreasuryContractService implements OnModuleInit {
     private readonly _claimed: Storage.TreasuryStorage.ClaimedStorage;
     private readonly _zkApp: Storage.SharedStorage.AddressStorage;
 
+    public get claimed(): Storage.TreasuryStorage.ClaimedStorage {
+        return this._claimed;
+    }
+    public get zkApp(): Storage.SharedStorage.AddressStorage {
+        return this._zkApp;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(TreasuryAction.name)

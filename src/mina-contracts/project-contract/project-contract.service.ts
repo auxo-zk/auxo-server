@@ -21,6 +21,16 @@ export class ProjectContractService implements OnModuleInit {
     private readonly _member: Storage.ProjectStorage.MemberStorage;
     private readonly _address: Storage.ProjectStorage.AddressStorage;
 
+    public get info(): Storage.ProjectStorage.InfoStorage {
+        return this._info;
+    }
+    public get member(): Storage.ProjectStorage.MemberStorage {
+        return this._member;
+    }
+    public get address(): Storage.ProjectStorage.AddressStorage {
+        return this._address;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,

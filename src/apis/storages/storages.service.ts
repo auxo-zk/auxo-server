@@ -5,9 +5,14 @@ import {
 } from '@nestjs/common';
 import { Field } from 'o1js';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
+import { CampaignContractService } from 'src/mina-contracts/campaign-contract/campaign-contract.service';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
 import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
+import { FundingContractService } from 'src/mina-contracts/funding-contract/funding-contract.service';
+import { ParticipationContractService } from 'src/mina-contracts/participation-contract/participation-contract.service';
+import { ProjectContractService } from 'src/mina-contracts/project-contract/project-contract.service';
+import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
 
 @Injectable()
 export class StoragesService {
@@ -15,6 +20,11 @@ export class StoragesService {
         private readonly committeeContractsService: CommitteeContractService,
         private readonly dkgContractService: DkgContractsService,
         private readonly dkgUsageContractService: DkgUsageContractsService,
+        private readonly campaignContractService: CampaignContractService,
+        private readonly participationContractService: ParticipationContractService,
+        private readonly projectContractService: ProjectContractService,
+        private readonly fundingContractService: FundingContractService,
+        private readonly treasuryContractService: TreasuryContractService,
     ) {}
 
     getMemberTreeLevel1(): MerkleLeaf[] {

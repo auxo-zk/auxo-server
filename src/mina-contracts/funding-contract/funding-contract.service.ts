@@ -21,6 +21,19 @@ export class FundingContractService implements OnModuleInit {
     private readonly _totalR: Storage.FundingStorage.ValueStorage;
     private readonly _requestId: Storage.FundingStorage.RequestIdStorage;
     private readonly _zkApp: Storage.SharedStorage.AddressStorage;
+
+    public get totalM(): Storage.FundingStorage.ValueStorage {
+        return this._totalM;
+    }
+    public get totalR(): Storage.FundingStorage.ValueStorage {
+        return this._totalR;
+    }
+    public get requestId(): Storage.FundingStorage.RequestIdStorage {
+        return this._requestId;
+    }
+    public get zkApp(): Storage.SharedStorage.AddressStorage {
+        return this._zkApp;
+    }
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(FundingAction.name)

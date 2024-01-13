@@ -23,6 +23,22 @@ export class CampaignContractService implements OnModuleInit {
     private readonly _config: Storage.CampaignStorage.ConfigStorage;
     private readonly _zkApp: Storage.SharedStorage.AddressStorage;
 
+    public get info(): Storage.CampaignStorage.InfoStorage {
+        return this._info;
+    }
+    public get owner(): Storage.CampaignStorage.OwnerStorage {
+        return this._owner;
+    }
+    public get status(): Storage.CampaignStorage.StatusStorage {
+        return this._status;
+    }
+    public get config(): Storage.CampaignStorage.ConfigStorage {
+        return this._config;
+    }
+    public get zkApp(): Storage.SharedStorage.AddressStorage {
+        return this._zkApp;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,
