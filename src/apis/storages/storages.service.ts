@@ -507,4 +507,62 @@ export class StoragesService {
         }
         return result;
     }
+
+    getProjectInfoTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.projectContractService.info.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.projectContractService.info
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getProjectMemberTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.projectContractService.member.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.projectContractService.member
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getProjectMemberTreeLevel2(level1Index: number): MerkleLeaf[] {
+        const result: MerkleLeaf[] = [];
+        if (this.projectContractService.member.level2s[level1Index]) {
+            const leafCount =
+                this.projectContractService.member.level2s[level1Index]
+                    .leafCount;
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.projectContractService.member
+                        .getLevel2Witness(Field(level1Index), Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
+    }
+
+    getProjectAddressTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.projectContractService.address.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.projectContractService.address
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 }

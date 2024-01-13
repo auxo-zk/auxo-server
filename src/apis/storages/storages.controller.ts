@@ -222,4 +222,30 @@ export class StoragesController {
     getParticipationZkApps(): MerkleLeaf[] {
         return this.storagesService.getParticipationZkAppTree();
     }
+
+    @Get('project/info/level1')
+    @ApiTags('Storage')
+    getProjectInfoTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getProjectInfoTreeLevel1();
+    }
+
+    @Get('project/address/level1')
+    @ApiTags('Storage')
+    getProjectAddressTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getProjectAddressTreeLevel1();
+    }
+
+    @Get('project/member/level1')
+    @ApiTags('Storage')
+    getProjectMemberTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getProjectMemberTreeLevel1();
+    }
+
+    @Get('project/member/level2:/:level1Index')
+    @ApiTags('Storage')
+    getProjectMemberTreeLevel2(
+        @Param('level1Index', ParseIntPipe) level1Index: number,
+    ): MerkleLeaf[] {
+        return this.storagesService.getProjectMemberTreeLevel2(level1Index);
+    }
 }
