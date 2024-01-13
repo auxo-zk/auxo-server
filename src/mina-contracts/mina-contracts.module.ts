@@ -84,6 +84,12 @@ import {
 } from 'src/schemas/actions/funding-action.schema';
 import { Funding, FundingSchema } from 'src/schemas/funding.schema';
 import { FundingResult, FundingResultSchema } from 'src/schemas/result.schema';
+import { TreasuryContractService } from './treasury-contract/treasury-contract.service';
+import {
+    TreasuryAction,
+    TreasuryActionSchema,
+} from 'src/schemas/actions/treasury-action.schema';
+import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
 
 @Module({
     imports: [
@@ -120,6 +126,8 @@ import { FundingResult, FundingResultSchema } from 'src/schemas/result.schema';
             { name: FundingAction.name, schema: FundingActionSchema },
             { name: Funding.name, schema: FundingSchema },
             { name: FundingResult.name, schema: FundingResultSchema },
+            { name: TreasuryAction.name, schema: TreasuryActionSchema },
+            { name: Treasury.name, schema: TreasurySchema },
         ]),
         HttpModule,
         BullModule.forRoot({
@@ -145,11 +153,17 @@ import { FundingResult, FundingResultSchema } from 'src/schemas/result.schema';
         CampaignContractService,
         ParticipationContractService,
         FundingContractService,
+        TreasuryContractService,
     ],
     exports: [
         CommitteeContractService,
         DkgContractsService,
         DkgUsageContractsService,
+        CampaignContractService,
+        ParticipationContractService,
+        ProjectContractService,
+        FundingContractService,
+        TreasuryContractService,
     ],
     controllers: [],
 })

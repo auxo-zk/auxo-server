@@ -375,7 +375,6 @@ export class DkgContractsService implements OnModuleInit {
             process.env.ROUND_1_ADDRESS,
         );
         if (rawEvents.length > 0) {
-            // const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveRound1Action = await this.round1ActionModel.findOne(

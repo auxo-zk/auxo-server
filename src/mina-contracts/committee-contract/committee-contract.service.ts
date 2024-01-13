@@ -66,18 +66,17 @@ export class CommitteeContractService implements OnModuleInit {
 
     async onModuleInit() {
         await this.fetch();
-        await this.createTrees();
     }
 
     async update() {
         await this.fetch();
-        await this.createTrees();
     }
 
     private async fetch() {
         try {
             await this.fetchCommitteeActions();
             await this.updateCommittees();
+            await this.createTrees();
         } catch (err) {}
     }
 

@@ -7,6 +7,8 @@ import { DkgContractsService } from '../dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from '../dkg-usage-contracts/dkg-usage-contracts.service';
 import { CampaignContractService } from '../campaign-contract/campaign-contract.service';
 import { ParticipationContractService } from '../participation-contract/participation-contract.service';
+import { FundingContractService } from '../funding-contract/funding-contract.service';
+import { ProjectContractService } from '../project-contract/project-contract.service';
 
 @Injectable()
 export class CronTasksService {
@@ -19,6 +21,8 @@ export class CronTasksService {
         private readonly dkgUsageContractsService: DkgUsageContractsService,
         private readonly campaignContractService: CampaignContractService,
         private readonly participationContractService: ParticipationContractService,
+        private readonly projectContractService: ProjectContractService,
+        private readonly fundingContractService: FundingContractService,
     ) {}
 
     // 3 minutes
@@ -30,5 +34,7 @@ export class CronTasksService {
         await this.dkgUsageContractsService.update();
         await this.campaignContractService.update();
         await this.participationContractService.update();
+        await this.projectContractService.update();
+        await this.fundingContractService.update();
     }
 }
