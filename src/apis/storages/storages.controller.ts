@@ -198,4 +198,28 @@ export class StoragesController {
     getCampaignZkApps(): MerkleLeaf[] {
         return this.storagesService.getCampaignZkAppTree();
     }
+
+    @Get('participation/counter/level1')
+    @ApiTags('Storage')
+    getParticipationCounterTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getParticipationCounterTreeLevel1();
+    }
+
+    @Get('participation/index/level1')
+    @ApiTags('Storage')
+    getParticipationIndexTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getParticipationIndexTreeLevel1();
+    }
+
+    @Get('participation/info/level1')
+    @ApiTags('Storage')
+    getParticipationInfoTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getParticipationInfoTreeLevel1();
+    }
+
+    @Get('participation/zkapps')
+    @ApiTags('Storage')
+    getParticipationZkApps(): MerkleLeaf[] {
+        return this.storagesService.getParticipationZkAppTree();
+    }
 }
