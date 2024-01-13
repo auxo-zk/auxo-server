@@ -616,4 +616,31 @@ export class StoragesService {
         }
         return result;
     }
+
+    getTreasuryClaimedTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.treasuryContractService.claimed.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.treasuryContractService.claimed
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getTreasuryZkAppTree(): MerkleLeaf[] {
+        const leafCount =
+            this.treasuryContractService.zkApp.addresses.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.treasuryContractService.zkApp
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 }
