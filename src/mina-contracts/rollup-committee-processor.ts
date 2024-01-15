@@ -14,10 +14,10 @@ export default async function (job: Job, cb: DoneCallback) {
         .select(MinaContractsModule)
         .get(CommitteeContractService);
     committeesService.compile().then(() => {
-        // committeesService.rollup().then(() => {
-        app.close().then(() => {
-            logger.debug('Rollup Committee successfully');
+        committeesService.rollup().then(() => {
+            app.close().then(() => {
+                logger.debug('Rollup committees successfully');
+            });
         });
-        // });
     });
 }

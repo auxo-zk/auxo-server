@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Cache } from 'o1js';
 import { ServerConfig } from './entities/server-config.entity';
 
 @Injectable()
@@ -14,7 +15,12 @@ export class AppService {
                 request: process.env.REQUEST_ADDRESS,
                 response: process.env.RESPONSE_ADDRESS,
             },
+            cacheDir: process.env.CACHE_DIR,
         };
         return serverConfig;
+    }
+
+    getCache(): Cache {
+        return Cache.FileSystem(`./${this.getServerConfig().cacheDir}`);
     }
 }
