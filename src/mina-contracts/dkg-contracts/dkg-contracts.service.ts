@@ -508,6 +508,7 @@ export class DkgContractsService implements OnModuleInit {
                     committeeId: committeeId,
                     keyId: keyId,
                     actionEnum: DkgActionEnum.DEPRECATE_KEY,
+                    active: true,
                 });
                 const key = await this.keyModel.findOne({
                     _id: keyObjectId,
@@ -519,6 +520,7 @@ export class DkgContractsService implements OnModuleInit {
                         committeeId: committeeId,
                         keyId: keyId,
                         actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
+                        active: true,
                     });
                     if (finalizedRound2) {
                         key.set('status', KeyStatusEnum.ACTIVE);
@@ -527,6 +529,7 @@ export class DkgContractsService implements OnModuleInit {
                             committeeId: committeeId,
                             keyId: keyId,
                             actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
+                            active: true,
                         });
                         if (finalizedRound1) {
                             key.set(
