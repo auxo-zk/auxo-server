@@ -135,10 +135,22 @@ export class StoragesController {
         return this.storagesService.getRequesterTreeLevel1();
     }
 
+    @Get('request/requester/leaves/level1')
+    @ApiTags('Storage Request')
+    getRequesterLeavesLevel1(): { [key: string]: string } {
+        return this.storagesService.getRequesterLeavesLevel1();
+    }
+
     @Get('request/request-status/level1')
     @ApiTags('Storage Request')
     getRequestStatusTreeLevel1(): { [key: string]: MerkleLeaf } {
         return this.storagesService.getRequestStatusTreeLevel1();
+    }
+
+    @Get('request/request-status/leaves/level1')
+    @ApiTags('Storage Request')
+    getRequestStatusLeavesLevel1(): { [key: string]: string } {
+        return this.storagesService.getRequestStatusLeavesLevel1();
     }
 
     @Get('response/zkapps')

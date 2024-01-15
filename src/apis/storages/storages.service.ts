@@ -3,7 +3,7 @@ import {
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
-import { Field } from 'o1js';
+import { Field, Provable } from 'o1js';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
 import { CampaignContractService } from 'src/mina-contracts/campaign-contract/campaign-contract.service';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
@@ -309,6 +309,18 @@ export class StoragesService {
         return result;
     }
 
+    getRequesterLeavesLevel1(): { [key: string]: string } {
+        const indexes = this.dkgUsageContractService.requestIds;
+        const result: { [key: string]: string } = {};
+        for (let i = 0; i < indexes.length; i++) {
+            result[indexes[i].toString()] =
+                this.dkgUsageContractService.dkgRequest.requester.level1
+                    .get(Field(indexes[i]))
+                    .toJSON();
+        }
+        return result;
+    }
+
     getRequestStatusTreeLevel1(): { [key: string]: MerkleLeaf } {
         const indexes = this.dkgUsageContractService.requestIds;
         const result: { [key: string]: MerkleLeaf } = {};
@@ -316,6 +328,18 @@ export class StoragesService {
             result[indexes[i].toString()] =
                 this.dkgUsageContractService.dkgRequest.requestStatus
                     .getWitness(Field(indexes[i]))
+                    .toJSON();
+        }
+        return result;
+    }
+
+    getRequestStatusLeavesLevel1(): { [key: string]: string } {
+        const indexes = this.dkgUsageContractService.requestIds;
+        const result: { [key: string]: string } = {};
+        for (let i = 0; i < indexes.length; i++) {
+            result[indexes[i].toString()] =
+                this.dkgUsageContractService.dkgRequest.requestStatus.level1
+                    .get(Field(indexes[i]))
                     .toJSON();
         }
         return result;
