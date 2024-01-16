@@ -32,7 +32,14 @@ export class CampaignsService {
     }
 
     async getCampaigns(owner: string): Promise<Campaign[]> {
-        return await this.campaignModel.find({ owner: owner, active: true });
+        if (owner == undefined) {
+            return await this.campaignModel.find({ active: true });
+        } else {
+            return await this.campaignModel.find({
+                owner: owner,
+                active: true,
+            });
+        }
     }
 
     async getCampaign(campaignId: number): Promise<Campaign> {

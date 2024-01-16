@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    DefaultValuePipe,
     Get,
     Param,
     ParseIntPipe,
@@ -25,9 +26,15 @@ export class CampaignsController {
         return await this.campaignsService.createCampaign(createCampaignDto);
     }
 
+    @Get('all')
+    @ApiTags('Campaign')
+    async getAllCampaigns(): Promise<Campaign[]> {
+        return this.campaignsService.getCampaigns(undefined);
+    }
+
     @Get()
     @ApiTags('Campaign')
-    async getCampaigns(@Query('owner') owner: string): Promise<Campaign[]> {
+    async getCampaigns(@Query('owner') owner?: string): Promise<Campaign[]> {
         return this.campaignsService.getCampaigns(owner);
     }
 
