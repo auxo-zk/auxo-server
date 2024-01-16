@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsString, IsUrl, ValidateNested } from 'class-validator';
 
 export class ProjectMember {
     @IsString()
@@ -16,8 +16,11 @@ export class CreateProjectDto {
     @IsString()
     name: string;
 
-    @IsString()
-    img: string;
+    @IsUrl()
+    avatarImage: string;
+
+    @IsUrl()
+    coverImage: string;
 
     @IsString()
     publicKey: string;
@@ -31,6 +34,6 @@ export class CreateProjectDto {
     members: ProjectMember[];
 
     @IsArray()
-    @IsString({ each: true })
+    @IsUrl({}, { each: true })
     documents: string[];
 }

@@ -60,7 +60,10 @@ export class CreateCampaignDto {
     name: string;
 
     @IsUrl()
-    img: string;
+    coverImage: string;
+
+    @IsUrl()
+    avatarImage: string;
 
     @IsString()
     description: string;
