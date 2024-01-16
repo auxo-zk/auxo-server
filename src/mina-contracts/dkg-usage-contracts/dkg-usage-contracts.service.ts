@@ -445,6 +445,14 @@ export class DkgUsageContractsService implements OnModuleInit {
                 PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
             ),
         );
+        this._dkgResponse.zkApp.addresses.setLeaf(
+            this._dkgResponse.zkApp
+                .calculateIndex(Constants.ZkAppEnum.REQUEST)
+                .toBigInt(),
+            this._dkgResponse.zkApp.calculateLeaf(
+                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+            ),
+        );
 
         // Create reduce tree for response
         const lastActiveAction = await this.dkgResponseModel.findOne(
