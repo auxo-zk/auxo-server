@@ -90,6 +90,7 @@ import {
     TreasuryActionSchema,
 } from 'src/schemas/actions/treasury-action.schema';
 import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
+import { FetchActionsConsumer } from './consumers/fetch-action.consumer';
 
 @Module({
     imports: [
@@ -130,15 +131,16 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
             { name: Treasury.name, schema: TreasurySchema },
         ]),
         HttpModule,
-        BullModule.forRoot({
-            redis: {
-                host: 'localhost',
-                port: 6379,
-            },
+        BullModule.forRootAsync({
+            useFactory: () => ({
+                redis: {
+                    host: 'localhost',
+                    port: 6379,
+                },
+            }),
         }),
         BullModule.registerQueue({
-            name: 'rollup-committee',
-            processors: [join(__dirname, 'rollup-committee-processor.js')],
+            name: 'fetch-actions',
         }),
     ],
     providers: [
@@ -154,6 +156,7 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
         ParticipationContractService,
         FundingContractService,
         TreasuryContractService,
+        FetchActionsConsumer,
     ],
     exports: [
         CommitteeContractService,

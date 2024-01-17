@@ -1,35 +1,11 @@
-version: "3.5"
-
-networks:
-    minio:
-
 services:
-    # redis:
-    #     container_name: redis-queue
-    #     image: redis
-    #     ports:
-    #         - 6379:6379
-    #     volumes:
-    #         - redis:/data
-    minio:
-        container_name: minio-object-storage
-        image: minio/minio:latest
-        restart: always
-        command:
-            - server
-            - --console-address
-            - :9001
-            - /data
+    redis:
+        container_name: redis-queue
+        image: redis
         ports:
-            - 9000:9000
-            - 9001:9001
-        networks:
-            - minio
-        environment:
-            MINIO_ROOT_USER: $MIN_IO_ACCESS_KEY
-            MINIO_ROOT_PASSWORD: $MIN_IO_SECRET_KEY
+            - 6379:6379
         volumes:
-            - ./storage:/data
-# volumes:
-#     redis:
-#         driver: local
+            - redis:/data
+volumes:
+    redis:
+        driver: local

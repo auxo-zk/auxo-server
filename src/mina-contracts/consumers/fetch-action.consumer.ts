@@ -1,24 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Interval } from '@nestjs/schedule';
-import { fetchLastBlock } from 'o1js';
-import { QueryService } from '../query/query.service';
+import { Process, Processor } from '@nestjs/bull';
+import { Job } from 'bull';
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
+import { Logger } from '@nestjs/common';
 import { DkgContractsService } from '../dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from '../dkg-usage-contracts/dkg-usage-contracts.service';
 import { CampaignContractService } from '../campaign-contract/campaign-contract.service';
 import { ParticipationContractService } from '../participation-contract/participation-contract.service';
-import { FundingContractService } from '../funding-contract/funding-contract.service';
 import { ProjectContractService } from '../project-contract/project-contract.service';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import { FundingContractService } from '../funding-contract/funding-contract.service';
 
-@Injectable()
-export class CronTasksService {
-    private readonly logger = new Logger(CronTasksService.name);
-
+@Processor('fetch-actions')
+export class FetchActionsConsumer {
+    private readonly logger = new Logger('FetchActionsConsumer');
     constructor(
-        @InjectQueue('fetch-actions') private readonly fetchActionsQueue: Queue,
-        private readonly queryService: QueryService,
         private readonly committeeContractService: CommitteeContractService,
         private readonly dkgContractsService: DkgContractsService,
         private readonly dkgUsageContractsService: DkgUsageContractsService,
@@ -28,9 +22,18 @@ export class CronTasksService {
         private readonly fundingContractService: FundingContractService,
     ) {}
 
-    // 3 minutes
-    @Interval(180000)
-    async handleUpdateContracts(): Promise<void> {
-        await this.fetchActionsQueue.add('handle', {});
+    @Process('handle')
+    async handle(job: Job<unknown>) {
+        this.logger.log('Fetching actions');
+        await this.committeeContractService.update();
+        await this.dkgContractsService.update();
+        await this.dkgUsageContractsService.update();
+        await this.campaignContractService.update();
+        await this.participationContractService.update();
+        await this.projectContractService.update();
+        await this.fundingContractService.update();
+        await job.progress();
+        this.logger.log('Fetch DONE');
+        return {};
     }
 }
