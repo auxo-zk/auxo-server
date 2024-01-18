@@ -39,3 +39,6 @@ lerna-debug.log*
 
 # Object Storage
 /storage
+
+# Cache files
+/caches
