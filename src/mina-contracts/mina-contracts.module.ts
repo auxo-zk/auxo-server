@@ -5,7 +5,6 @@ import { HttpModule } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bull';
 import { CacheModule } from '@nestjs/cache-manager';
 import { join } from 'path';
-
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import {
     CommitteeAction,
@@ -30,6 +29,7 @@ import { Round2, Round2Schema } from 'src/schemas/round-2.schema';
 
 import { Network } from './network/network';
 import { Ipfs } from 'src/ipfs/ipfs';
+import { AppService } from 'src/app.service';
 import { QueryService } from './query/query.service';
 import { CronTasksService } from './cron-tasks/cron-tasks.service';
 import { CommitteeContractService } from './committee-contract/committee-contract.service';
@@ -143,6 +143,7 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
     ],
     providers: [
         Network,
+        AppService,
         QueryService,
         CronTasksService,
         CommitteeContractService,
