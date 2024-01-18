@@ -7,14 +7,30 @@ import {
 } from 'src/schemas/actions/project-action.schema';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
-import { Field, Reducer } from 'o1js';
+import { Field, Provable, PublicKey, Reducer } from 'o1js';
 import { RawProject } from 'src/schemas/raw-project.schema';
 import { Project } from 'src/schemas/project.schema';
 import { ProjectActionEnum } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
+import { Storage } from '@auxo-dev/platform';
+import { IPFSHash } from '@auxo-dev/auxo-libs';
 
 @Injectable()
 export class ProjectContractService implements OnModuleInit {
+    private readonly _info: Storage.ProjectStorage.InfoStorage;
+    private readonly _member: Storage.ProjectStorage.MemberStorage;
+    private readonly _address: Storage.ProjectStorage.AddressStorage;
+
+    public get info(): Storage.ProjectStorage.InfoStorage {
+        return this._info;
+    }
+    public get member(): Storage.ProjectStorage.MemberStorage {
+        return this._member;
+    }
+    public get address(): Storage.ProjectStorage.AddressStorage {
+        return this._address;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,
@@ -24,9 +40,17 @@ export class ProjectContractService implements OnModuleInit {
         private readonly rawProjectModel: Model<RawProject>,
         @InjectModel(Project.name)
         private readonly projectModel: Model<Project>,
-    ) {}
+    ) {
+        this._info = new Storage.ProjectStorage.InfoStorage();
+        this._member = new Storage.ProjectStorage.MemberStorage();
+        this._address = new Storage.ProjectStorage.AddressStorage();
+    }
 
     async onModuleInit() {
+        await this.fetch();
+    }
+
+    async update() {
         await this.fetch();
     }
 
@@ -35,7 +59,10 @@ export class ProjectContractService implements OnModuleInit {
             await this.fetchProjectActions();
             await this.updateRawProjects();
             await this.updateProjects();
-        } catch (err) {}
+            await this.createTrees();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     private async fetchProjectActions() {
@@ -150,6 +177,46 @@ export class ProjectContractService implements OnModuleInit {
                 const notActiveProject = notActiveProjects[i];
                 notActiveProject.set('active', true);
                 await notActiveProject.save();
+            }
+        }
+    }
+
+    async createTrees() {
+        const projects = await this.projectModel.find(
+            { active: true },
+            {},
+            { sort: { projectId: 1 } },
+        );
+
+        for (let i = 0; i < projects.length; i++) {
+            const project = projects[i];
+            const level1Index = this._info.calculateLevel1Index(
+                Field(project.projectId),
+            );
+            const infoLeaf = this._info.calculateLeaf(
+                IPFSHash.fromString(project.ipfsHash),
+            );
+            this._info.updateLeaf(infoLeaf, level1Index);
+            const addressLeaf = this._address.calculateLeaf(
+                PublicKey.fromBase58(project.payeeAccount),
+            );
+            this._address.updateLeaf(addressLeaf, level1Index);
+            this._member.updateInternal(
+                level1Index,
+                Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
+            );
+            for (let i = 0; i < project.members.length; i++) {
+                const level2IndexMember = this._member.calculateLevel2Index(
+                    Field(i),
+                );
+                const memberLeaf = this._member.calculateLeaf(
+                    PublicKey.fromBase58(project.members[i]),
+                );
+                this._member.updateLeaf(
+                    memberLeaf,
+                    level1Index,
+                    level2IndexMember,
+                );
             }
         }
     }

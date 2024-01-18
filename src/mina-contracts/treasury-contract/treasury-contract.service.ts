@@ -2,32 +2,22 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
-    ParticipationAction,
-    getParticipation,
-} from 'src/schemas/actions/participation-action.schema';
+    TreasuryAction,
+    getTreasury,
+} from 'src/schemas/actions/treasury-action.schema';
 import { Model } from 'mongoose';
+import { Treasury } from 'src/schemas/treasury.schema';
 import { Action } from 'src/interfaces/action.interface';
-import { Field, Provable, PublicKey, Reducer } from 'o1js';
-import { Participation } from 'src/schemas/participation.schema';
-import { Ipfs } from 'src/ipfs/ipfs';
-import { Constants, Storage } from '@auxo-dev/platform';
-import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { Bool, Field, Provable, PublicKey, Reducer } from 'o1js';
+import { Storage } from '@auxo-dev/platform';
 
 @Injectable()
-export class ParticipationContractService implements OnModuleInit {
-    private readonly _counter: Storage.ParticipationStorage.CounterStorage;
-    private readonly _index: Storage.ParticipationStorage.IndexStorage;
-    private readonly _info: Storage.ParticipationStorage.InfoStorage;
+export class TreasuryContractService implements OnModuleInit {
+    private readonly _claimed: Storage.TreasuryStorage.ClaimedStorage;
     private readonly _zkApp: Storage.SharedStorage.AddressStorage;
 
-    public get counter(): Storage.ParticipationStorage.CounterStorage {
-        return this._counter;
-    }
-    public get index(): Storage.ParticipationStorage.IndexStorage {
-        return this._index;
-    }
-    public get info(): Storage.ParticipationStorage.InfoStorage {
-        return this._info;
+    public get claimed(): Storage.TreasuryStorage.ClaimedStorage {
+        return this._claimed;
     }
     public get zkApp(): Storage.SharedStorage.AddressStorage {
         return this._zkApp;
@@ -35,50 +25,39 @@ export class ParticipationContractService implements OnModuleInit {
 
     constructor(
         private readonly queryService: QueryService,
-        private readonly ipfs: Ipfs,
-        @InjectModel(ParticipationAction.name)
-        private readonly participationActionModel: Model<ParticipationAction>,
-        @InjectModel(Participation.name)
-        private readonly participationModel: Model<Participation>,
+        @InjectModel(TreasuryAction.name)
+        private readonly treasuryActionModel: Model<TreasuryAction>,
+        @InjectModel(Treasury.name)
+        private readonly treasuryModel: Model<Treasury>,
     ) {
-        this._counter = new Storage.ParticipationStorage.CounterStorage();
-        this._index = new Storage.ParticipationStorage.IndexStorage();
-        this._info = new Storage.ParticipationStorage.InfoStorage();
+        this._claimed = new Storage.TreasuryStorage.ClaimedStorage();
         this._zkApp = new Storage.SharedStorage.AddressStorage();
     }
 
     async onModuleInit() {
         await this.fetch();
-        // Provable.log(this._counter.level1.getRoot());
-        // Provable.log(this._index.level1.getRoot());
-        // Provable.log(this._info.level1.getRoot());
-        // Provable.log(
-        //     await this.queryService.fetchZkAppState(
-        //         process.env.PARTICIPATION_ADDRESS,
-        //     ),
-        // );
     }
 
     async update() {
         await this.fetch();
     }
 
-    private async fetch() {
+    async fetch() {
         try {
-            await this.fetchParticipationActions();
-            await this.updateParticipations();
+            await this.fetchTreasuryActions();
+            await this.updateTreasuries();
             await this.createTrees();
         } catch (err) {}
     }
 
-    private async fetchParticipationActions() {
-        const lastAction = await this.participationActionModel.findOne(
+    async fetchTreasuryActions() {
+        const lastAction = await this.treasuryActionModel.findOne(
             {},
             {},
             { sort: { actionId: -1 } },
         );
         let actions: Action[] = await this.queryService.fetchActions(
-            process.env.PARTICIPATION_ADDRESS,
+            process.env.TREASURY_ADDRESS,
         );
         let previousActionState: Field;
         let actionId: number;
@@ -93,7 +72,7 @@ export class ParticipationContractService implements OnModuleInit {
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
             const currentActionState = Field(action.hash);
-            await this.participationActionModel.findOneAndUpdate(
+            await this.treasuryActionModel.findOneAndUpdate(
                 {
                     currentActionState: currentActionState.toString(),
                 },
@@ -110,67 +89,62 @@ export class ParticipationContractService implements OnModuleInit {
         }
     }
 
-    private async updateParticipations() {
-        const lastParticipation = await this.participationModel.findOne(
+    async updateTreasuries() {
+        const lastTreasury = await this.treasuryModel.findOne(
             {},
             {},
             { sort: { actionId: -1 } },
         );
-        let participationActions: ParticipationAction[];
-        if (lastParticipation != null) {
-            participationActions = await this.participationActionModel.find(
-                { actionId: { $gt: lastParticipation.actionId } },
+        let treasuryActions: TreasuryAction[];
+        if (lastTreasury != null) {
+            treasuryActions = await this.treasuryActionModel.find(
+                { actionId: { $gt: lastTreasury.actionId } },
                 {},
                 { sort: { actionId: 1 } },
             );
         } else {
-            participationActions = await this.participationActionModel.find(
+            treasuryActions = await this.treasuryActionModel.find(
                 {},
                 {},
                 { sort: { actionId: 1 } },
             );
         }
-        for (let i = 0; i < participationActions.length; i++) {
-            const participationAction = participationActions[i];
-            const participation = getParticipation(participationAction);
-            participation.ipfsData = await this.ipfs.getData(
-                participation.ipfsHash,
-            );
-            await this.participationModel.findOneAndUpdate(
-                { actionId: participationAction.actionId },
-                participation,
+        for (let i = 0; i < treasuryActions.length; i++) {
+            const treasuryAction = treasuryActions[i];
+            await this.treasuryModel.findOneAndUpdate(
+                { actionId: treasuryAction.actionId },
+                getTreasury(treasuryAction),
                 { new: true, upsert: true },
             );
         }
 
         const rawEvents = await this.queryService.fetchEvents(
-            process.env.PARTICIPATION_ADDRESS,
+            process.env.TREASURY_ADDRESS,
         );
         if (rawEvents.length > 0) {
             const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
-            const lastActiveParticipationAction =
-                await this.participationActionModel.findOne({
+            const lastActiveTreasuryAction =
+                await this.treasuryActionModel.findOne({
                     currentActionState: lastActionState,
                 });
-            const notActiveParticipations = await this.participationModel.find(
+            const notActiveTreasuries = await this.treasuryModel.find(
                 {
-                    actionId: { $lte: lastActiveParticipationAction.actionId },
+                    actionId: { $lte: lastActiveTreasuryAction.actionId },
                     active: false,
                 },
                 {},
                 { sort: { actionId: 1 } },
             );
-            for (let i = 0; i < notActiveParticipations.length; i++) {
-                const notActiveParticipation = notActiveParticipations[i];
-                notActiveParticipation.set('active', true);
-                await notActiveParticipation.save();
+            for (let i = 0; i < notActiveTreasuries.length; i++) {
+                const notActiveTreasury = notActiveTreasuries[i];
+                notActiveTreasury.set('active', true);
+                await notActiveTreasury.save();
             }
         }
     }
 
     async createTrees() {
-        // Constants.ZkAppEnum.
         this._zkApp.addresses.setLeaf(
             0n,
             this._zkApp.calculateLeaf(
@@ -237,9 +211,9 @@ export class ParticipationContractService implements OnModuleInit {
                 PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
             ),
         );
-        const participations = await this.participationModel.aggregate([
+
+        const treasuries = await this.treasuryModel.aggregate([
             { $match: { active: true } },
-            { $sort: { actionId: 1 } },
             {
                 $group: {
                     _id: '$campaignId',
@@ -247,29 +221,18 @@ export class ParticipationContractService implements OnModuleInit {
                 },
             },
         ]);
-        for (let i = 0; i < participations.length; i++) {
-            const campaignId = participations[i]._id;
-            const projects: Participation[] = participations[i].projects;
-
-            const level1Index = this._counter.calculateLevel1Index(
-                Field(campaignId),
-            );
-            const counterLeaf = this._counter.calculateLeaf(
-                Field(projects.length),
-            );
-            this._counter.updateLeaf(counterLeaf, level1Index);
+        for (let i = 0; i < treasuries.length; i++) {
+            const campaignId = treasuries[i]._id;
+            const projects: Treasury[] = treasuries[i].projects;
             for (let j = 0; j < projects.length; j++) {
-                const project = projects[j];
-                const index = this._index.calculateLevel1Index({
-                    campaignId: Field(campaignId),
-                    projectId: Field(project.projectId),
-                });
-                const indexLeaf = this._index.calculateLeaf(Field(j + 1));
-                this._index.updateLeaf(indexLeaf, index);
-                const infoLeaf = this._info.calculateLeaf(
-                    IPFSHash.fromString(project.ipfsHash),
+                const projectId = projects[j].projectId;
+                this._claimed.updateLeaf(
+                    this._claimed.calculateLeaf(Bool(true)),
+                    this._claimed.calculateLevel1Index({
+                        campaignId: Field(campaignId),
+                        projectId: Field(projectId),
+                    }),
                 );
-                this._info.updateLeaf(infoLeaf, index);
             }
         }
     }

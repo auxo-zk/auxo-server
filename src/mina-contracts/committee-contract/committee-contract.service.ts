@@ -68,25 +68,24 @@ export class CommitteeContractService implements OnModuleInit {
         private readonly committeeModel: Model<Committee>,
     ) {
         this._nextCommitteeId = 0;
-
         this._memberTree = new Storage.CommitteeStorage.MemberStorage();
         this._settingTree = new Storage.CommitteeStorage.SettingStorage();
     }
 
     // Why not calling update?
     async onModuleInit() {
-        await this.update();
+        await this.fetch();
     }
 
     async update() {
         await this.fetch();
-        await this.createTrees();
     }
 
     private async fetch() {
         try {
             await this.fetchCommitteeActions();
             await this.updateCommittees();
+            await this.createTrees();
         } catch (err) {}
     }
 

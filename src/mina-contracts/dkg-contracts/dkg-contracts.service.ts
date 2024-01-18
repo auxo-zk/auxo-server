@@ -133,16 +133,10 @@ export class DkgContractsService implements OnModuleInit {
 
     async onModuleInit() {
         await this.fetch();
-        await this.createTreesForDkg();
-        await this.createTreesForRound1();
-        await this.createTreesForRound2();
     }
 
     async update() {
         await this.fetch();
-        await this.createTreesForDkg();
-        await this.createTreesForRound1();
-        await this.createTreesForRound2();
     }
 
     private async fetch() {
@@ -154,6 +148,9 @@ export class DkgContractsService implements OnModuleInit {
             await this.updateRound1s();
             await this.updateRound2s();
             await this.updateKeys();
+            await this.createTreesForDkg();
+            await this.createTreesForRound1();
+            await this.createTreesForRound2();
         } catch (err) {}
     }
 
@@ -205,7 +202,6 @@ export class DkgContractsService implements OnModuleInit {
             {},
             { sort: { actionId: -1 } },
         );
-
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.ROUND_1_ADDRESS,
         );
@@ -379,7 +375,6 @@ export class DkgContractsService implements OnModuleInit {
             process.env.ROUND_1_ADDRESS,
         );
         if (rawEvents.length > 0) {
-            // const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastEvent = rawEvents[rawEvents.length - 1].events;
             const lastActionState = Field(lastEvent[0].data[0]).toString();
             const lastActiveRound1Action = await this.round1ActionModel.findOne(
@@ -415,7 +410,7 @@ export class DkgContractsService implements OnModuleInit {
 
         let round2Actions: Round2Action[];
         if (lastRound2Contribution != null) {
-            round2Actions = await this.round1ActionModel.find(
+            round2Actions = await this.round2ActionModel.find(
                 { actionId: { $gt: lastRound2Contribution.actionId } },
                 {},
                 { sort: { actionId: 1 } },
@@ -513,6 +508,7 @@ export class DkgContractsService implements OnModuleInit {
                     committeeId: committeeId,
                     keyId: keyId,
                     actionEnum: DkgActionEnum.DEPRECATE_KEY,
+                    active: true,
                 });
                 const key = await this.keyModel.findOne({
                     _id: keyObjectId,
@@ -524,6 +520,7 @@ export class DkgContractsService implements OnModuleInit {
                         committeeId: committeeId,
                         keyId: keyId,
                         actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
+                        active: true,
                     });
                     if (finalizedRound2) {
                         key.set('status', KeyStatusEnum.ACTIVE);
@@ -532,6 +529,7 @@ export class DkgContractsService implements OnModuleInit {
                             committeeId: committeeId,
                             keyId: keyId,
                             actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
+                            active: true,
                         });
                         if (finalizedRound1) {
                             key.set(
