@@ -83,7 +83,10 @@ import {
     FundingActionSchema,
 } from 'src/schemas/actions/funding-action.schema';
 import { Funding, FundingSchema } from 'src/schemas/funding.schema';
-import { FundingResult, FundingResultSchema } from 'src/schemas/result.schema';
+import {
+    FundingResult,
+    FundingResultSchema,
+} from 'src/schemas/funding-result.schema';
 import { TreasuryContractService } from './treasury-contract/treasury-contract.service';
 import {
     TreasuryAction,

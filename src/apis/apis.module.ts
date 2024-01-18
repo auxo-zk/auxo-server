@@ -35,6 +35,10 @@ import {
     Participation,
     ParticipationSchema,
 } from 'src/schemas/participation.schema';
+import {
+    FundingResult,
+    FundingResultSchema,
+} from 'src/schemas/funding-result.schema';
 
 @Module({
     imports: [
@@ -52,6 +56,7 @@ import {
             { name: Organizer.name, schema: OrganizerSchema },
             { name: Campaign.name, schema: CampaignSchema },
             { name: Participation.name, schema: ParticipationSchema },
+            { name: FundingResult.name, schema: FundingResultSchema },
         ]),
         HttpModule,
         CacheModule.register(),

@@ -13,7 +13,7 @@ import { FundingEventEnum } from 'src/constants';
 import { Storage, ZkApp } from '@auxo-dev/platform';
 import { ZkApp as DkgZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-import { FundingResult } from 'src/schemas/result.schema';
+import { FundingResult } from 'src/schemas/funding-result.schema';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 @Injectable()
@@ -54,6 +54,7 @@ export class FundingContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            await this.bruteForceFundingResults();
         } catch (err) {}
     }
 
@@ -330,5 +331,20 @@ export class FundingContractService implements ContractServiceInterface {
                 this._totalM.updateLeaf(totalMLeaf, level1Index);
             }
         } catch (err) {}
+    }
+
+    async bruteForceFundingResults() {
+        const incompleteFundingResults = await this.fundingResultModel.find({
+            result: undefined,
+        });
+        for (let i = 0; i < incompleteFundingResults.length; i++) {
+            const incompleteFundingResult = incompleteFundingResults[i];
+            const result: string[] = [];
+            for (let j = 0; j < incompleteFundingResult.sumM.length; j++) {
+                result.push('0');
+            }
+            incompleteFundingResult.set('result', result);
+            await incompleteFundingResult.save();
+        }
     }
 }

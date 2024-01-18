@@ -46,6 +46,14 @@ export class CampaignsController {
         return this.campaignsService.getProjects(campaignId);
     }
 
+    @Get(':campaignId/result')
+    @ApiTags('Campaign')
+    async getCampaignResult(
+        @Param('campaignId', ParseIntPipe) campaignId: number,
+    ): Promise<any> {
+        return this.campaignsService.getCampaignResult(campaignId);
+    }
+
     @Get(':campaignId')
     @ApiTags('Campaign')
     async getCampaign(

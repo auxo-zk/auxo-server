@@ -20,6 +20,9 @@ export class FundingResult {
 
     @Prop()
     keyId: number;
+
+    @Prop()
+    result?: string[];
 }
 
 export type FundingResultDocument = HydratedDocument<FundingResult>;
