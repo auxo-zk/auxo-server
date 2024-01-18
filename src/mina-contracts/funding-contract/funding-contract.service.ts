@@ -14,9 +14,10 @@ import { Storage, ZkApp } from '@auxo-dev/platform';
 import { ZkApp as DkgZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { FundingResult } from 'src/schemas/result.schema';
+import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 @Injectable()
-export class FundingContractService implements OnModuleInit {
+export class FundingContractService implements ContractServiceInterface {
     private readonly _totalM: Storage.FundingStorage.ValueStorage;
     private readonly _totalR: Storage.FundingStorage.ValueStorage;
     private readonly _requestId: Storage.FundingStorage.RequestIdStorage;
@@ -50,26 +51,23 @@ export class FundingContractService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await this.fetch();
-        // Provable.log(this._totalM.level1.getRoot());
-        // Provable.log(this._totalR.level1.getRoot());
-        // Provable.log(this._requestId.level1.getRoot());
-        // Provable.log(
-        //     await this.queryService.fetchZkAppState(
-        //         process.env.FUNDING_ADDRESS,
-        //     ),
-        // );
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     async update() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
-    private async fetch() {
+    async fetch() {
         try {
             await this.fetchFundingActions();
             await this.updateFundings();
-            await this.createTrees();
         } catch (err) {
             console.log(err);
         }
@@ -233,96 +231,104 @@ export class FundingContractService implements OnModuleInit {
         }
     }
 
-    async createTrees() {
-        this._zkApp.addresses.setLeaf(
-            0n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            1n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.DKG_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            2n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            3n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            0n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            4n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            5n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            6n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            7n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            8n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            9n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-            ),
-        );
+    async updateMerkleTrees() {
+        try {
+            this._zkApp.addresses.setLeaf(
+                0n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                1n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                2n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                3n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                0n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                4n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                5n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                6n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                7n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                8n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                9n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
+                ),
+            );
 
-        const fundingResults = await this.fundingResultModel.find({});
-        for (let i = 0; i < fundingResults.length; i++) {
-            const fundingResult = fundingResults[i];
-            const level1Index = this._requestId.calculateLevel1Index(
-                Field(fundingResult.campaignId),
-            );
-            const requestIdLeaf = this._requestId.calculateLeaf(
-                Field(fundingResult.requestId),
-            );
-            this._requestId.updateLeaf(requestIdLeaf, level1Index);
-            const totalR = DkgZkApp.Request.RequestVector.empty();
-            fundingResult.sumR.map((dimension, index) => {
-                totalR.set(Field(index), Group.from(dimension.x, dimension.y));
-            });
-            const totalM = DkgZkApp.Request.RequestVector.empty();
-            fundingResult.sumM.map((dimension, index) => {
-                totalM.set(Field(index), Group.from(dimension.x, dimension.y));
-            });
-            const totalRLeaf = this._totalR.calculateLeaf(totalR);
-            this._totalR.updateLeaf(totalRLeaf, level1Index);
-            const totalMLeaf = this._totalR.calculateLeaf(totalM);
-            this._totalM.updateLeaf(totalMLeaf, level1Index);
-        }
+            const fundingResults = await this.fundingResultModel.find({});
+            for (let i = 0; i < fundingResults.length; i++) {
+                const fundingResult = fundingResults[i];
+                const level1Index = this._requestId.calculateLevel1Index(
+                    Field(fundingResult.campaignId),
+                );
+                const requestIdLeaf = this._requestId.calculateLeaf(
+                    Field(fundingResult.requestId),
+                );
+                this._requestId.updateLeaf(requestIdLeaf, level1Index);
+                const totalR = DkgZkApp.Request.RequestVector.empty();
+                fundingResult.sumR.map((dimension, index) => {
+                    totalR.set(
+                        Field(index),
+                        Group.from(dimension.x, dimension.y),
+                    );
+                });
+                const totalM = DkgZkApp.Request.RequestVector.empty();
+                fundingResult.sumM.map((dimension, index) => {
+                    totalM.set(
+                        Field(index),
+                        Group.from(dimension.x, dimension.y),
+                    );
+                });
+                const totalRLeaf = this._totalR.calculateLeaf(totalR);
+                this._totalR.updateLeaf(totalRLeaf, level1Index);
+                const totalMLeaf = this._totalR.calculateLeaf(totalM);
+                this._totalM.updateLeaf(totalMLeaf, level1Index);
+            }
+        } catch (err) {}
     }
 }

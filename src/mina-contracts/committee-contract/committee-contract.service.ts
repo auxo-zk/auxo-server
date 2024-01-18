@@ -35,16 +35,17 @@ import { Utilities } from '../utilities';
 import { CommitteeStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
-import { MemberRoleEnum } from 'src/constants';
+import { MemberRoleEnum, zkAppCache } from 'src/constants';
 import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
 import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { Key } from 'src/schemas/key.schema';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
 import { CommitteeState } from 'src/interfaces/state.interface';
+import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 @Injectable()
-export class CommitteeContractService implements OnModuleInit {
+export class CommitteeContractService implements ContractServiceInterface {
     private readonly logger = new Logger(CommitteeContractService.name);
     private _nextCommitteeId: number;
     private _memberTree: Storage.CommitteeStorage.MemberStorage;
@@ -59,7 +60,6 @@ export class CommitteeContractService implements OnModuleInit {
     }
 
     constructor(
-        private readonly appService: AppService,
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,
         @InjectModel(CommitteeAction.name)
@@ -74,34 +74,33 @@ export class CommitteeContractService implements OnModuleInit {
 
     // Why not calling update?
     async onModuleInit() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     async update() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
-    private async fetch() {
+    async fetch() {
         try {
             await this.fetchCommitteeActions();
             await this.updateCommittees();
-            await this.createTrees();
         } catch (err) {}
     }
 
     async compile() {
-        const cache = this.appService.getCache();
+        const cache = zkAppCache;
         await Utilities.compile(CreateCommittee, cache, this.logger);
         await Utilities.compile(CommitteeContract, cache, this.logger);
-        // ZkApp.Committee.CreateCommittee.compile().then(() => {
-        //     this.logger.log('Compile CreateCommittee successfully');
-        //     ZkApp.Committee.CommitteeContract.compile().then(() => {
-        //         this.logger.log('Compile CommitteeContract successfully');
-        //     });
-        // });
     }
 
-    async fetchZkAppState(): Promise<CommitteeState> {
+    private async fetchZkAppState(): Promise<CommitteeState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.COMMITTEE_ADDRESS,
         );
@@ -304,65 +303,40 @@ export class CommitteeContractService implements OnModuleInit {
         }
     }
 
-    private async createTrees() {
-        const committees = await this.committeeModel.find({ active: true });
-        for (let i = 0; i < committees.length; i++) {
-            const committee = committees[i];
-            const level1IndexMember = this._memberTree.calculateLevel1Index(
-                Field(committee.committeeId),
-            );
-            this._memberTree.updateInternal(
-                level1IndexMember,
-                Storage.CommitteeStorage.EMPTY_LEVEL_2_TREE(),
-            );
-            const level1IndexSetting = this._settingTree.calculateLevel1Index(
-                Field(committee.committeeId),
-            );
-            const settingLeaf = this._settingTree.calculateLeaf({
-                T: Field(committee.threshold),
-                N: Field(committee.numberOfMembers),
-            });
-            this._settingTree.updateLeaf(settingLeaf, level1IndexSetting);
-            for (let j = 0; j < committee.publicKeys.length; j++) {
-                const level2IndexMember = this._memberTree.calculateLevel2Index(
-                    Field(j),
+    async updateMerkleTrees() {
+        try {
+            const committees = await this.committeeModel.find({ active: true });
+            for (let i = 0; i < committees.length; i++) {
+                const committee = committees[i];
+                const level1IndexMember = this._memberTree.calculateLevel1Index(
+                    Field(committee.committeeId),
                 );
-                const memberLeaf = this._memberTree.calculateLeaf(
-                    PublicKey.fromBase58(committee.publicKeys[j]),
-                );
-                this._memberTree.updateLeaf(
-                    memberLeaf,
+                this._memberTree.updateInternal(
                     level1IndexMember,
-                    level2IndexMember,
+                    Storage.CommitteeStorage.EMPTY_LEVEL_2_TREE(),
                 );
+                const level1IndexSetting =
+                    this._settingTree.calculateLevel1Index(
+                        Field(committee.committeeId),
+                    );
+                const settingLeaf = this._settingTree.calculateLeaf({
+                    T: Field(committee.threshold),
+                    N: Field(committee.numberOfMembers),
+                });
+                this._settingTree.updateLeaf(settingLeaf, level1IndexSetting);
+                for (let j = 0; j < committee.publicKeys.length; j++) {
+                    const level2IndexMember =
+                        this._memberTree.calculateLevel2Index(Field(j));
+                    const memberLeaf = this._memberTree.calculateLeaf(
+                        PublicKey.fromBase58(committee.publicKeys[j]),
+                    );
+                    this._memberTree.updateLeaf(
+                        memberLeaf,
+                        level1IndexMember,
+                        level2IndexMember,
+                    );
+                }
             }
-        }
+        } catch (err) {}
     }
-    // private insertLeaves(committees: Committee[]) {
-    //     for (let i = 0; i < committees.length; i++) {
-    //         const committee = committees[i];
-    //         const memberTree = new MerkleTree(
-    //             Storage.CommitteeStorage.LEVEL2_TREE_HEIGHT,
-    //         );
-    //         for (let j = 0; j < committee.numberOfMembers; j++) {
-    //             const publicKey = PublicKey.fromBase58(committee.publicKeys[j]);
-    //             memberTree.setLeaf(
-    //                 BigInt(j),
-    //                 Poseidon.hash(publicKey.toFields()),
-    //             );
-    //         }
-    //         this._memberTree.setLeaf(
-    //             BigInt(this._nextCommitteeId),
-    //             memberTree.getRoot(),
-    //         );
-    //         this._settingTree.setLeaf(
-    //             BigInt(this._nextCommitteeId),
-    //             Poseidon.hash([
-    //                 Field(committee.threshold),
-    //                 Field(committee.numberOfMembers),
-    //             ]),
-    //         );
-    //         this._nextCommitteeId += 1;
-    //     }
-    // }
 }

@@ -90,7 +90,7 @@ import {
     TreasuryActionSchema,
 } from 'src/schemas/actions/treasury-action.schema';
 import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
-import { FetchActionsConsumer } from './consumers/fetch-action.consumer';
+import { ContractServicesConsumer } from './consumers/contract-services.consumer';
 
 @Module({
     imports: [
@@ -140,7 +140,7 @@ import { FetchActionsConsumer } from './consumers/fetch-action.consumer';
             }),
         }),
         BullModule.registerQueue({
-            name: 'fetch-actions',
+            name: 'contract-services',
         }),
     ],
     providers: [
@@ -157,7 +157,7 @@ import { FetchActionsConsumer } from './consumers/fetch-action.consumer';
         ParticipationContractService,
         FundingContractService,
         TreasuryContractService,
-        FetchActionsConsumer,
+        ContractServicesConsumer,
     ],
     exports: [
         CommitteeContractService,

@@ -10,9 +10,10 @@ import { Treasury } from 'src/schemas/treasury.schema';
 import { Action } from 'src/interfaces/action.interface';
 import { Bool, Field, Provable, PublicKey, Reducer } from 'o1js';
 import { Storage } from '@auxo-dev/platform';
+import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 @Injectable()
-export class TreasuryContractService implements OnModuleInit {
+export class TreasuryContractService implements ContractServiceInterface {
     private readonly _claimed: Storage.TreasuryStorage.ClaimedStorage;
     private readonly _zkApp: Storage.SharedStorage.AddressStorage;
 
@@ -35,18 +36,23 @@ export class TreasuryContractService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     async update() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     async fetch() {
         try {
             await this.fetchTreasuryActions();
             await this.updateTreasuries();
-            await this.createTrees();
         } catch (err) {}
     }
 
@@ -144,96 +150,98 @@ export class TreasuryContractService implements OnModuleInit {
         }
     }
 
-    async createTrees() {
-        this._zkApp.addresses.setLeaf(
-            0n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            1n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.DKG_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            2n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            3n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            0n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            4n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            5n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            6n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            7n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            8n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            9n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-            ),
-        );
+    async updateMerkleTrees() {
+        try {
+            this._zkApp.addresses.setLeaf(
+                0n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                1n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                2n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                3n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                0n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                4n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                5n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                6n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                7n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                8n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                9n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
+                ),
+            );
 
-        const treasuries = await this.treasuryModel.aggregate([
-            { $match: { active: true } },
-            {
-                $group: {
-                    _id: '$campaignId',
-                    projects: { $push: '$$ROOT' },
+            const treasuries = await this.treasuryModel.aggregate([
+                { $match: { active: true } },
+                {
+                    $group: {
+                        _id: '$campaignId',
+                        projects: { $push: '$$ROOT' },
+                    },
                 },
-            },
-        ]);
-        for (let i = 0; i < treasuries.length; i++) {
-            const campaignId = treasuries[i]._id;
-            const projects: Treasury[] = treasuries[i].projects;
-            for (let j = 0; j < projects.length; j++) {
-                const projectId = projects[j].projectId;
-                this._claimed.updateLeaf(
-                    this._claimed.calculateLeaf(Bool(true)),
-                    this._claimed.calculateLevel1Index({
-                        campaignId: Field(campaignId),
-                        projectId: Field(projectId),
-                    }),
-                );
+            ]);
+            for (let i = 0; i < treasuries.length; i++) {
+                const campaignId = treasuries[i]._id;
+                const projects: Treasury[] = treasuries[i].projects;
+                for (let j = 0; j < projects.length; j++) {
+                    const projectId = projects[j].projectId;
+                    this._claimed.updateLeaf(
+                        this._claimed.calculateLeaf(Bool(true)),
+                        this._claimed.calculateLevel1Index({
+                            campaignId: Field(campaignId),
+                            projectId: Field(projectId),
+                        }),
+                    );
+                }
             }
-        }
+        } catch (err) {}
     }
 }

@@ -23,9 +23,10 @@ import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
 import { Constants, ResponseContribution, Storage, ZkApp } from '@auxo-dev/dkg';
+import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 @Injectable()
-export class DkgUsageContractsService implements OnModuleInit {
+export class DkgUsageContractsService implements ContractServiceInterface {
     private readonly _requestIds: string[];
 
     private readonly _dkgRequest: {
@@ -87,21 +88,26 @@ export class DkgUsageContractsService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     async update() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
-    private async fetch() {
+    async fetch() {
         try {
             await this.fetchRequestActions();
             await this.fetchResponseActions();
             await this.updateRawDkgRequests();
             await this.updateDkgRequests();
             await this.updateDkgResponse();
-            await this.createTrees();
         } catch (err) {
             console.log(err);
         }
@@ -411,147 +417,153 @@ export class DkgUsageContractsService implements OnModuleInit {
         }
     }
 
-    async createTrees() {
-        // create zkapp tree for response
-        this._dkgResponse.zkApp.addresses.setLeaf(
-            this._dkgResponse.zkApp
-                .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
-                .toBigInt(),
-            this._dkgResponse.zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-            ),
-        );
-        this._dkgResponse.zkApp.addresses.setLeaf(
-            this._dkgResponse.zkApp
-                .calculateIndex(Constants.ZkAppEnum.DKG)
-                .toBigInt(),
-            this._dkgResponse.zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.DKG_ADDRESS),
-            ),
-        );
-        this._dkgResponse.zkApp.addresses.setLeaf(
-            this._dkgResponse.zkApp
-                .calculateIndex(Constants.ZkAppEnum.ROUND1)
-                .toBigInt(),
-            this._dkgResponse.zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-            ),
-        );
-        this._dkgResponse.zkApp.addresses.setLeaf(
-            this._dkgResponse.zkApp
-                .calculateIndex(Constants.ZkAppEnum.ROUND2)
-                .toBigInt(),
-            this._dkgResponse.zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-            ),
-        );
-        this._dkgResponse.zkApp.addresses.setLeaf(
-            this._dkgResponse.zkApp
-                .calculateIndex(Constants.ZkAppEnum.REQUEST)
-                .toBigInt(),
-            this._dkgResponse.zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            ),
-        );
-
-        // Create reduce tree for response
-        const lastActiveAction = await this.dkgResponseModel.findOne(
-            {
-                active: true,
-            },
-            {},
-            { sort: { actionId: -1 } },
-        );
-        const responses = lastActiveAction
-            ? await this.responseActionModel.find(
-                  {
-                      actionId: { $lte: lastActiveAction.actionId },
-                  },
-                  {},
-                  { sort: { actionId: 1 } },
-              )
-            : [];
-        responses.map((action) => {
-            this._dkgResponse.reducedActions.push(
-                Field(action.currentActionState),
+    async updateMerkleTrees() {
+        try {
+            // create zkapp tree for response
+            this._dkgResponse.zkApp.addresses.setLeaf(
+                this._dkgResponse.zkApp
+                    .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
+                    .toBigInt(),
+                this._dkgResponse.zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                ),
             );
-            this._dkgResponse.reduceState.updateLeaf(
-                this._dkgResponse.reduceState.calculateIndex(
+            this._dkgResponse.zkApp.addresses.setLeaf(
+                this._dkgResponse.zkApp
+                    .calculateIndex(Constants.ZkAppEnum.DKG)
+                    .toBigInt(),
+                this._dkgResponse.zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                ),
+            );
+            this._dkgResponse.zkApp.addresses.setLeaf(
+                this._dkgResponse.zkApp
+                    .calculateIndex(Constants.ZkAppEnum.ROUND1)
+                    .toBigInt(),
+                this._dkgResponse.zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                ),
+            );
+            this._dkgResponse.zkApp.addresses.setLeaf(
+                this._dkgResponse.zkApp
+                    .calculateIndex(Constants.ZkAppEnum.ROUND2)
+                    .toBigInt(),
+                this._dkgResponse.zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+                ),
+            );
+            this._dkgResponse.zkApp.addresses.setLeaf(
+                this._dkgResponse.zkApp
+                    .calculateIndex(Constants.ZkAppEnum.REQUEST)
+                    .toBigInt(),
+                this._dkgResponse.zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                ),
+            );
+
+            // Create reduce tree for response
+            const lastActiveAction = await this.dkgResponseModel.findOne(
+                {
+                    active: true,
+                },
+                {},
+                { sort: { actionId: -1 } },
+            );
+            const responses = lastActiveAction
+                ? await this.responseActionModel.find(
+                      {
+                          actionId: { $lte: lastActiveAction.actionId },
+                      },
+                      {},
+                      { sort: { actionId: 1 } },
+                  )
+                : [];
+            responses.map((action) => {
+                this._dkgResponse.reducedActions.push(
                     Field(action.currentActionState),
-                ),
-                this._dkgResponse.reduceState.calculateLeaf(
-                    Number(ActionReduceStatusEnum.REDUCED),
-                ),
-            );
-        });
-
-        const dkgRequests = await this.dkgRequestModel.find({
-            status: {
-                $gte: RequestStatusEnum.REQUESTING,
-            },
-        });
-        for (let i = 0; i < dkgRequests.length; i++) {
-            const dkgRequest = dkgRequests[i];
-            const level1Index = this._dkgRequest.requester.calculateLevel1Index(
-                Field(dkgRequest.requestId),
-            );
-            const requesterLeaf = this._dkgRequest.requester.calculateLeaf(
-                PublicKey.fromBase58(dkgRequest.requester),
-            );
-            const requestVector = ZkApp.Request.RequestVector.empty();
-            dkgRequest.D.map((d, index) => {
-                requestVector.set(Field(index), Group.from(d.x, d.y));
-            });
-            const requestStatusLeaf =
-                this._dkgRequest.requestStatus.calculateLeaf(
-                    Field(
-                        dkgRequest.status == RequestStatusEnum.REQUESTING
-                            ? RequestStatusEnum.REQUESTING
-                            : requestVector.hash(),
+                );
+                this._dkgResponse.reduceState.updateLeaf(
+                    this._dkgResponse.reduceState.calculateIndex(
+                        Field(action.currentActionState),
+                    ),
+                    this._dkgResponse.reduceState.calculateLeaf(
+                        Number(ActionReduceStatusEnum.REDUCED),
                     ),
                 );
-            // const requestContribution  =
-            this._dkgRequest.requestStatus.updateLeaf(
-                requestStatusLeaf,
-                level1Index,
-            );
-            this._dkgRequest.requester.updateLeaf(requesterLeaf, level1Index);
-
-            // create remaining trees
-            const dkgResponses = await this.dkgResponseModel.find({
-                requestId: dkgRequest.requestId,
-                active: true,
             });
-            this._dkgResponse.contribution.updateInternal(
-                level1Index,
-                Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
-            );
-            for (let j = 0; j < dkgResponses.length; j++) {
-                const dkgResponse = dkgResponses[j];
-                const level2Index =
-                    this._dkgResponse.contribution.calculateLevel2Index(
-                        Field(dkgResponse.memberId),
+
+            const dkgRequests = await this.dkgRequestModel.find({
+                status: {
+                    $gte: RequestStatusEnum.REQUESTING,
+                },
+            });
+            for (let i = 0; i < dkgRequests.length; i++) {
+                const dkgRequest = dkgRequests[i];
+                const level1Index =
+                    this._dkgRequest.requester.calculateLevel1Index(
+                        Field(dkgRequest.requestId),
                     );
-                const responseContribution = ResponseContribution.empty();
-                dkgResponse.contribution.map((c, index) => {
-                    responseContribution.D.set(
-                        Field(index),
-                        Group.from(c.x, c.y),
-                    );
-                });
-                const leaf =
-                    this._dkgResponse.contribution.calculateLeaf(
-                        responseContribution,
-                    );
-                this._dkgResponse.contribution.updateLeaf(
-                    leaf,
-                    level1Index,
-                    level2Index,
+                const requesterLeaf = this._dkgRequest.requester.calculateLeaf(
+                    PublicKey.fromBase58(dkgRequest.requester),
                 );
+                const requestVector = ZkApp.Request.RequestVector.empty();
+                dkgRequest.D.map((d, index) => {
+                    requestVector.set(Field(index), Group.from(d.x, d.y));
+                });
+                const requestStatusLeaf =
+                    this._dkgRequest.requestStatus.calculateLeaf(
+                        Field(
+                            dkgRequest.status == RequestStatusEnum.REQUESTING
+                                ? RequestStatusEnum.REQUESTING
+                                : requestVector.hash(),
+                        ),
+                    );
+                // const requestContribution  =
+                this._dkgRequest.requestStatus.updateLeaf(
+                    requestStatusLeaf,
+                    level1Index,
+                );
+                this._dkgRequest.requester.updateLeaf(
+                    requesterLeaf,
+                    level1Index,
+                );
+
+                // create remaining trees
+                const dkgResponses = await this.dkgResponseModel.find({
+                    requestId: dkgRequest.requestId,
+                    active: true,
+                });
+                this._dkgResponse.contribution.updateInternal(
+                    level1Index,
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                );
+                for (let j = 0; j < dkgResponses.length; j++) {
+                    const dkgResponse = dkgResponses[j];
+                    const level2Index =
+                        this._dkgResponse.contribution.calculateLevel2Index(
+                            Field(dkgResponse.memberId),
+                        );
+                    const responseContribution = ResponseContribution.empty();
+                    dkgResponse.contribution.map((c, index) => {
+                        responseContribution.D.set(
+                            Field(index),
+                            Group.from(c.x, c.y),
+                        );
+                    });
+                    const leaf =
+                        this._dkgResponse.contribution.calculateLeaf(
+                            responseContribution,
+                        );
+                    this._dkgResponse.contribution.updateLeaf(
+                        leaf,
+                        level1Index,
+                        level2Index,
+                    );
+                }
+                if (!this._requestIds.includes(dkgRequest.requestId)) {
+                    this._requestIds.push(dkgRequest.requestId);
+                }
             }
-            if (!this._requestIds.includes(dkgRequest.requestId)) {
-                this._requestIds.push(dkgRequest.requestId);
-            }
-        }
+        } catch (err) {}
     }
 }

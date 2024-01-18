@@ -25,5 +25,6 @@ import { ObjectStorageController } from './object-storage/object-storage.control
     ],
     controllers: [AppController, IpfsController, ObjectStorageController],
     providers: [AppService, Ipfs, ObjectStorageService],
+    exports: [AppService],
 })
 export class AppModule {}

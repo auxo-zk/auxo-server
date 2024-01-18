@@ -8,5 +8,4 @@ export class ServerConfig {
         request: string;
         response: string;
     };
-    cacheDir: string;
 }

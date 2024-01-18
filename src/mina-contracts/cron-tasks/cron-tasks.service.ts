@@ -17,7 +17,8 @@ export class CronTasksService {
     private readonly logger = new Logger(CronTasksService.name);
 
     constructor(
-        @InjectQueue('fetch-actions') private readonly fetchActionsQueue: Queue,
+        @InjectQueue('contract-services')
+        private readonly contractServices: Queue,
         private readonly queryService: QueryService,
         private readonly committeeContractService: CommitteeContractService,
         private readonly dkgContractsService: DkgContractsService,
@@ -31,6 +32,16 @@ export class CronTasksService {
     // 3 minutes
     @Interval(180000)
     async handleUpdateContracts(): Promise<void> {
-        await this.fetchActionsQueue.add('handle', {});
+        await this.contractServices.add('updateContracts', {
+            date: Date.now(),
+        });
     }
+
+    // @Interval(20000)
+    // async handleRollupContracts(): Promise<void> {
+    //     await this.committeeContractService.compile();
+    //     // await this.contractServices.add('rollupContracts', {
+    //     //     date: Date.now(),
+    //     // });
+    // }
 }

@@ -14,9 +14,10 @@ import { CampaignActionEnum } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Storage } from '@auxo-dev/platform';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 @Injectable()
-export class CampaignContractService implements OnModuleInit {
+export class CampaignContractService implements ContractServiceInterface {
     private readonly _info: Storage.CampaignStorage.InfoStorage;
     private readonly _owner: Storage.CampaignStorage.OwnerStorage;
     private readonly _status: Storage.CampaignStorage.StatusStorage;
@@ -57,32 +58,25 @@ export class CampaignContractService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await this.fetch();
-        // Provable.log(this._info.level1.getRoot());
-        // Provable.log(this._owner.level1.getRoot());
-        // Provable.log(this._status.level1.getRoot());
-        // Provable.log(this._config.level1.getRoot());
-        // Provable.log(this._zkApp.addresses.getRoot());
-        // Provable.log(
-        //     await this.queryService.fetchZkAppState(
-        //         process.env.CAMPAIGN_ADDRESS,
-        //     ),
-        // );
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     async update() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
-    private async fetch() {
+    async fetch() {
         try {
             await this.fetchCampaignActions();
             await this.updateRawCampaigns();
             await this.updateCampaigns();
-            await this.createTrees();
-        } catch (err) {
-            console.log(err);
-        }
+        } catch (err) {}
     }
 
     private async fetchCampaignActions() {
@@ -205,102 +199,104 @@ export class CampaignContractService implements OnModuleInit {
         }
     }
 
-    async createTrees() {
-        this._zkApp.addresses.setLeaf(
-            0n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            1n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.DKG_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            2n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            3n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            0n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            4n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            5n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            6n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            7n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            8n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-            ),
-        );
-        this._zkApp.addresses.setLeaf(
-            9n,
-            this._zkApp.calculateLeaf(
-                PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-            ),
-        );
+    async updateMerkleTrees() {
+        try {
+            this._zkApp.addresses.setLeaf(
+                0n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                1n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                2n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                3n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                0n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                4n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                5n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                6n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                7n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                8n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
+                ),
+            );
+            this._zkApp.addresses.setLeaf(
+                9n,
+                this._zkApp.calculateLeaf(
+                    PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
+                ),
+            );
 
-        const campaigns = await this.campaignModel.find(
-            { active: true },
-            {},
-            { sort: { campaignId: 1 } },
-        );
+            const campaigns = await this.campaignModel.find(
+                { active: true },
+                {},
+                { sort: { campaignId: 1 } },
+            );
 
-        for (let i = 0; i < campaigns.length; i++) {
-            const campaign = campaigns[i];
-            const level1Index = this._info.calculateLevel1Index(
-                Field(campaign.campaignId),
-            );
-            const infoLeaf = this._info.calculateLeaf(
-                IPFSHash.fromString(campaign.ipfsHash),
-            );
-            this._info.updateLeaf(infoLeaf, level1Index);
-            const ownerLeaf = this._owner.calculateLeaf(
-                PublicKey.fromBase58(campaign.owner),
-            );
-            this._owner.updateLeaf(ownerLeaf, level1Index);
-            const statusLeaf = this._status.calculateLeaf(
-                campaign.status as number,
-            );
-            this._status.updateLeaf(statusLeaf, level1Index);
-            const configLeaf = this._config.calculateLeaf({
-                committeeId: Field(campaign.committeeId),
-                keyId: Field(campaign.keyId),
-            });
-            this._config.updateLeaf(configLeaf, level1Index);
-        }
+            for (let i = 0; i < campaigns.length; i++) {
+                const campaign = campaigns[i];
+                const level1Index = this._info.calculateLevel1Index(
+                    Field(campaign.campaignId),
+                );
+                const infoLeaf = this._info.calculateLeaf(
+                    IPFSHash.fromString(campaign.ipfsHash),
+                );
+                this._info.updateLeaf(infoLeaf, level1Index);
+                const ownerLeaf = this._owner.calculateLeaf(
+                    PublicKey.fromBase58(campaign.owner),
+                );
+                this._owner.updateLeaf(ownerLeaf, level1Index);
+                const statusLeaf = this._status.calculateLeaf(
+                    campaign.status as number,
+                );
+                this._status.updateLeaf(statusLeaf, level1Index);
+                const configLeaf = this._config.calculateLeaf({
+                    committeeId: Field(campaign.committeeId),
+                    keyId: Field(campaign.keyId),
+                });
+                this._config.updateLeaf(configLeaf, level1Index);
+            }
+        } catch (err) {}
     }
 }

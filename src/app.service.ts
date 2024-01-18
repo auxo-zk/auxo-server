@@ -15,12 +15,7 @@ export class AppService {
                 request: process.env.REQUEST_ADDRESS,
                 response: process.env.RESPONSE_ADDRESS,
             },
-            cacheDir: process.env.CACHE_DIR,
         };
         return serverConfig;
-    }
-
-    getCache(): Cache {
-        return Cache.FileSystem(`./${this.getServerConfig().cacheDir}`);
     }
 }

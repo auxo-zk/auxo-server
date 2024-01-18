@@ -14,9 +14,10 @@ import { ProjectActionEnum } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Storage } from '@auxo-dev/platform';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 @Injectable()
-export class ProjectContractService implements OnModuleInit {
+export class ProjectContractService implements ContractServiceInterface {
     private readonly _info: Storage.ProjectStorage.InfoStorage;
     private readonly _member: Storage.ProjectStorage.MemberStorage;
     private readonly _address: Storage.ProjectStorage.AddressStorage;
@@ -47,19 +48,24 @@ export class ProjectContractService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     async update() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
-    private async fetch() {
+    async fetch() {
         try {
             await this.fetchProjectActions();
             await this.updateRawProjects();
             await this.updateProjects();
-            await this.createTrees();
         } catch (err) {
             console.log(err);
         }
@@ -181,43 +187,45 @@ export class ProjectContractService implements OnModuleInit {
         }
     }
 
-    async createTrees() {
-        const projects = await this.projectModel.find(
-            { active: true },
-            {},
-            { sort: { projectId: 1 } },
-        );
+    async updateMerkleTrees() {
+        try {
+            const projects = await this.projectModel.find(
+                { active: true },
+                {},
+                { sort: { projectId: 1 } },
+            );
 
-        for (let i = 0; i < projects.length; i++) {
-            const project = projects[i];
-            const level1Index = this._info.calculateLevel1Index(
-                Field(project.projectId),
-            );
-            const infoLeaf = this._info.calculateLeaf(
-                IPFSHash.fromString(project.ipfsHash),
-            );
-            this._info.updateLeaf(infoLeaf, level1Index);
-            const addressLeaf = this._address.calculateLeaf(
-                PublicKey.fromBase58(project.payeeAccount),
-            );
-            this._address.updateLeaf(addressLeaf, level1Index);
-            this._member.updateInternal(
-                level1Index,
-                Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
-            );
-            for (let i = 0; i < project.members.length; i++) {
-                const level2IndexMember = this._member.calculateLevel2Index(
-                    Field(i),
+            for (let i = 0; i < projects.length; i++) {
+                const project = projects[i];
+                const level1Index = this._info.calculateLevel1Index(
+                    Field(project.projectId),
                 );
-                const memberLeaf = this._member.calculateLeaf(
-                    PublicKey.fromBase58(project.members[i]),
+                const infoLeaf = this._info.calculateLeaf(
+                    IPFSHash.fromString(project.ipfsHash),
                 );
-                this._member.updateLeaf(
-                    memberLeaf,
+                this._info.updateLeaf(infoLeaf, level1Index);
+                const addressLeaf = this._address.calculateLeaf(
+                    PublicKey.fromBase58(project.payeeAccount),
+                );
+                this._address.updateLeaf(addressLeaf, level1Index);
+                this._member.updateInternal(
                     level1Index,
-                    level2IndexMember,
+                    Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
                 );
+                for (let i = 0; i < project.members.length; i++) {
+                    const level2IndexMember = this._member.calculateLevel2Index(
+                        Field(i),
+                    );
+                    const memberLeaf = this._member.calculateLeaf(
+                        PublicKey.fromBase58(project.members[i]),
+                    );
+                    this._member.updateLeaf(
+                        memberLeaf,
+                        level1Index,
+                        level2IndexMember,
+                    );
+                }
             }
-        }
+        } catch (err) {}
     }
 }

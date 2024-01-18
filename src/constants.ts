@@ -1,3 +1,5 @@
+import { Cache } from 'o1js';
+
 export enum CommitteeEventEnum {
     COMMITTEE_CREATED,
     __LENGTH,
@@ -85,3 +87,5 @@ export enum MemberRoleEnum {
     MEMBER,
     NONE,
 }
+
+export const zkAppCache = Cache.FileSystem(process.env.CACHE_DIR);

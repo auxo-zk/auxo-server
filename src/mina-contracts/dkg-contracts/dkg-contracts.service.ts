@@ -32,6 +32,7 @@ import {
     KeyStatusEnum,
 } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
+import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 const KEY_STATUS_ARRAY = [
     'EMPTY',
@@ -41,7 +42,7 @@ const KEY_STATUS_ARRAY = [
     'DEPRECATED',
 ];
 @Injectable()
-export class DkgContractsService implements OnModuleInit {
+export class DkgContractsService implements ContractServiceInterface {
     private readonly logger = new Logger(DkgContractsService.name);
     private readonly _dkg: {
         zkApp: Storage.SharedStorage.AddressStorage;
@@ -132,14 +133,20 @@ export class DkgContractsService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     async update() {
-        await this.fetch();
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
-    private async fetch() {
+    async fetch() {
         try {
             await this.fetchDkgActions();
             await this.fetchRound1Actions();
@@ -148,9 +155,6 @@ export class DkgContractsService implements OnModuleInit {
             await this.updateRound1s();
             await this.updateRound2s();
             await this.updateKeys();
-            await this.createTreesForDkg();
-            await this.createTreesForRound1();
-            await this.createTreesForRound2();
         } catch (err) {}
     }
 
@@ -569,8 +573,14 @@ export class DkgContractsService implements OnModuleInit {
             }
         }
     }
-
-    private async createTreesForDkg() {
+    async updateMerkleTrees() {
+        try {
+            await this.updateMerkleTreesForDkg();
+            await this.updateMerkleTreesForRound1();
+            await this.updateMerkleTreesForRound2();
+        } catch (err) {}
+    }
+    private async updateMerkleTreesForDkg() {
         const committeeAddress = PublicKey.fromBase58(
             process.env.COMMITTEE_ADDRESS,
         );
@@ -622,7 +632,7 @@ export class DkgContractsService implements OnModuleInit {
             }
         }
     }
-    private async createTreesForRound1() {
+    private async updateMerkleTreesForRound1() {
         const committeeAddress = PublicKey.fromBase58(
             process.env.COMMITTEE_ADDRESS,
         );
@@ -765,7 +775,7 @@ export class DkgContractsService implements OnModuleInit {
             }
         }
     }
-    private async createTreesForRound2() {
+    private async updateMerkleTreesForRound2() {
         const committeeAddress = PublicKey.fromBase58(
             process.env.COMMITTEE_ADDRESS,
         );
