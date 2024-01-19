@@ -42,14 +42,18 @@ export class ContractServicesConsumer {
     }
 
     @Process('rollupContracts')
-    async rollupContracts(job: Job<unknown>) {
+    rollupContracts(job: Job<unknown>) {
         try {
             this.logger.log('Starting contract rollups');
-            await this.committeeContractService.compile();
-            await this.committeeContractService.compile();
-            this.logger.log('All contract rollups completed successfully');
-            await job.progress();
-            return {};
+            this.committeeContractService.compile().then(() => {
+                this.committeeContractService.compile().then(() => {
+                    this.logger.log(
+                        'All contract rollups completed successfully',
+                    );
+                    job.progress();
+                    return {};
+                });
+            });
         } catch (err) {
             this.logger.error('Error during contract rollups: ', err);
             return undefined;

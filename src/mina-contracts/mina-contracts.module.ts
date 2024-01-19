@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
-import { BullModule } from '@nestjs/bull';
 import { CacheModule } from '@nestjs/cache-manager';
 import { join } from 'path';
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
@@ -31,7 +30,6 @@ import { Network } from './network/network';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { AppService } from 'src/app.service';
 import { QueryService } from './query/query.service';
-import { CronTasksService } from './cron-tasks/cron-tasks.service';
 import { CommitteeContractService } from './committee-contract/committee-contract.service';
 import { DkgContractsService } from './dkg-contracts/dkg-contracts.service';
 
@@ -134,23 +132,11 @@ import { ContractServicesConsumer } from './consumers/contract-services.consumer
             { name: Treasury.name, schema: TreasurySchema },
         ]),
         HttpModule,
-        BullModule.forRootAsync({
-            useFactory: () => ({
-                redis: {
-                    host: 'localhost',
-                    port: 6379,
-                },
-            }),
-        }),
-        BullModule.registerQueue({
-            name: 'contract-services',
-        }),
     ],
     providers: [
         Network,
         AppService,
         QueryService,
-        CronTasksService,
         CommitteeContractService,
         Ipfs,
         DkgContractsService,
