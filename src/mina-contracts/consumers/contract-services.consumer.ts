@@ -25,7 +25,6 @@ export class ContractServicesConsumer {
     @Process('updateContracts')
     async updateContracts(job: Job<unknown>) {
         try {
-            this.logger.log('Starting contract updates');
             await this.committeeContractService.update();
             await this.dkgContractsService.update();
             await this.dkgUsageContractsService.update();
@@ -42,17 +41,12 @@ export class ContractServicesConsumer {
     }
 
     @Process('rollupContracts')
-    rollupContracts(job: Job<unknown>) {
+    async rollupContracts(job: Job<unknown>) {
         try {
-            this.logger.log('Starting contract rollups');
             this.committeeContractService.compile().then(() => {
-                this.committeeContractService.compile().then(() => {
-                    this.logger.log(
-                        'All contract rollups completed successfully',
-                    );
-                    job.progress();
-                    return {};
-                });
+                this.logger.log('All contract rollups completed successfully');
+                job.progress();
+                return {};
             });
         } catch (err) {
             this.logger.error('Error during contract rollups: ', err);

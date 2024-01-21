@@ -25,26 +25,9 @@ import { join } from 'path';
         MinaContractsModule,
         HttpModule,
         ApisModule,
-        BullModule.forRootAsync({
-            useFactory: () => ({
-                redis: {
-                    host: 'localhost',
-                    port: 6379,
-                },
-            }),
-        }),
-        BullModule.registerQueue(
-            {
-                name: 'contract-services',
-            },
-            {
-                name: 'rollupContracts',
-                processors: [join(__dirname, 'roll-up-contracts.js')],
-            },
-        ),
     ],
     controllers: [AppController, IpfsController, ObjectStorageController],
-    providers: [AppService, Ipfs, ObjectStorageService, CronTasksService],
+    providers: [AppService, Ipfs, ObjectStorageService],
     exports: [AppService],
 })
 export class AppModule {}
