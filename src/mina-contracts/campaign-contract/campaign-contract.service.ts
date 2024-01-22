@@ -165,15 +165,28 @@ export class CampaignContractService implements ContractServiceInterface {
             campaignId++
         ) {
             const rawCampaign = rawCampaigns[campaignId];
-            await this.campaignModel.create({
-                campaignId: campaignId,
-                ipfsHash: rawCampaign.ipfsHash,
-                owner: rawCampaign.owner,
-                status: rawCampaign.status,
-                committeeId: rawCampaign.committeeId,
-                keyId: rawCampaign.committeeId,
-                ipfsData: await this.ipfs.getData(rawCampaign.ipfsHash),
-            });
+            try {
+                const ipfsData = await this.ipfs.getData(rawCampaign.ipfsHash);
+                await this.campaignModel.create({
+                    campaignId: campaignId,
+                    ipfsHash: rawCampaign.ipfsHash,
+                    owner: rawCampaign.owner,
+                    status: rawCampaign.status,
+                    committeeId: rawCampaign.committeeId,
+                    keyId: rawCampaign.committeeId,
+                    ipfsData: ipfsData,
+                });
+            } catch (err) {
+                await this.campaignModel.create({
+                    campaignId: campaignId,
+                    ipfsHash: rawCampaign.ipfsHash,
+                    owner: rawCampaign.owner,
+                    status: rawCampaign.status,
+                    committeeId: rawCampaign.committeeId,
+                    keyId: rawCampaign.committeeId,
+                    ipfsData: undefined,
+                });
+            }
         }
 
         const rawEvents = await this.queryService.fetchEvents(

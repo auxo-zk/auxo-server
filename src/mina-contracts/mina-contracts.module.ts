@@ -5,6 +5,22 @@ import { HttpModule } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bull';
 import { CacheModule } from '@nestjs/cache-manager';
 import { join } from 'path';
+import { JwtModule } from '@nestjs/jwt';
+import { Network } from './network/network';
+import { Ipfs } from 'src/ipfs/ipfs';
+import { AppService } from 'src/app.service';
+import { QueryService } from './query/query.service';
+import { CronTasksService } from './cron-tasks/cron-tasks.service';
+import { CommitteeContractService } from './committee-contract/committee-contract.service';
+import { DkgContractsService } from './dkg-contracts/dkg-contracts.service';
+import { DkgUsageContractsService } from './dkg-usage-contracts/dkg-usage-contracts.service';
+import { ProjectContractService } from './project-contract/project-contract.service';
+import { CampaignContractService } from './campaign-contract/campaign-contract.service';
+import { ParticipationContractService } from './participation-contract/participation-contract.service';
+import { FundingContractService } from './funding-contract/funding-contract.service';
+import { TreasuryContractService } from './treasury-contract/treasury-contract.service';
+import { ContractServicesConsumer } from './consumers/contract-services.consumer';
+
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import {
     CommitteeAction,
@@ -26,16 +42,6 @@ import { Key, KeySchema } from 'src/schemas/key.schema';
 import { Dkg, DkgSchema } from 'src/schemas/dkg.schema';
 import { Round1, Round1Schema } from 'src/schemas/round-1.schema';
 import { Round2, Round2Schema } from 'src/schemas/round-2.schema';
-
-import { Network } from './network/network';
-import { Ipfs } from 'src/ipfs/ipfs';
-import { AppService } from 'src/app.service';
-import { QueryService } from './query/query.service';
-import { CronTasksService } from './cron-tasks/cron-tasks.service';
-import { CommitteeContractService } from './committee-contract/committee-contract.service';
-import { DkgContractsService } from './dkg-contracts/dkg-contracts.service';
-
-import { DkgUsageContractsService } from './dkg-usage-contracts/dkg-usage-contracts.service';
 import {
     RequestAction,
     RequestActionSchema,
@@ -45,20 +51,17 @@ import {
     ResponseActionSchema,
 } from 'src/schemas/actions/response-action.schema';
 import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
-import { JwtModule } from '@nestjs/jwt';
 import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
 import {
     RawDkgRequest,
     RawDkgRequestSchema,
 } from 'src/schemas/raw-request.schema';
-import { ProjectContractService } from './project-contract/project-contract.service';
 import {
     ProjectAction,
     ProjectActionSchema,
 } from 'src/schemas/actions/project-action.schema';
 import { RawProject, RawProjectSchema } from 'src/schemas/raw-project.schema';
 import { Project, ProjectSchema } from 'src/schemas/project.schema';
-import { CampaignContractService } from './campaign-contract/campaign-contract.service';
 import {
     CampaignAction,
     CampaignActionSchema,
@@ -68,7 +71,6 @@ import {
     RawCampaign,
     RawCampaignSchema,
 } from 'src/schemas/raw-campaign.schema';
-import { ParticipationContractService } from './participation-contract/participation-contract.service';
 import {
     ParticipationAction,
     ParticipationActionSchema,
@@ -77,7 +79,6 @@ import {
     Participation,
     ParticipationSchema,
 } from 'src/schemas/participation.schema';
-import { FundingContractService } from './funding-contract/funding-contract.service';
 import {
     FundingAction,
     FundingActionSchema,
@@ -87,13 +88,11 @@ import {
     FundingResult,
     FundingResultSchema,
 } from 'src/schemas/funding-result.schema';
-import { TreasuryContractService } from './treasury-contract/treasury-contract.service';
 import {
     TreasuryAction,
     TreasuryActionSchema,
 } from 'src/schemas/actions/treasury-action.schema';
 import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
-import { ContractServicesConsumer } from './consumers/contract-services.consumer';
 
 @Module({
     imports: [
