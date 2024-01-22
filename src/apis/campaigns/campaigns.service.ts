@@ -35,14 +35,53 @@ export class CampaignsService {
         return result;
     }
 
-    async getCampaigns(owner: string): Promise<Campaign[]> {
+    async getCampaigns(owner: string, active: boolean): Promise<Campaign[]> {
         if (owner == undefined) {
-            return await this.campaignModel.find({ active: true });
+            return await this.campaignModel.aggregate([
+                { $match: { active: active } },
+                {
+                    $lookup: {
+                        from: 'organizers',
+                        as: 'ownerInfo',
+                        foreignField: 'address',
+                        localField: 'owner',
+                    },
+                },
+                {
+                    $addFields: {
+                        ownerInfo: {
+                            $cond: {
+                                if: { $eq: [{ $size: '$ownerInfo' }, 0] },
+                                then: null, // If array is empty, set to null
+                                else: { $arrayElemAt: ['$ownerInfo', 0] }, // Otherwise, set to the first element
+                            },
+                        },
+                    },
+                },
+            ]);
         } else {
-            return await this.campaignModel.find({
-                owner: owner,
-                active: true,
-            });
+            return await this.campaignModel.aggregate([
+                { $match: { owner: owner, active: active } },
+                {
+                    $lookup: {
+                        from: 'organizers',
+                        as: 'ownerInfo',
+                        foreignField: 'address',
+                        localField: 'owner',
+                    },
+                },
+                {
+                    $addFields: {
+                        ownerInfo: {
+                            $cond: {
+                                if: { $eq: [{ $size: '$ownerInfo' }, 0] },
+                                then: null, // If array is empty, set to null
+                                else: { $arrayElemAt: ['$ownerInfo', 0] }, // Otherwise, set to the first element
+                            },
+                        },
+                    },
+                },
+            ]);
         }
     }
 
@@ -52,10 +91,29 @@ export class CampaignsService {
             active: true,
         });
         if (exist) {
-            return await this.campaignModel.findOne({
-                campaignId: campaignId,
-                active: true,
-            });
+            const result = await this.campaignModel.aggregate([
+                { $match: { campaignId: campaignId, active: true } },
+                {
+                    $lookup: {
+                        from: 'organizers',
+                        as: 'ownerInfo',
+                        foreignField: 'address',
+                        localField: 'owner',
+                    },
+                },
+                {
+                    $addFields: {
+                        ownerInfo: {
+                            $cond: {
+                                if: { $eq: [{ $size: '$ownerInfo' }, 0] },
+                                then: null, // If array is empty, set to null
+                                else: { $arrayElemAt: ['$ownerInfo', 0] }, // Otherwise, set to the first element
+                            },
+                        },
+                    },
+                },
+            ]);
+            return result[1];
         } else {
             throw new NotFoundException();
         }

@@ -41,4 +41,4 @@ lerna-debug.log*
 /storage
 
 # Cache files
-/caches
+/cache
