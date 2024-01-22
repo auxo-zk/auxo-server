@@ -99,6 +99,10 @@ export class CampaignsService {
             active: true,
         });
         if (exist) {
+            // return await this.campaignModel.findOne({
+            //     campaignId: campaignId,
+            //     active: true,
+            // });
             const result = await this.campaignModel.aggregate([
                 { $match: { campaignId: campaignId, active: true } },
                 {
@@ -121,7 +125,7 @@ export class CampaignsService {
                     },
                 },
             ]);
-            return result[1];
+            return result[0];
         } else {
             throw new NotFoundException();
         }
