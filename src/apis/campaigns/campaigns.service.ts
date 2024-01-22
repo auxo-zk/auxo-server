@@ -2,11 +2,14 @@ import {
     BadRequestException,
     Injectable,
     NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { AuthRoleEnum } from 'src/constants';
 import { CreateCampaignDto } from 'src/dtos/create-campaign.dto';
 import { IpfsResponse } from 'src/entities/ipfs-response.entity';
+import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Campaign } from 'src/schemas/campaign.schema';
 import { FundingResult } from 'src/schemas/funding-result.schema';
@@ -27,22 +30,66 @@ export class CampaignsService {
 
     async createCampaign(
         createCampaignDto: CreateCampaignDto,
+        jwtPayload: JwtPayload,
     ): Promise<IpfsResponse> {
-        const result = await this.ipfs.upload(createCampaignDto);
-        if (result == null) {
-            throw new BadRequestException();
+        if (jwtPayload.role == AuthRoleEnum.ORGANIZER) {
+            const result = await this.ipfs.upload(createCampaignDto);
+            if (result == null) {
+                throw new BadRequestException();
+            }
+            return result;
+        } else {
+            throw new UnauthorizedException();
         }
-        return result;
     }
 
-    async getCampaigns(owner: string): Promise<Campaign[]> {
+    async getCampaigns(owner: string, active: boolean): Promise<Campaign[]> {
         if (owner == undefined) {
-            return await this.campaignModel.find({ active: true });
+            return await this.campaignModel.aggregate([
+                { $match: { active: active } },
+                {
+                    $lookup: {
+                        from: 'organizers',
+                        as: 'ownerInfo',
+                        foreignField: 'address',
+                        localField: 'owner',
+                    },
+                },
+                {
+                    $addFields: {
+                        ownerInfo: {
+                            $cond: {
+                                if: { $eq: [{ $size: '$ownerInfo' }, 0] },
+                                then: null, // If array is empty, set to null
+                                else: { $arrayElemAt: ['$ownerInfo', 0] }, // Otherwise, set to the first element
+                            },
+                        },
+                    },
+                },
+            ]);
         } else {
-            return await this.campaignModel.find({
-                owner: owner,
-                active: true,
-            });
+            return await this.campaignModel.aggregate([
+                { $match: { owner: owner, active: active } },
+                {
+                    $lookup: {
+                        from: 'organizers',
+                        as: 'ownerInfo',
+                        foreignField: 'address',
+                        localField: 'owner',
+                    },
+                },
+                {
+                    $addFields: {
+                        ownerInfo: {
+                            $cond: {
+                                if: { $eq: [{ $size: '$ownerInfo' }, 0] },
+                                then: null, // If array is empty, set to null
+                                else: { $arrayElemAt: ['$ownerInfo', 0] }, // Otherwise, set to the first element
+                            },
+                        },
+                    },
+                },
+            ]);
         }
     }
 
@@ -52,10 +99,29 @@ export class CampaignsService {
             active: true,
         });
         if (exist) {
-            return await this.campaignModel.findOne({
-                campaignId: campaignId,
-                active: true,
-            });
+            const result = await this.campaignModel.aggregate([
+                { $match: { campaignId: campaignId, active: true } },
+                {
+                    $lookup: {
+                        from: 'organizers',
+                        as: 'ownerInfo',
+                        foreignField: 'address',
+                        localField: 'owner',
+                    },
+                },
+                {
+                    $addFields: {
+                        ownerInfo: {
+                            $cond: {
+                                if: { $eq: [{ $size: '$ownerInfo' }, 0] },
+                                then: null, // If array is empty, set to null
+                                else: { $arrayElemAt: ['$ownerInfo', 0] }, // Otherwise, set to the first element
+                            },
+                        },
+                    },
+                },
+            ]);
+            return result[1];
         } else {
             throw new NotFoundException();
         }
