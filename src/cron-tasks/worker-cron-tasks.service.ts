@@ -15,7 +15,7 @@ export class WorkerCronTasksService {
     @Interval(180000)
     async handleRollupContracts() {
         this.logger.log('Register rollupContracts task at ' + process.pid);
-        this.logger.log(await this.contractServices.count());
+        this.contractServices.count();
         this.contractServices.add('rollupContracts', {
             date: Date.now(),
         });

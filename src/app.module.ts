@@ -86,6 +86,7 @@ import {
     TreasuryActionSchema,
 } from 'src/schemas/actions/treasury-action.schema';
 import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
+import { ContractServicesConsumer } from './consumers/contract-services.consumer';
 
 @Module({
     imports: [
@@ -145,7 +146,13 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
         }),
     ],
     controllers: [AppController, IpfsController, ObjectStorageController],
-    providers: [AppService, Ipfs, ObjectStorageService, MainCronTasksService],
+    providers: [
+        AppService,
+        Ipfs,
+        ObjectStorageService,
+        MainCronTasksService,
+        ContractServicesConsumer,
+    ],
     exports: [AppService],
 })
 export class AppModule {}

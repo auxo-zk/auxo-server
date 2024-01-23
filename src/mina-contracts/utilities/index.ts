@@ -56,10 +56,10 @@ export class Utilities {
             try {
                 await tx.prove();
                 res = await tx.sign([feePayer]).send();
-                if (logger) logger.debug('Tx sent! Hash:', res.hash() || '');
+                if (logger) logger.debug('Tx sent! Hash: ' + res.hash() || '');
                 break; // Exit the loop if successful
             } catch (error) {
-                if (logger) logger.error('Error:', error);
+                if (logger) logger.error('Error: ' + error);
                 retries--; // Decrement the number of retries
                 if (retries === 0) {
                     if (logger) logger.debug('Tx can not be sent');

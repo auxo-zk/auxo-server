@@ -2,14 +2,10 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
-import { CacheModule } from '@nestjs/cache-manager';
-import { join } from 'path';
-import { JwtModule } from '@nestjs/jwt';
 import { Network } from './network/network';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { AppService } from 'src/app.service';
 import { QueryService } from './query/query.service';
-import { CronTasksService } from './cron-tasks/cron-tasks.service';
 import { CommitteeContractService } from './committee-contract/committee-contract.service';
 import { DkgContractsService } from './dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from './dkg-usage-contracts/dkg-usage-contracts.service';
@@ -18,7 +14,6 @@ import { CampaignContractService } from './campaign-contract/campaign-contract.s
 import { ParticipationContractService } from './participation-contract/participation-contract.service';
 import { FundingContractService } from './funding-contract/funding-contract.service';
 import { TreasuryContractService } from './treasury-contract/treasury-contract.service';
-import { ContractServicesConsumer } from './consumers/contract-services.consumer';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import {
@@ -146,7 +141,6 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
         ParticipationContractService,
         FundingContractService,
         TreasuryContractService,
-        ContractServicesConsumer,
     ],
     exports: [
         CommitteeContractService,

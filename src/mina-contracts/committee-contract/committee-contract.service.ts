@@ -47,7 +47,6 @@ import { ContractServiceInterface } from 'src/interfaces/contract-service.interf
 @Injectable()
 export class CommitteeContractService implements ContractServiceInterface {
     private readonly logger = new Logger(CommitteeContractService.name);
-    private _nextCommitteeId: number;
     private _memberTree: Storage.CommitteeStorage.MemberStorage;
     private _settingTree: Storage.CommitteeStorage.SettingStorage;
 
@@ -67,7 +66,6 @@ export class CommitteeContractService implements ContractServiceInterface {
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
     ) {
-        this._nextCommitteeId = 0;
         this._memberTree = new Storage.CommitteeStorage.MemberStorage();
         this._settingTree = new Storage.CommitteeStorage.SettingStorage();
     }
@@ -124,6 +122,11 @@ export class CommitteeContractService implements ContractServiceInterface {
         const lastReducedAction = await this.committeeActionModel.findOne({
             currentActionState: state.actionState.toString(),
         });
+        const lastActiveCommittee = await this.committeeModel.findOne(
+            { active: true },
+            {},
+            { sort: { committeeId: -1 } },
+        );
         const notReducedActions = await this.committeeActionModel.find(
             {
                 actionId: { $gt: lastReducedAction.actionId },
@@ -133,7 +136,7 @@ export class CommitteeContractService implements ContractServiceInterface {
         );
         const memberTree = this._memberTree;
         const settingTree = this._settingTree;
-        let nextCommitteeId = this._nextCommitteeId;
+        let nextCommitteeId = lastActiveCommittee.committeeId + 1;
         for (let i = 0; i < notReducedActions.length; i++) {
             const notReducedAction = notReducedActions[i];
             proof = await CreateCommittee.nextStep(

@@ -1,13 +1,13 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Job } from 'bull';
-import { CommitteeContractService } from '../committee-contract/committee-contract.service';
+import { CommitteeContractService } from '../mina-contracts/committee-contract/committee-contract.service';
 import { Logger } from '@nestjs/common';
-import { DkgContractsService } from '../dkg-contracts/dkg-contracts.service';
-import { DkgUsageContractsService } from '../dkg-usage-contracts/dkg-usage-contracts.service';
-import { CampaignContractService } from '../campaign-contract/campaign-contract.service';
-import { ParticipationContractService } from '../participation-contract/participation-contract.service';
-import { ProjectContractService } from '../project-contract/project-contract.service';
-import { FundingContractService } from '../funding-contract/funding-contract.service';
+import { DkgContractsService } from '../mina-contracts/dkg-contracts/dkg-contracts.service';
+import { DkgUsageContractsService } from '../mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
+import { CampaignContractService } from '../mina-contracts/campaign-contract/campaign-contract.service';
+import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
+import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
+import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
 
 @Processor('contract-services')
 export class ContractServicesConsumer {
