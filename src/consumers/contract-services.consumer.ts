@@ -61,7 +61,6 @@ export class ContractServicesConsumer {
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
             ]).then(async () => {
-                await this.committeeContractService.rollup();
                 this.logger.log('All contract updates completed successfully');
                 await job.progress();
                 return {};
