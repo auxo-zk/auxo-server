@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MinaContractsModule } from './mina-contracts/mina-contracts.module';
-import { CronTasksService } from './cron-tasks/cron-tasks.service';
+import { WorkerCronTasksService } from './cron-tasks/worker-cron-tasks.service';
 import { BullModule } from '@nestjs/bull';
 
 @Module({
     imports: [
         MongooseModule.forRoot(process.env.DB, {
-            connectTimeoutMS: 10000000,
-            socketTimeoutMS: 10000000,
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 10000,
         }),
         MongooseModule.forFeature([]),
         MinaContractsModule,
@@ -24,6 +24,6 @@ import { BullModule } from '@nestjs/bull';
             name: 'contract-services',
         }),
     ],
-    providers: [CronTasksService],
+    providers: [WorkerCronTasksService],
 })
 export class WorkerModule {}

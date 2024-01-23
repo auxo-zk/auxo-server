@@ -5,7 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { Field, Provable } from 'o1js';
-import { CronTasksService } from 'src/cron-tasks/cron-tasks.service';
+import { WorkerCronTasksService } from 'src/cron-tasks/worker-cron-tasks.service';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
 import { CampaignContractService } from 'src/mina-contracts/campaign-contract/campaign-contract.service';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
@@ -18,7 +18,7 @@ import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/tr
 
 @Injectable()
 export class StoragesService {
-    private readonly logger = new Logger(CronTasksService.name);
+    private readonly logger = new Logger(WorkerCronTasksService.name);
 
     constructor(
         private readonly committeeContractsService: CommitteeContractService,

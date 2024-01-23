@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CronTasksService } from './cron-tasks.service';
+import { MainCronTasksService } from './main-cron-tasks.service';
 
-describe('CronTasksService', () => {
-    let service: CronTasksService;
+describe('MainCronTasksService', () => {
+    let service: MainCronTasksService;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            providers: [CronTasksService],
+            providers: [MainCronTasksService],
         }).compile();
 
-        service = module.get<CronTasksService>(CronTasksService);
+        service = module.get<MainCronTasksService>(MainCronTasksService);
     });
 
     it('should be defined', () => {
