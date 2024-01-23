@@ -253,7 +253,7 @@ export class StoragesController {
         return this.storagesService.getProjectMemberTreeLevel1();
     }
 
-    @Get('project/member/level2:/:level1Index')
+    @Get('project/member/level2/:level1Index')
     @ApiTags('Storage Project')
     getProjectMemberTreeLevel2(
         @Param('level1Index', ParseIntPipe) level1Index: number,
