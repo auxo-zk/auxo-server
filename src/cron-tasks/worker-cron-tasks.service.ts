@@ -13,11 +13,18 @@ export class WorkerCronTasksService {
     ) {}
 
     @Interval(180000)
-    async handleRollupContracts() {
-        this.logger.log('Register rollupContracts task at ' + process.pid);
-        this.contractServices.count();
-        this.contractServices.add('rollupContracts', {
+    async handleUpdateContracts() {
+        this.logger.log('Register updateContracts task at ' + process.pid);
+        this.contractServices.add('updateContracts', {
             date: Date.now(),
         });
     }
+
+    // @Interval(180000)
+    // async handleRollupContracts() {
+    //     this.logger.log('Register rollupContracts task at ' + process.pid);
+    //     this.contractServices.add('rollupContracts', {
+    //         date: Date.now(),
+    //     });
+    // }
 }

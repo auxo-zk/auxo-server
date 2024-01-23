@@ -45,6 +45,30 @@ export class ContractServicesConsumer {
                 'Error during contract merkle tree updates: ',
                 err,
             );
+            return undefined;
+        }
+    }
+
+    @Process('updateContracts')
+    async updateContracts(job: Job<unknown>) {
+        try {
+            Promise.all([
+                this.committeeContractService.update(),
+                this.dkgContractsService.update(),
+                this.dkgUsageContractsService.update(),
+                this.campaignContractService.update(),
+                this.participationContractService.update(),
+                this.projectContractService.update(),
+                this.fundingContractService.update(),
+            ]).then(async () => {
+                await this.committeeContractService.rollup();
+                this.logger.log('All contract updates completed successfully');
+                await job.progress();
+                return {};
+            });
+        } catch (err) {
+            this.logger.error('Error during contract updates: ', err);
+            return undefined;
         }
     }
 
