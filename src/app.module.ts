@@ -11,6 +11,8 @@ import { IpfsController } from './ipfs/ipfs.controller';
 import { ApisModule } from './apis/apis.module';
 import { ObjectStorageService } from './object-storage/object-storage.service';
 import { ObjectStorageController } from './object-storage/object-storage.controller';
+import { MainCronTasksService } from './cron-tasks/main-cron-tasks.service';
+import { BullModule } from '@nestjs/bull';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import {
@@ -88,8 +90,8 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
 @Module({
     imports: [
         MongooseModule.forRoot(process.env.DB, {
-            connectTimeoutMS: 10000000,
-            socketTimeoutMS: 10000000,
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 10000,
         }),
         MongooseModule.forFeature([
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
@@ -128,11 +130,22 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
         ]),
         MongooseModule.forFeature([]),
         MinaContractsModule,
-        HttpModule,
         ApisModule,
+        HttpModule,
+        BullModule.forRootAsync({
+            useFactory: () => ({
+                redis: {
+                    host: 'localhost',
+                    port: 6379,
+                },
+            }),
+        }),
+        BullModule.registerQueue({
+            name: 'contract-services',
+        }),
     ],
     controllers: [AppController, IpfsController, ObjectStorageController],
-    providers: [AppService, Ipfs, ObjectStorageService],
+    providers: [AppService, Ipfs, ObjectStorageService, MainCronTasksService],
     exports: [AppService],
 })
 export class AppModule {}

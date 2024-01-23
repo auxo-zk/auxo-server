@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
-import { BullModule } from '@nestjs/bull';
 import { CacheModule } from '@nestjs/cache-manager';
 import { join } from 'path';
 import { JwtModule } from '@nestjs/jwt';
@@ -133,23 +132,11 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
             { name: Treasury.name, schema: TreasurySchema },
         ]),
         HttpModule,
-        BullModule.forRootAsync({
-            useFactory: () => ({
-                redis: {
-                    host: 'localhost',
-                    port: 6379,
-                },
-            }),
-        }),
-        BullModule.registerQueue({
-            name: 'contract-services',
-        }),
     ],
     providers: [
         Network,
         AppService,
         QueryService,
-        CronTasksService,
         CommitteeContractService,
         Ipfs,
         DkgContractsService,

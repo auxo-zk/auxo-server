@@ -1,9 +1,11 @@
 import {
     BadRequestException,
     Injectable,
+    Logger,
     NotFoundException,
 } from '@nestjs/common';
 import { Field, Provable } from 'o1js';
+import { WorkerCronTasksService } from 'src/cron-tasks/worker-cron-tasks.service';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
 import { CampaignContractService } from 'src/mina-contracts/campaign-contract/campaign-contract.service';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
@@ -16,6 +18,8 @@ import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/tr
 
 @Injectable()
 export class StoragesService {
+    private readonly logger = new Logger(WorkerCronTasksService.name);
+
     constructor(
         private readonly committeeContractsService: CommitteeContractService,
         private readonly dkgContractService: DkgContractsService,
@@ -75,6 +79,7 @@ export class StoragesService {
     }
 
     getDKGZkAppTree(): MerkleLeaf[] {
+        this.logger.log(process.pid);
         const leafCount = this.dkgContractService.dkg.zkApp.addresses.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
