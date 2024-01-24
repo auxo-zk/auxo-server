@@ -137,7 +137,7 @@ export class ProjectsService {
         //     throw new BadRequestException();
         // }
         // return result;
-        if (jwtPayload.role != AuthRoleEnum.BUILDER) {
+        if (jwtPayload.role == AuthRoleEnum.BUILDER) {
             const project = await this.projectModel.findOne({
                 projectId: projectId,
             });
