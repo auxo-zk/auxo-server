@@ -280,8 +280,10 @@ export class DkgContractsService implements ContractServiceInterface {
                             break;
                         case DkgActionEnum.FINALIZE_ROUND_1:
                             key.status = KeyStatusEnum.ROUND_2_CONTRIBUTION;
+                            break;
                         case DkgActionEnum.DEPRECATE_KEY:
                             key.status = KeyStatusEnum.DEPRECATED;
+                            break;
                     }
                     proof = await UpdateKey.nextStep(
                         ZkApp.DKG.Action.fromFields(
