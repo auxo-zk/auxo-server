@@ -8,7 +8,7 @@ export class WorkerCronTasksService {
     private readonly logger = new Logger(WorkerCronTasksService.name);
 
     constructor(
-        @InjectQueue('contract-services')
+        @InjectQueue('worker-contract-services')
         private readonly contractServices: Queue,
     ) {}
 

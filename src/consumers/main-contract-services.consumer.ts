@@ -9,9 +9,9 @@ import { ParticipationContractService } from '../mina-contracts/participation-co
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
 
-@Processor('contract-services')
-export class ContractServicesConsumer {
-    private readonly logger = new Logger('ContractServicesConsumer');
+@Processor('main-contract-services')
+export class MainContractServicesConsumer {
+    private readonly logger = new Logger(MainContractServicesConsumer.name);
     constructor(
         private readonly committeeContractService: CommitteeContractService,
         private readonly dkgContractsService: DkgContractsService,
@@ -67,30 +67,6 @@ export class ContractServicesConsumer {
             });
         } catch (err) {
             this.logger.error('Error during contract updates: ', err);
-            return undefined;
-        }
-    }
-
-    @Process('rollupContracts')
-    async rollupContracts(job: Job<unknown>) {
-        try {
-            Promise.all([
-                this.committeeContractService.update(),
-                this.dkgContractsService.update(),
-                this.dkgUsageContractsService.update(),
-                this.campaignContractService.update(),
-                this.participationContractService.update(),
-                this.projectContractService.update(),
-                this.fundingContractService.update(),
-                this.committeeContractService.compile(),
-            ]).then(async () => {
-                await this.committeeContractService.rollup();
-                this.logger.log('All contract rollups completed successfully');
-                await job.progress();
-                return {};
-            });
-        } catch (err) {
-            this.logger.error('Error during contract rollups: ', err);
             return undefined;
         }
     }

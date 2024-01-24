@@ -86,7 +86,7 @@ import {
     TreasuryActionSchema,
 } from 'src/schemas/actions/treasury-action.schema';
 import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
-import { ContractServicesConsumer } from './consumers/contract-services.consumer';
+import { MainContractServicesConsumer } from './consumers/main-contract-services.consumer';
 
 @Module({
     imports: [
@@ -142,7 +142,7 @@ import { ContractServicesConsumer } from './consumers/contract-services.consumer
             }),
         }),
         BullModule.registerQueue({
-            name: 'contract-services',
+            name: 'main-contract-services',
         }),
     ],
     controllers: [AppController, IpfsController, ObjectStorageController],
@@ -151,7 +151,7 @@ import { ContractServicesConsumer } from './consumers/contract-services.consumer
         Ipfs,
         ObjectStorageService,
         MainCronTasksService,
-        ContractServicesConsumer,
+        MainContractServicesConsumer,
     ],
     exports: [AppService],
 })
