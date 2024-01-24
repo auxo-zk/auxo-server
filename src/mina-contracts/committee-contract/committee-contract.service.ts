@@ -174,13 +174,16 @@ export class CommitteeContractService implements ContractServiceInterface {
                 memberTreeLevel2,
             );
             settingTree.updateLeaf(
+                {
+                    level1Index:
+                        Storage.CommitteeStorage.SettingStorage.calculateLevel1Index(
+                            Field(nextCommitteeId),
+                        ),
+                },
                 Storage.CommitteeStorage.SettingStorage.calculateLeaf({
                     T: Field(committee.threshold),
                     N: Field(committee.numberOfMembers),
                 }),
-                Storage.CommitteeStorage.SettingStorage.calculateLevel1Index(
-                    Field(nextCommitteeId),
-                ),
             );
             nextCommitteeId += 1;
         }
@@ -326,7 +329,10 @@ export class CommitteeContractService implements ContractServiceInterface {
                     T: Field(committee.threshold),
                     N: Field(committee.numberOfMembers),
                 });
-                this._settingTree.updateLeaf(settingLeaf, level1IndexSetting);
+                this._settingTree.updateLeaf(
+                    { level1Index: level1IndexSetting },
+                    settingLeaf,
+                );
                 for (let j = 0; j < committee.publicKeys.length; j++) {
                     const level2IndexMember =
                         this._memberTree.calculateLevel2Index(Field(j));
@@ -334,9 +340,11 @@ export class CommitteeContractService implements ContractServiceInterface {
                         PublicKey.fromBase58(committee.publicKeys[j]),
                     );
                     this._memberTree.updateLeaf(
+                        {
+                            level1Index: level1IndexMember,
+                            level2Index: level2IndexMember,
+                        },
                         memberLeaf,
-                        level1IndexMember,
-                        level2IndexMember,
                     );
                 }
             }
