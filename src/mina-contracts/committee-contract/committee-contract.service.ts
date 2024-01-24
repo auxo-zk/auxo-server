@@ -32,16 +32,10 @@ import {
     ZkApp,
 } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-import { CommitteeStorage } from '@auxo-dev/dkg/build/esm/src/contracts/storages';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
-import { MemberRoleEnum, zkAppCache } from 'src/constants';
-import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
-import { IpfsResponse } from 'src/entities/ipfs-response.entity';
-import { Key } from 'src/schemas/key.schema';
+import { zkAppCache } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
-import { DkgRequest } from 'src/schemas/request.schema';
-import { CommitteeState } from 'src/interfaces/state.interface';
+import { CommitteeState } from 'src/interfaces/zkapp-state.interface';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 
 @Injectable()
@@ -98,21 +92,8 @@ export class CommitteeContractService implements ContractServiceInterface {
         await Utilities.compile(CommitteeContract, cache, this.logger);
     }
 
-    private async fetchZkAppState(): Promise<CommitteeState> {
-        const state = await this.queryService.fetchZkAppState(
-            process.env.COMMITTEE_ADDRESS,
-        );
-        const committeeState: CommitteeState = {
-            nextCommitteeId: Field(state[0]),
-            committeeTreeRoot: Field(state[1]),
-            settingTreeRoot: Field(state[2]),
-            actionState: Field(state[3]),
-        };
-        return committeeState;
-    }
-
     async rollup() {
-        const state = await this.fetchZkAppState();
+        const state = await this.fetchCommitteeState();
         let proof = await ZkApp.Committee.CreateCommittee.firstStep(
             state.actionState,
             state.committeeTreeRoot,
@@ -213,6 +194,19 @@ export class CommitteeContractService implements ContractServiceInterface {
     }
 
     // ============ PRIVATE FUNCTIONS ============
+
+    private async fetchCommitteeState(): Promise<CommitteeState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.COMMITTEE_ADDRESS,
+        );
+        const committeeState: CommitteeState = {
+            nextCommitteeId: Field(state[0]),
+            committeeTreeRoot: Field(state[1]),
+            settingTreeRoot: Field(state[2]),
+            actionState: Field(state[3]),
+        };
+        return committeeState;
+    }
 
     private async fetchCommitteeActions(): Promise<void> {
         const lastAction = await this.committeeActionModel.findOne(
