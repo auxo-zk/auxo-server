@@ -1,9 +1,9 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
-import { Field, Group, MerkleTree, Provable, PublicKey, Reducer } from 'o1js';
-import { Model, ObjectId } from 'mongoose';
+import { Field, Group, PublicKey, Reducer } from 'o1js';
+import { Model } from 'mongoose';
 import { DkgAction, getDkg } from 'src/schemas/actions/dkg-action.schema';
-import { InjectModel, raw } from '@nestjs/mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 import {
     Round1Action,
     getRound1,
@@ -112,19 +112,52 @@ export class DkgContractsService implements ContractServiceInterface {
         private readonly committeeModel: Model<Committee>,
     ) {
         this._dkg = {
-            zkApp: new Storage.SharedStorage.AddressStorage(),
+            zkApp: new Storage.SharedStorage.AddressStorage([
+                {
+                    index: Constants.ZkAppEnum.COMMITTEE,
+                    address: PublicKey.fromBase58(
+                        process.env.COMMITTEE_ADDRESS,
+                    ),
+                },
+            ]),
             keyCounter: new Storage.CommitteeStorage.KeyCounterStorage(),
             keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
         };
         this._round1 = {
-            zkApp: new Storage.SharedStorage.AddressStorage(),
+            zkApp: new Storage.SharedStorage.AddressStorage([
+                {
+                    index: Constants.ZkAppEnum.COMMITTEE,
+                    address: PublicKey.fromBase58(
+                        process.env.COMMITTEE_ADDRESS,
+                    ),
+                },
+                {
+                    index: Constants.ZkAppEnum.DKG,
+                    address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                },
+            ]),
             reduceState: new Storage.SharedStorage.ReduceStorage(),
             contribution: new Storage.DKGStorage.Round1ContributionStorage(),
             publicKey: new Storage.DKGStorage.PublicKeyStorage(),
             reducedActions: [],
         };
         this._round2 = {
-            zkApp: new Storage.SharedStorage.AddressStorage(),
+            zkApp: new Storage.SharedStorage.AddressStorage([
+                {
+                    index: Constants.ZkAppEnum.COMMITTEE,
+                    address: PublicKey.fromBase58(
+                        process.env.COMMITTEE_ADDRESS,
+                    ),
+                },
+                {
+                    index: Constants.ZkAppEnum.DKG,
+                    address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                },
+                {
+                    index: Constants.ZkAppEnum.ROUND1,
+                    address: PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                },
+            ]),
             reduceState: new Storage.SharedStorage.ReduceStorage(),
             contribution: new Storage.DKGStorage.Round2ContributionStorage(),
             encryption: new Storage.DKGStorage.EncryptionStorage(),
@@ -581,16 +614,6 @@ export class DkgContractsService implements ContractServiceInterface {
         } catch (err) {}
     }
     private async updateMerkleTreesForDkg() {
-        const committeeAddress = PublicKey.fromBase58(
-            process.env.COMMITTEE_ADDRESS,
-        );
-        this._dkg.zkApp.addresses.setLeaf(
-            this._dkg.zkApp
-                .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
-                .toBigInt(),
-            this._dkg.zkApp.calculateLeaf(committeeAddress),
-        );
-
         const keyCounters: { _id: number; count: number }[] =
             await this.dkgModel.aggregate([
                 {
@@ -611,8 +634,12 @@ export class DkgContractsService implements ContractServiceInterface {
             const committeeId = keyCounter._id;
 
             this._dkg.keyCounter.updateLeaf(
+                {
+                    level1Index: this._dkg.keyCounter.calculateLevel1Index(
+                        Field(committeeId),
+                    ),
+                },
                 this._dkg.keyCounter.calculateLeaf(Field(keyCounter.count)),
-                this._dkg.keyCounter.calculateLevel1Index(Field(committeeId)),
             );
 
             for (let keyId = 0; keyId < keyCounter.count; keyId++) {
@@ -628,30 +655,14 @@ export class DkgContractsService implements ContractServiceInterface {
                 const leaf = this._dkg.keyStatus.calculateLeaf(
                     key.status as any,
                 );
-                this._dkg.keyStatus.updateLeaf(leaf, level1Index);
+                this._dkg.keyStatus.updateLeaf(
+                    { level1Index: level1Index },
+                    leaf,
+                );
             }
         }
     }
     private async updateMerkleTreesForRound1() {
-        const committeeAddress = PublicKey.fromBase58(
-            process.env.COMMITTEE_ADDRESS,
-        );
-        const dkgAddress = PublicKey.fromBase58(process.env.DKG_ADDRESS);
-
-        // Create zkApp tree
-        this._round1.zkApp.addresses.setLeaf(
-            this._round1.zkApp
-                .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
-                .toBigInt(),
-            this._round1.zkApp.calculateLeaf(committeeAddress),
-        );
-        this._round1.zkApp.addresses.setLeaf(
-            this._round1.zkApp
-                .calculateIndex(Constants.ZkAppEnum.DKG)
-                .toBigInt(),
-            this._round1.zkApp.calculateLeaf(dkgAddress),
-        );
-
         // Create reduce tree
         const lastActiveAction = await this.round1Model.findOne(
             {
@@ -750,9 +761,11 @@ export class DkgContractsService implements ContractServiceInterface {
                                 }),
                             );
                         this._round1.contribution.updateLeaf(
+                            {
+                                level1Index: level1IndexContribution,
+                                level2Index: level2IndexContribution,
+                            },
                             contributionLeaf,
-                            level1IndexContribution,
-                            level2IndexContribution,
                         );
                         const level2IndexPublicKey =
                             this._round1.contribution.calculateLevel2Index(
@@ -766,9 +779,11 @@ export class DkgContractsService implements ContractServiceInterface {
                                 ),
                             );
                         this._round1.publicKey.updateLeaf(
+                            {
+                                level1Index: level1IndexPublicKey,
+                                level2Index: level2IndexPublicKey,
+                            },
                             publicKeyLeaf,
-                            level1IndexPublicKey,
-                            level2IndexPublicKey,
                         );
                     }
                 }
@@ -776,32 +791,6 @@ export class DkgContractsService implements ContractServiceInterface {
         }
     }
     private async updateMerkleTreesForRound2() {
-        const committeeAddress = PublicKey.fromBase58(
-            process.env.COMMITTEE_ADDRESS,
-        );
-        const dkgAddress = PublicKey.fromBase58(process.env.DKG_ADDRESS);
-        const round1Address = PublicKey.fromBase58(process.env.ROUND_1_ADDRESS);
-
-        // Create zkApp tree
-        this._round2.zkApp.addresses.setLeaf(
-            this._round2.zkApp
-                .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
-                .toBigInt(),
-            this._round2.zkApp.calculateLeaf(committeeAddress),
-        );
-        this._round2.zkApp.addresses.setLeaf(
-            this._round2.zkApp
-                .calculateIndex(Constants.ZkAppEnum.DKG)
-                .toBigInt(),
-            this._round2.zkApp.calculateLeaf(dkgAddress),
-        );
-        this._round2.zkApp.addresses.setLeaf(
-            this._round2.zkApp
-                .calculateIndex(Constants.ZkAppEnum.ROUND1)
-                .toBigInt(),
-            this._round2.zkApp.calculateLeaf(round1Address),
-        );
-
         // Create reduce tree
         const lastActiveAction = await this.round2Model.findOne(
             {
@@ -939,9 +928,11 @@ export class DkgContractsService implements ContractServiceInterface {
                                 contributions[j],
                             );
                         this._round2.contribution.updateLeaf(
+                            {
+                                level1Index: level1IndexContribution,
+                                level2Index: level2IndexContribution,
+                            },
                             contributionLeaf,
-                            level1IndexContribution,
-                            level2IndexContribution,
                         );
                         const level2IndexEncryption =
                             this._round2.contribution.calculateLevel2Index(
@@ -953,9 +944,11 @@ export class DkgContractsService implements ContractServiceInterface {
                                 contributions: contributions,
                             });
                         this._round2.encryption.updateLeaf(
+                            {
+                                level1Index: level1IndexEncryption,
+                                level2Index: level2IndexEncryption,
+                            },
                             encryptionLeaf,
-                            level1IndexEncryption,
-                            level2IndexEncryption,
                         );
                     }
                 }

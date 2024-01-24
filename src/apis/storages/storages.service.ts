@@ -80,7 +80,8 @@ export class StoragesService {
 
     getDKGZkAppTree(): MerkleLeaf[] {
         this.logger.log(process.pid);
-        const leafCount = this.dkgContractService.dkg.zkApp.addresses.leafCount;
+        const leafCount =
+            this.dkgContractService.dkg.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
@@ -120,7 +121,7 @@ export class StoragesService {
 
     getRound1ZkAppTree(): MerkleLeaf[] {
         const leafCount =
-            this.dkgContractService.round1.zkApp.addresses.leafCount;
+            this.dkgContractService.round1.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
@@ -212,7 +213,7 @@ export class StoragesService {
 
     getRound2ZkAppTree(): MerkleLeaf[] {
         const leafCount =
-            this.dkgContractService.round2.zkApp.addresses.leafCount;
+            this.dkgContractService.round2.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
@@ -351,7 +352,8 @@ export class StoragesService {
     }
 
     getResponseZkApTree(): MerkleLeaf[] {
-        const leafCount = this.dkgContractService.dkg.zkApp.addresses.leafCount;
+        const leafCount =
+            this.dkgContractService.dkg.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(

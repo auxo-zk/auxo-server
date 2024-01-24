@@ -79,7 +79,30 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             requestStatus: new Storage.RequestStorage.RequestStatusStorage(),
         };
         this._dkgResponse = {
-            zkApp: new Storage.SharedStorage.AddressStorage(),
+            zkApp: new Storage.SharedStorage.AddressStorage([
+                {
+                    index: Constants.ZkAppEnum.COMMITTEE,
+                    address: PublicKey.fromBase58(
+                        process.env.COMMITTEE_ADDRESS,
+                    ),
+                },
+                {
+                    index: Constants.ZkAppEnum.DKG,
+                    address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                },
+                {
+                    index: Constants.ZkAppEnum.ROUND1,
+                    address: PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                },
+                {
+                    index: Constants.ZkAppEnum.ROUND2,
+                    address: PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+                },
+                {
+                    index: Constants.ZkAppEnum.REQUEST,
+                    address: PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                },
+            ]),
             reducedActions: [],
             reduceState: new Storage.SharedStorage.ReduceStorage(),
             contribution:
@@ -419,48 +442,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     async updateMerkleTrees() {
         try {
-            // create zkapp tree for response
-            this._dkgResponse.zkApp.addresses.setLeaf(
-                this._dkgResponse.zkApp
-                    .calculateIndex(Constants.ZkAppEnum.COMMITTEE)
-                    .toBigInt(),
-                this._dkgResponse.zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-                ),
-            );
-            this._dkgResponse.zkApp.addresses.setLeaf(
-                this._dkgResponse.zkApp
-                    .calculateIndex(Constants.ZkAppEnum.DKG)
-                    .toBigInt(),
-                this._dkgResponse.zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
-                ),
-            );
-            this._dkgResponse.zkApp.addresses.setLeaf(
-                this._dkgResponse.zkApp
-                    .calculateIndex(Constants.ZkAppEnum.ROUND1)
-                    .toBigInt(),
-                this._dkgResponse.zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-                ),
-            );
-            this._dkgResponse.zkApp.addresses.setLeaf(
-                this._dkgResponse.zkApp
-                    .calculateIndex(Constants.ZkAppEnum.ROUND2)
-                    .toBigInt(),
-                this._dkgResponse.zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-                ),
-            );
-            this._dkgResponse.zkApp.addresses.setLeaf(
-                this._dkgResponse.zkApp
-                    .calculateIndex(Constants.ZkAppEnum.REQUEST)
-                    .toBigInt(),
-                this._dkgResponse.zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-                ),
-            );
-
             // Create reduce tree for response
             const lastActiveAction = await this.dkgResponseModel.findOne(
                 {
@@ -520,12 +501,12 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     );
                 // const requestContribution  =
                 this._dkgRequest.requestStatus.updateLeaf(
+                    { level1Index: level1Index },
                     requestStatusLeaf,
-                    level1Index,
                 );
                 this._dkgRequest.requester.updateLeaf(
+                    { level1Index: level1Index },
                     requesterLeaf,
-                    level1Index,
                 );
 
                 // create remaining trees
@@ -555,9 +536,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             responseContribution,
                         );
                     this._dkgResponse.contribution.updateLeaf(
+                        { level1Index: level1Index, level2Index: level2Index },
                         leaf,
-                        level1Index,
-                        level2Index,
                     );
                 }
                 if (!this._requestIds.includes(dkgRequest.requestId)) {
