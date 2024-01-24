@@ -78,7 +78,6 @@ export class StoragesService {
     }
 
     getDKGZkAppTree(): MerkleLeaf[] {
-        this.logger.log(process.pid);
         const leafCount =
             this.dkgContractService.dkg.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
