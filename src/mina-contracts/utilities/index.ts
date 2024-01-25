@@ -41,7 +41,7 @@ export class Utilities {
         if (logger) logger.debug(`Compiling ${prg.name}...`);
         if (cache) await prg.compile({ cache });
         else await prg.compile();
-        if (logger) logger.debug('Compiling done!');
+        if (logger) logger.debug(`Compiled ${prg.name} successfully`);
     }
 
     static async proveAndSend(
