@@ -34,17 +34,12 @@ export class WorkerContractServicesConsumer {
                 this.projectContractService.updateMerkleTrees(),
                 this.fundingContractService.updateMerkleTrees(),
             ]).then(async () => {
-                this.logger.log(
-                    'All contract trees updates completed successfully',
-                );
+                this.logger.log('All contract trees updated successfully');
                 await job.progress();
                 return {};
             });
         } catch (err) {
-            this.logger.error(
-                'Error during contract merkle tree updates: ',
-                err,
-            );
+            this.logger.error('Error during updating contract trees: ', err);
             return undefined;
         }
     }
@@ -61,12 +56,12 @@ export class WorkerContractServicesConsumer {
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
             ]).then(async () => {
-                this.logger.log('All contract updates completed successfully');
+                this.logger.log('All contracts updated successfully');
                 await job.progress();
                 return {};
             });
         } catch (err) {
-            this.logger.error('Error during contract updates: ', err);
+            this.logger.error('Error during updating contracts: ', err);
             return undefined;
         }
     }
@@ -82,15 +77,31 @@ export class WorkerContractServicesConsumer {
                 this.participationContractService.update(),
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
-                this.committeeContractService.compile(),
             ]).then(async () => {
                 await this.committeeContractService.rollup();
-                this.logger.log('All contract rollups completed successfully');
+                this.logger.log('All contract rolluped successfully');
                 await job.progress();
                 return {};
             });
         } catch (err) {
-            this.logger.error('Error during contract rollups: ', err);
+            this.logger.error('Error during rolluping contracts: ', err);
+            return undefined;
+        }
+    }
+
+    @Process('compileContracts')
+    async compileContracts(job: Job<unknown>) {
+        try {
+            Promise.all([
+                this.committeeContractService.compile(),
+                this.dkgContractsService.compile(),
+            ]).then(async () => {
+                this.logger.log('All contracts compiled successfully');
+                await job.progress();
+                return {};
+            });
+        } catch (err) {
+            this.logger.error('Error during compiling contracts: ', err);
             return undefined;
         }
     }

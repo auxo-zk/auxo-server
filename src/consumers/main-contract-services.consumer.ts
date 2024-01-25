@@ -34,17 +34,12 @@ export class MainContractServicesConsumer {
                 this.projectContractService.updateMerkleTrees(),
                 this.fundingContractService.updateMerkleTrees(),
             ]).then(async () => {
-                this.logger.log(
-                    'All contract trees updates completed successfully',
-                );
+                this.logger.log('All contract trees updated successfully');
                 await job.progress();
                 return {};
             });
         } catch (err) {
-            this.logger.error(
-                'Error during contract merkle tree updates: ',
-                err,
-            );
+            this.logger.error('Error during updating contract trees: ', err);
             return undefined;
         }
     }
@@ -61,12 +56,12 @@ export class MainContractServicesConsumer {
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
             ]).then(async () => {
-                this.logger.log('All contract updates completed successfully');
+                this.logger.log('All contracts updated successfully');
                 await job.progress();
                 return {};
             });
         } catch (err) {
-            this.logger.error('Error during contract updates: ', err);
+            this.logger.error('Error during updating contracts: ', err);
             return undefined;
         }
     }
