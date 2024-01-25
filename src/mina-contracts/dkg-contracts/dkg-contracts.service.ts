@@ -272,6 +272,9 @@ export class DkgContractsService implements ContractServiceInterface {
                     keyId: number;
                     status: KeyStatusEnum;
                 };
+                if (!keyMapping[committeeId]) {
+                    keyMapping[committeeId] = {};
+                }
                 if (notActiveDkg.keyId) {
                     key = keyMapping[committeeId][keyId];
                     switch (notActiveDkg.actionEnum) {
