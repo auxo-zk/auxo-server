@@ -29,6 +29,9 @@ import {
     UpdateKey,
     ReduceRound1,
     FinalizeRound1,
+    ReduceRound2,
+    BatchEncryption,
+    FinalizeRound2,
 } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { Bit255 } from '@auxo-dev/auxo-libs';
@@ -175,9 +178,10 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            await this.compile();
+            // await this.compile();
             // await this.rollupDkg();
-            await this.rollupRound1();
+            // await this.rollupRound1();
+            // await this.rollupRound2();
         } catch (err) {
             console.log(err);
         }
@@ -209,7 +213,10 @@ export class DkgContractsService implements ContractServiceInterface {
         await Utilities.compile(ReduceRound1, cache, this.logger);
         await Utilities.compile(FinalizeRound1, cache, this.logger);
         await Utilities.compile(Round1Contract, cache, this.logger);
-        // await Utilities.compile(Round2Contract, cache, this.logger);
+        await Utilities.compile(ReduceRound2, cache, this.logger);
+        await Utilities.compile(BatchEncryption, cache, this.logger);
+        await Utilities.compile(FinalizeRound2, cache, this.logger);
+        await Utilities.compile(Round2Contract, cache, this.logger);
     }
 
     async rollupDkg() {
@@ -401,17 +408,16 @@ export class DkgContractsService implements ContractServiceInterface {
     }
 
     async rollupRound1() {
-        const state = await this.fetchRound1State();
         const lastActiveRound1 = await this.round1Model.findOne(
-            {},
+            { active: true },
             {},
             { sort: { actionId: -1 } },
         );
-        const lastReducedAction = await this.round1ActionModel.findOne({
-            actionId: lastActiveRound1.actionId,
-        });
 
-        if (lastReducedAction) {
+        if (lastActiveRound1) {
+            const lastReducedAction = await this.round1ActionModel.findOne({
+                actionId: lastActiveRound1.actionId,
+            });
             const notReducedActions = await this.round1ActionModel.find(
                 {
                     actionId: { $gt: lastReducedAction.actionId },
@@ -420,6 +426,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             if (notReducedActions.length > 0) {
+                const state = await this.fetchRound1State();
                 let proof = await ReduceRound1.firstStep(
                     ZkApp.Round1.Action.fromFields(
                         Utilities.stringArrayToFields(
@@ -478,7 +485,77 @@ export class DkgContractsService implements ContractServiceInterface {
     }
 
     async rollupRound2() {
-        const state = await this.fetchRound2State();
+        const lastActiveRound2 = await this.round2Model.findOne(
+            {
+                active: true,
+            },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        if (lastActiveRound2) {
+            const lastReducedAction = await this.round2ActionModel.findOne({
+                actionId: lastActiveRound2.actionId,
+            });
+            const notReducedActions = await this.round2ActionModel.find({
+                actionId: { $gt: lastReducedAction.actionId },
+            });
+            if (notReducedActions.length > 0) {
+                const state = await this.fetchRound2State();
+                let proof = await ReduceRound2.firstStep(
+                    ZkApp.Round2.Action.fromFields(
+                        Utilities.stringArrayToFields(
+                            lastReducedAction.actions,
+                        ),
+                    ),
+                    state.reduceState,
+                    Field(lastReducedAction.currentActionState),
+                );
+                const reduceState = this._round2.reduceState;
+                for (let i = 0; i < notReducedActions.length; i++) {
+                    const notReducedAction = notReducedActions[i];
+                    proof = await ReduceRound2.nextStep(
+                        ZkApp.Round2.Action.fromFields(
+                            Utilities.stringArrayToFields(
+                                notReducedAction.actions,
+                            ),
+                        ),
+                        proof,
+                        this._round2.reduceState.getWitness(
+                            Field(notReducedAction.currentActionState),
+                        ),
+                    );
+                    reduceState.updateLeaf(
+                        Storage.SharedStorage.ReduceStorage.calculateIndex(
+                            Field(notReducedAction.currentActionState),
+                        ),
+                        Storage.SharedStorage.ReduceStorage.calculateLeaf(
+                            Number(ActionReduceStatusEnum.REDUCED),
+                        ),
+                    );
+                }
+                const round2Contract = new Round2Contract(
+                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                    },
+                    () => {
+                        round2Contract.reduce(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+            }
+        }
     }
 
     // ============ PRIVATE FUNCTIONS ============
