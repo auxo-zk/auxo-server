@@ -27,6 +27,8 @@ import {
     Round1Contract,
     Round2Contract,
     UpdateKey,
+    ReduceRound1,
+    FinalizeRound1,
 } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { Bit255 } from '@auxo-dev/auxo-libs';
@@ -173,8 +175,9 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // await this.compile();
+            await this.compile();
             // await this.rollupDkg();
+            await this.rollupRound1();
         } catch (err) {
             console.log(err);
         }
@@ -203,7 +206,9 @@ export class DkgContractsService implements ContractServiceInterface {
         const cache = zkAppCache;
         await Utilities.compile(UpdateKey, cache, this.logger);
         await Utilities.compile(DKGContract, cache, this.logger);
-        // await Utilities.compile(Round1Contract, cache, this.logger);
+        await Utilities.compile(ReduceRound1, cache, this.logger);
+        await Utilities.compile(FinalizeRound1, cache, this.logger);
+        await Utilities.compile(Round1Contract, cache, this.logger);
         // await Utilities.compile(Round2Contract, cache, this.logger);
     }
 
@@ -397,7 +402,79 @@ export class DkgContractsService implements ContractServiceInterface {
 
     async rollupRound1() {
         const state = await this.fetchRound1State();
-        // let proof = Round1Contract.fis
+        const lastActiveRound1 = await this.round1Model.findOne(
+            {},
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const lastReducedAction = await this.round1ActionModel.findOne({
+            actionId: lastActiveRound1.actionId,
+        });
+
+        if (lastReducedAction) {
+            const notReducedActions = await this.round1ActionModel.find(
+                {
+                    actionId: { $gt: lastReducedAction.actionId },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notReducedActions.length > 0) {
+                let proof = await ReduceRound1.firstStep(
+                    ZkApp.Round1.Action.fromFields(
+                        Utilities.stringArrayToFields(
+                            lastReducedAction.actions,
+                        ),
+                    ),
+                    state.reduceState,
+                    Field(lastReducedAction.currentActionState),
+                );
+                const reduceState = this._round1.reduceState;
+                for (let i = 0; i < notReducedActions.length; i++) {
+                    const notReducedAction = notReducedActions[i];
+                    proof = await ReduceRound1.nextStep(
+                        ZkApp.Round1.Action.fromFields(
+                            Utilities.stringArrayToFields(
+                                notReducedAction.actions,
+                            ),
+                        ),
+                        proof,
+                        this._round1.reduceState.getWitness(
+                            Field(notReducedAction.currentActionState),
+                        ),
+                    );
+                    reduceState.updateLeaf(
+                        Storage.SharedStorage.ReduceStorage.calculateIndex(
+                            Field(notReducedAction.currentActionState),
+                        ),
+                        Storage.SharedStorage.ReduceStorage.calculateLeaf(
+                            Number(ActionReduceStatusEnum.REDUCED),
+                        ),
+                    );
+                }
+                const round1Contract = new Round1Contract(
+                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                    },
+                    () => {
+                        round1Contract.reduce(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+            }
+        }
     }
 
     async rollupRound2() {
