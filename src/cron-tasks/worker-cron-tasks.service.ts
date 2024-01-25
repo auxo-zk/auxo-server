@@ -11,6 +11,7 @@ export class WorkerCronTasksService implements OnModuleInit {
         @InjectQueue('worker-contract-services')
         private readonly contractServices: Queue,
     ) {}
+
     async onModuleInit() {
         this.logger.log('Register compileContracts task at ' + process.pid);
         this.contractServices.add('compileContracts', {
@@ -26,7 +27,7 @@ export class WorkerCronTasksService implements OnModuleInit {
         });
     }
 
-    // @Interval(180000)
+    // @Interval(600000)
     // async handleRollupContracts() {
     //     this.logger.log('Register rollupContracts task at ' + process.pid);
     //     this.contractServices.add('rollupContracts', {
