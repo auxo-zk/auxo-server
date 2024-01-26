@@ -246,7 +246,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const notReducedActions = await this.dkgActionModel.find(
             {
                 actionId: {
-                    $gt: lastReducedAction ? lastReducedAction.actionId : 0,
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
                 },
             },
             {},
@@ -432,7 +432,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const notReducedActions = await this.round1ActionModel.find(
             {
                 actionId: {
-                    $gt: lastReducedAction ? lastReducedAction.actionId : 0,
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
                 },
             },
             {},
@@ -511,7 +511,7 @@ export class DkgContractsService implements ContractServiceInterface {
             : undefined;
         const notReducedActions = await this.round2ActionModel.find({
             actionId: {
-                $gt: lastReducedAction ? lastReducedAction.actionId : 0,
+                $gt: lastReducedAction ? lastReducedAction.actionId : -1,
             },
         });
         if (notReducedActions.length > 0) {

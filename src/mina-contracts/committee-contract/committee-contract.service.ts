@@ -108,7 +108,7 @@ export class CommitteeContractService implements ContractServiceInterface {
         const notReducedActions = await this.committeeActionModel.find(
             {
                 actionId: {
-                    $gt: lastReducedAction ? lastReducedAction.actionId : 0,
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
                 },
             },
             {},
