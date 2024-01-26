@@ -14,15 +14,28 @@ export interface DkgState {
 }
 
 export interface Round1State {
-    zkApps: Field;
+    zkApp: Field;
     reduceState: Field;
     contribution: Field;
     publicKey: Field;
 }
 
 export interface Round2State {
-    zkApps: Field;
+    zkApp: Field;
     reduceState: Field;
     contribution: Field;
     encryption: Field;
+}
+
+export interface DkgRequestState {
+    requestStatus: Field;
+    requester: Field;
+    actionState: Field;
+    responseContractAddress: Field;
+}
+
+export interface DkgResponseState {
+    zkApp: Field;
+    reduceState: Field;
+    contribution: Field;
 }

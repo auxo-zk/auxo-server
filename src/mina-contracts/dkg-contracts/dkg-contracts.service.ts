@@ -226,28 +226,38 @@ export class DkgContractsService implements ContractServiceInterface {
             {},
             { sort: { actionId: -1 } },
         );
-        if (lastActiveDkg) {
-            const lastReducedAction = await this.dkgActionModel.findOne({
-                actionId: lastActiveDkg.actionId,
-            });
-            let proof = await UpdateKey.firstStep(
-                ZkApp.DKG.Action.fromFields(
-                    Utilities.stringArrayToFields(lastReducedAction.actions),
-                ),
-                state.keyCounter,
-                state.keyStatus,
-                Field(lastReducedAction.currentActionState),
-            );
-            const notReducedActions = await this.dkgActionModel.find(
-                {
-                    actionId: { $gt: lastReducedAction.actionId },
+        const lastReducedAction = lastActiveDkg
+            ? await this.dkgActionModel.findOne({
+                  actionId: lastActiveDkg.actionId,
+              })
+            : undefined;
+        let proof = await UpdateKey.firstStep(
+            lastReducedAction
+                ? ZkApp.DKG.Action.fromFields(
+                      Utilities.stringArrayToFields(lastReducedAction.actions),
+                  )
+                : ZkApp.DKG.Action.empty(),
+            state.keyCounter,
+            state.keyStatus,
+            lastReducedAction
+                ? Field(lastReducedAction.currentActionState)
+                : Reducer.initialActionState,
+        );
+        const notReducedActions = await this.dkgActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : 0,
                 },
-                {},
-                { sort: { actionId: 1 } },
-            );
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
             const notActiveDkgs = await this.dkgModel.find(
                 {
-                    actionId: { $gt: lastReducedAction.actionId },
+                    actionId: {
+                        $gt: lastReducedAction ? lastReducedAction.actionId : 0,
+                    },
                 },
                 {},
                 { sort: { actionId: 1 } },
@@ -414,73 +424,77 @@ export class DkgContractsService implements ContractServiceInterface {
             { sort: { actionId: -1 } },
         );
 
-        if (lastActiveRound1) {
-            const lastReducedAction = await this.round1ActionModel.findOne({
-                actionId: lastActiveRound1.actionId,
-            });
-            const notReducedActions = await this.round1ActionModel.find(
-                {
-                    actionId: { $gt: lastReducedAction.actionId },
+        const lastReducedAction = lastActiveRound1
+            ? await this.round1ActionModel.findOne({
+                  actionId: lastActiveRound1.actionId,
+              })
+            : undefined;
+        const notReducedActions = await this.round1ActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : 0,
                 },
-                {},
-                { sort: { actionId: 1 } },
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
+            const state = await this.fetchRound1State();
+            let proof = await ReduceRound1.firstStep(
+                lastReducedAction
+                    ? ZkApp.Round1.Action.fromFields(
+                          Utilities.stringArrayToFields(
+                              lastReducedAction.actions,
+                          ),
+                      )
+                    : ZkApp.Round1.Action.empty(),
+                state.reduceState,
+                lastReducedAction
+                    ? Field(lastReducedAction.currentActionState)
+                    : Reducer.initialActionState,
             );
-            if (notReducedActions.length > 0) {
-                const state = await this.fetchRound1State();
-                let proof = await ReduceRound1.firstStep(
+            const reduceState = this._round1.reduceState;
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                proof = await ReduceRound1.nextStep(
                     ZkApp.Round1.Action.fromFields(
-                        Utilities.stringArrayToFields(
-                            lastReducedAction.actions,
-                        ),
+                        Utilities.stringArrayToFields(notReducedAction.actions),
                     ),
-                    state.reduceState,
-                    Field(lastReducedAction.currentActionState),
+                    proof,
+                    this._round1.reduceState.getWitness(
+                        Field(notReducedAction.currentActionState),
+                    ),
                 );
-                const reduceState = this._round1.reduceState;
-                for (let i = 0; i < notReducedActions.length; i++) {
-                    const notReducedAction = notReducedActions[i];
-                    proof = await ReduceRound1.nextStep(
-                        ZkApp.Round1.Action.fromFields(
-                            Utilities.stringArrayToFields(
-                                notReducedAction.actions,
-                            ),
-                        ),
-                        proof,
-                        this._round1.reduceState.getWitness(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                    );
-                    reduceState.updateLeaf(
-                        Storage.SharedStorage.ReduceStorage.calculateIndex(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                        Storage.SharedStorage.ReduceStorage.calculateLeaf(
-                            Number(ActionReduceStatusEnum.REDUCED),
-                        ),
-                    );
-                }
-                const round1Contract = new Round1Contract(
-                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                const tx = await Mina.transaction(
-                    {
-                        sender: feePayerPrivateKey.toPublicKey(),
-                        fee: process.env.FEE,
-                    },
-                    () => {
-                        round1Contract.reduce(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                reduceState.updateLeaf(
+                    Storage.SharedStorage.ReduceStorage.calculateIndex(
+                        Field(notReducedAction.currentActionState),
+                    ),
+                    Storage.SharedStorage.ReduceStorage.calculateLeaf(
+                        Number(ActionReduceStatusEnum.REDUCED),
+                    ),
                 );
             }
+            const round1Contract = new Round1Contract(
+                PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    round1Contract.reduce(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
         }
     }
 
@@ -492,69 +506,73 @@ export class DkgContractsService implements ContractServiceInterface {
             {},
             { sort: { actionId: -1 } },
         );
-        if (lastActiveRound2) {
-            const lastReducedAction = await this.round2ActionModel.findOne({
-                actionId: lastActiveRound2.actionId,
-            });
-            const notReducedActions = await this.round2ActionModel.find({
-                actionId: { $gt: lastReducedAction.actionId },
-            });
-            if (notReducedActions.length > 0) {
-                const state = await this.fetchRound2State();
-                let proof = await ReduceRound2.firstStep(
+        const lastReducedAction = lastActiveRound2
+            ? await this.round2ActionModel.findOne({
+                  actionId: lastActiveRound2.actionId,
+              })
+            : undefined;
+        const notReducedActions = await this.round2ActionModel.find({
+            actionId: {
+                $gt: lastReducedAction ? lastReducedAction.actionId : 0,
+            },
+        });
+        if (notReducedActions.length > 0) {
+            const state = await this.fetchRound2State();
+            let proof = await ReduceRound2.firstStep(
+                lastReducedAction
+                    ? ZkApp.Round2.Action.fromFields(
+                          Utilities.stringArrayToFields(
+                              lastReducedAction.actions,
+                          ),
+                      )
+                    : ZkApp.Round2.Action.empty(),
+                state.reduceState,
+                lastReducedAction
+                    ? Field(lastReducedAction.currentActionState)
+                    : Reducer.initialActionState,
+            );
+            const reduceState = this._round2.reduceState;
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                proof = await ReduceRound2.nextStep(
                     ZkApp.Round2.Action.fromFields(
-                        Utilities.stringArrayToFields(
-                            lastReducedAction.actions,
-                        ),
+                        Utilities.stringArrayToFields(notReducedAction.actions),
                     ),
-                    state.reduceState,
-                    Field(lastReducedAction.currentActionState),
+                    proof,
+                    this._round2.reduceState.getWitness(
+                        Field(notReducedAction.currentActionState),
+                    ),
                 );
-                const reduceState = this._round2.reduceState;
-                for (let i = 0; i < notReducedActions.length; i++) {
-                    const notReducedAction = notReducedActions[i];
-                    proof = await ReduceRound2.nextStep(
-                        ZkApp.Round2.Action.fromFields(
-                            Utilities.stringArrayToFields(
-                                notReducedAction.actions,
-                            ),
-                        ),
-                        proof,
-                        this._round2.reduceState.getWitness(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                    );
-                    reduceState.updateLeaf(
-                        Storage.SharedStorage.ReduceStorage.calculateIndex(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                        Storage.SharedStorage.ReduceStorage.calculateLeaf(
-                            Number(ActionReduceStatusEnum.REDUCED),
-                        ),
-                    );
-                }
-                const round2Contract = new Round2Contract(
-                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                const tx = await Mina.transaction(
-                    {
-                        sender: feePayerPrivateKey.toPublicKey(),
-                        fee: process.env.FEE,
-                    },
-                    () => {
-                        round2Contract.reduce(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                reduceState.updateLeaf(
+                    Storage.SharedStorage.ReduceStorage.calculateIndex(
+                        Field(notReducedAction.currentActionState),
+                    ),
+                    Storage.SharedStorage.ReduceStorage.calculateLeaf(
+                        Number(ActionReduceStatusEnum.REDUCED),
+                    ),
                 );
             }
+            const round2Contract = new Round2Contract(
+                PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    round2Contract.reduce(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
         }
     }
 
@@ -577,7 +595,7 @@ export class DkgContractsService implements ContractServiceInterface {
             process.env.ROUND_1_ADDRESS,
         );
         const round1State: Round1State = {
-            zkApps: Field(state[0]),
+            zkApp: Field(state[0]),
             reduceState: Field(state[1]),
             contribution: Field(state[2]),
             publicKey: Field(state[3]),
@@ -590,7 +608,7 @@ export class DkgContractsService implements ContractServiceInterface {
             process.env.ROUND_2_ADDRESS,
         );
         const round2State: Round2State = {
-            zkApps: Field(state[0]),
+            zkApp: Field(state[0]),
             reduceState: Field(state[1]),
             contribution: Field(state[2]),
             encryption: Field(state[3]),
