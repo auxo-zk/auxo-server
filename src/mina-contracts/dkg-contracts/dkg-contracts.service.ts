@@ -500,9 +500,7 @@ export class DkgContractsService implements ContractServiceInterface {
 
     async rollupRound2() {
         const lastActiveRound2 = await this.round2Model.findOne(
-            {
-                active: true,
-            },
+            { active: true },
             {},
             { sort: { actionId: -1 } },
         );
