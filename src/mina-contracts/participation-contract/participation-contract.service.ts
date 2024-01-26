@@ -45,7 +45,54 @@ export class ParticipationContractService implements ContractServiceInterface {
         this._counter = new Storage.ParticipationStorage.CounterStorage();
         this._index = new Storage.ParticipationStorage.IndexStorage();
         this._info = new Storage.ParticipationStorage.InfoStorage();
-        this._zkApp = new Storage.SharedStorage.AddressStorage();
+        this._zkApp = new Storage.SharedStorage.AddressStorage([
+            {
+                index: Constants.ZkAppEnum.COMMITTEE,
+                address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.DKG,
+                address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.ROUND1,
+                address: PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.ROUND2,
+                address: PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.RESPONSE,
+                address: PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.REQUEST,
+                address: PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.PROJECT,
+                address: PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.DKG,
+                address: PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.PARTICIPATION,
+                address: PublicKey.fromBase58(
+                    process.env.PARTICIPATION_ADDRESS,
+                ),
+            },
+            {
+                index: Constants.ZkAppEnum.FUNDING,
+                address: PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
+            },
+            {
+                index: Constants.ZkAppEnum.TREASURY,
+                address: PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
+            },
+        ]);
     }
 
     async onModuleInit() {
@@ -169,72 +216,6 @@ export class ParticipationContractService implements ContractServiceInterface {
 
     async updateMerkleTrees() {
         try {
-            this._zkApp.addresses.setLeaf(
-                0n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                1n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                2n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                3n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                0n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                4n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                5n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                6n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                7n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                8n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                9n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-                ),
-            );
             const participations = await this.participationModel.aggregate([
                 { $match: { active: true } },
                 { $sort: { actionId: 1 } },
