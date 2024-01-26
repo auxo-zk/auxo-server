@@ -35,7 +35,9 @@ import {
     BatchDecryption,
     CompleteResponse,
     Constants,
+    CreateRequest,
     ReduceResponse,
+    RequestContract,
     ResponseContract,
     ResponseContribution,
     Storage,
@@ -166,13 +168,118 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     async compile() {
         const cache = zkAppCache;
+        await Utilities.compile(CreateRequest, cache, this.logger);
+        await Utilities.compile(RequestContract, cache, this.logger);
         await Utilities.compile(ReduceResponse, cache, this.logger);
         await Utilities.compile(BatchDecryption, cache, this.logger);
         await Utilities.compile(CompleteResponse, cache, this.logger);
         await Utilities.compile(ResponseContract, cache, this.logger);
     }
 
-    async rollupDkgRequest() {}
+    async rollupDkgRequest() {
+        const lastActiveRawDkgRequest = await this.rawDkgRequestModel.findOne(
+            {
+                active: true,
+            },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const lastReducedAction = lastActiveRawDkgRequest
+            ? await this.requestActionModel.findOne({
+                  actionId: lastActiveRawDkgRequest.actionId,
+              })
+            : undefined;
+        const notReducedActions = await this.requestActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+                },
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
+            const state = await this.fetchDkgRequestState();
+            let proof = await CreateRequest.firstStep(
+                state.actionState,
+                state.requestStatus,
+                state.requester,
+            );
+            const notActiveRawDkgRequests = await this.rawDkgRequestModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
+                    },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            const requestStatus = this._dkgRequest.requestStatus;
+            const requester = this._dkgRequest.requester;
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                const notActiveRawDkgRequest = notActiveRawDkgRequests[i];
+                const requestId = Field(notActiveRawDkgRequest.requestId);
+                let status: RequestStatusEnum =
+                    RequestStatusEnum.NOT_YET_REQUESTED;
+                if (
+                    notActiveRawDkgRequest.actionEnum ==
+                    RequestActionEnum.REQUEST
+                ) {
+                    status = RequestStatusEnum.REQUESTING;
+                } else if (
+                    notActiveRawDkgRequest.actionEnum ==
+                    RequestActionEnum.RESOLVE
+                ) {
+                    status = RequestStatusEnum.RESOLVED;
+                }
+                proof = await CreateRequest.nextStep(
+                    proof,
+                    ZkApp.Request.RequestAction.fromFields(
+                        Utilities.stringArrayToFields(notReducedAction.actions),
+                    ),
+                    requestStatus.getWitness(requestId),
+                    requester.getWitness(requestId),
+                    PublicKey.fromBase58(notActiveRawDkgRequest.requester),
+                );
+                requestStatus.updateLeaf(
+                    { level1Index: requestId },
+                    Storage.RequestStorage.RequestStatusStorage.calculateLeaf(
+                        Field(status),
+                    ),
+                );
+                requester.updateLeaf(
+                    { level1Index: requestId },
+                    Storage.RequestStorage.RequesterStorage.calculateLeaf(
+                        PublicKey.fromBase58(notActiveRawDkgRequest.requester),
+                    ),
+                );
+            }
+            const dkgRequestContract = new RequestContract(
+                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    dkgRequestContract.rollupRequest(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+        }
+    }
 
     async rollupDkgResponse() {
         const lastActiveDkgResponse = await this.dkgResponseModel.findOne(

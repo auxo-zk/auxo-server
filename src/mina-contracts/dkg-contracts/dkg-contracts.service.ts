@@ -220,7 +220,6 @@ export class DkgContractsService implements ContractServiceInterface {
     }
 
     async rollupDkg() {
-        const state = await this.fetchDkgState();
         const lastActiveDkg = await this.dkgModel.findOne(
             { active: true },
             {},
@@ -231,18 +230,6 @@ export class DkgContractsService implements ContractServiceInterface {
                   actionId: lastActiveDkg.actionId,
               })
             : undefined;
-        let proof = await UpdateKey.firstStep(
-            lastReducedAction
-                ? ZkApp.DKG.Action.fromFields(
-                      Utilities.stringArrayToFields(lastReducedAction.actions),
-                  )
-                : ZkApp.DKG.Action.empty(),
-            state.keyCounter,
-            state.keyStatus,
-            lastReducedAction
-                ? Field(lastReducedAction.currentActionState)
-                : Reducer.initialActionState,
-        );
         const notReducedActions = await this.dkgActionModel.find(
             {
                 actionId: {
@@ -253,10 +240,27 @@ export class DkgContractsService implements ContractServiceInterface {
             { sort: { actionId: 1 } },
         );
         if (notReducedActions.length > 0) {
+            const state = await this.fetchDkgState();
+            let proof = await UpdateKey.firstStep(
+                lastReducedAction
+                    ? ZkApp.DKG.Action.fromFields(
+                          Utilities.stringArrayToFields(
+                              lastReducedAction.actions,
+                          ),
+                      )
+                    : ZkApp.DKG.Action.empty(),
+                state.keyCounter,
+                state.keyStatus,
+                lastReducedAction
+                    ? Field(lastReducedAction.currentActionState)
+                    : Reducer.initialActionState,
+            );
             const notActiveDkgs = await this.dkgModel.find(
                 {
                     actionId: {
-                        $gt: lastReducedAction ? lastReducedAction.actionId : 0,
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
                     },
                 },
                 {},
