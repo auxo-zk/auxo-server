@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel, raw } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -6,7 +6,15 @@ import {
     getRawDkgRequest,
 } from 'src/schemas/actions/request-action.schema';
 import { QueryService } from '../query/query.service';
-import { Field, Group, Provable, PublicKey, Reducer } from 'o1js';
+import {
+    Field,
+    Group,
+    Mina,
+    PrivateKey,
+    Provable,
+    PublicKey,
+    Reducer,
+} from 'o1js';
 import { RawDkgRequest } from 'src/schemas/raw-request.schema';
 import {
     ResponseAction,
@@ -18,16 +26,32 @@ import {
     RequestActionEnum,
     RequestEventEnum,
     RequestStatusEnum,
+    zkAppCache,
 } from 'src/constants';
 import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
-import { Constants, ResponseContribution, Storage, ZkApp } from '@auxo-dev/dkg';
+import {
+    BatchDecryption,
+    CompleteResponse,
+    Constants,
+    ReduceResponse,
+    ResponseContract,
+    ResponseContribution,
+    Storage,
+    ZkApp,
+} from '@auxo-dev/dkg';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
+import {
+    DkgRequestState,
+    DkgResponseState,
+} from 'src/interfaces/zkapp-state.interface';
+import { Utilities } from '../utilities';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
     private readonly _requestIds: string[];
+    private logger = new Logger(DkgUsageContractsService.name);
 
     private readonly _dkgRequest: {
         requester: Storage.RequestStorage.RequesterStorage;
@@ -114,7 +138,11 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-        } catch (err) {}
+            await this.compile();
+            await this.rollupDkgResponse();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     async update() {
@@ -134,6 +162,121 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         } catch (err) {
             console.log(err);
         }
+    }
+
+    async compile() {
+        const cache = zkAppCache;
+        await Utilities.compile(ReduceResponse, cache, this.logger);
+        await Utilities.compile(BatchDecryption, cache, this.logger);
+        await Utilities.compile(CompleteResponse, cache, this.logger);
+        await Utilities.compile(ResponseContract, cache, this.logger);
+    }
+
+    async rollupDkgRequest() {}
+
+    async rollupDkgResponse() {
+        const lastActiveDkgResponse = await this.dkgResponseModel.findOne(
+            { active: true },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const lastReducedAction = lastActiveDkgResponse
+            ? await this.responseActionModel.findOne({
+                  actionId: lastActiveDkgResponse.actionId,
+              })
+            : undefined;
+        const notReducedActions = await this.responseActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+                },
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
+            const state = await this.fetchDkgResponseState();
+            let proof = await ReduceResponse.firstStep(
+                lastReducedAction
+                    ? ZkApp.Response.Action.fromFields(
+                          Utilities.stringArrayToFields(
+                              lastReducedAction.actions,
+                          ),
+                      )
+                    : ZkApp.Response.Action.empty(),
+                state.reduceState,
+                lastReducedAction
+                    ? Field(lastReducedAction.currentActionState)
+                    : Reducer.initialActionState,
+            );
+            const reduceState = this._dkgResponse.reduceState;
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                proof = await ReduceResponse.nextStep(
+                    ZkApp.Response.Action.fromFields(
+                        Utilities.stringArrayToFields(notReducedAction.actions),
+                    ),
+                    proof,
+                    reduceState.getWitness(
+                        Field(notReducedAction.currentActionState),
+                    ),
+                );
+                reduceState.updateLeaf(
+                    Storage.SharedStorage.ReduceStorage.calculateIndex(
+                        Field(notReducedAction.currentActionState),
+                    ),
+                    Storage.SharedStorage.ReduceStorage.calculateLeaf(
+                        Number(ActionReduceStatusEnum.REDUCED),
+                    ),
+                );
+            }
+            const dkgResponseContract = new ResponseContract(
+                PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    dkgResponseContract.reduce(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+        }
+    }
+
+    // ===== PRIVATE FUNCTIONS
+
+    private async fetchDkgRequestState(): Promise<DkgRequestState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.REQUEST_ADDRESS,
+        );
+        return {
+            requestStatus: Field(state[0]),
+            requester: Field(state[1]),
+            actionState: Field(state[2]),
+            responseContractAddress: Field(state[3]),
+        };
+    }
+
+    private async fetchDkgResponseState(): Promise<DkgResponseState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.RESPONSE_ADDRESS,
+        );
+        return {
+            zkApp: Field(state[0]),
+            reduceState: Field(state[1]),
+            contribution: Field(state[2]),
+        };
     }
 
     private async fetchRequestActions() {
