@@ -203,11 +203,14 @@ export class ProjectContractService implements ContractServiceInterface {
                 const infoLeaf = this._info.calculateLeaf(
                     IPFSHash.fromString(project.ipfsHash),
                 );
-                this._info.updateLeaf(infoLeaf, level1Index);
+                this._info.updateLeaf({ level1Index: level1Index }, infoLeaf);
                 const addressLeaf = this._address.calculateLeaf(
                     PublicKey.fromBase58(project.payeeAccount),
                 );
-                this._address.updateLeaf(addressLeaf, level1Index);
+                this._address.updateLeaf(
+                    { level1Index: level1Index },
+                    addressLeaf,
+                );
                 this._member.updateInternal(
                     level1Index,
                     Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
@@ -220,9 +223,11 @@ export class ProjectContractService implements ContractServiceInterface {
                         PublicKey.fromBase58(project.members[i]),
                     );
                     this._member.updateLeaf(
+                        {
+                            level1Index: level1Index,
+                            level2Index: level2IndexMember,
+                        },
                         memberLeaf,
-                        level1Index,
-                        level2IndexMember,
                     );
                 }
             }

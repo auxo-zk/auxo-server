@@ -469,7 +469,7 @@ export class StoragesService {
 
     getCampaignZkAppTree(): MerkleLeaf[] {
         const leafCount =
-            this.campaignContractService.zkApp.addresses.leafCount;
+            this.campaignContractService.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
@@ -525,7 +525,7 @@ export class StoragesService {
 
     getParticipationZkAppTree(): MerkleLeaf[] {
         const leafCount =
-            this.participationContractService.zkApp.addresses.leafCount;
+            this.participationContractService.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
@@ -636,7 +636,8 @@ export class StoragesService {
     }
 
     getFundingZkAppTree(): MerkleLeaf[] {
-        const leafCount = this.fundingContractService.zkApp.addresses.leafCount;
+        const leafCount =
+            this.fundingContractService.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
@@ -661,7 +662,7 @@ export class StoragesService {
 
     getTreasuryZkAppTree(): MerkleLeaf[] {
         const leafCount =
-            this.treasuryContractService.zkApp.addresses.leafCount;
+            this.treasuryContractService.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
