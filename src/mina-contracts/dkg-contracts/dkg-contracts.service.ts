@@ -185,7 +185,7 @@ export class DkgContractsService implements ContractServiceInterface {
             // await this.rollupDkg();
             // await this.rollupRound1();
             // await this.rollupRound2();
-            await this.finalizeRound1(0, 0);
+            // await this.finalizeRound1(0, 0);
         } catch (err) {
             console.log(err);
         }
