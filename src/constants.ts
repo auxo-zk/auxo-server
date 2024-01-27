@@ -89,3 +89,17 @@ export enum MemberRoleEnum {
 }
 
 export const zkAppCache = Cache.FileSystem(process.env.CACHE_DIR);
+
+export enum ZkAppEnum {
+    COMMITTEE,
+    DKG,
+    ROUND1,
+    ROUND2,
+    RESPONSE,
+    REQUEST,
+    PROJECT,
+    CAMPAIGN,
+    PARTICIPATION,
+    FUNDING,
+    TREASURY,
+}
