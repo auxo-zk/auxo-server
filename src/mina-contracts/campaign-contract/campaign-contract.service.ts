@@ -84,7 +84,7 @@ export class CampaignContractService implements ContractServiceInterface {
                 address: PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
             },
             {
-                index: Constants.ZkAppEnum.DKG,
+                index: Constants.ZkAppEnum.CAMPAIGN,
                 address: PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
             },
             {

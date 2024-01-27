@@ -115,6 +115,7 @@ export class AppController {
         await this.projectActionModel.deleteMany({});
         await this.rawProjectModel.deleteMany({});
         await this.projectModel.deleteMany({});
+        await this.campaignActionModel.deleteMany({});
         await this.rawCampaignModel.deleteMany({});
         await this.campaignModel.deleteMany({});
         await this.participationActionModel.deleteMany({});
