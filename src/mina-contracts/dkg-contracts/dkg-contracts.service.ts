@@ -559,7 +559,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 );
             }
             const round2Contract = new Round2Contract(
-                PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
             );
             const feePayerPrivateKey = PrivateKey.fromBase58(
                 process.env.FEE_PAYER_PRIVATE_KEY,
@@ -591,7 +591,6 @@ export class DkgContractsService implements ContractServiceInterface {
                 committeeId: committeeId,
             });
             const round1State = await this.fetchRound1State();
-            const dkgState = await this.fetchDkgState();
             let proof = await FinalizeRound1.firstStep(
                 new ZkApp.Round1.Round1Input({
                     previousActionState: Field(0),
@@ -729,6 +728,178 @@ export class DkgContractsService implements ContractServiceInterface {
                             Field(committeeId),
                         ),
                         this._dkg.keyStatus.getWitness(
+                            this._dkg.keyStatus.calculateLevel1Index({
+                                committeeId: Field(committeeId),
+                                keyId: Field(keyId),
+                            }),
+                        ),
+                    );
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+        }
+    }
+
+    async finalizeRound2(committeeId: number, keyId: number) {
+        const key = await this.keyModel.findById(
+            Utilities.getKeyObjectId(committeeId, keyId),
+        );
+        if (key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION) {
+            const committee = await this.committeeModel.findOne({
+                committeeId: committeeId,
+            });
+            const round2State = await this.fetchRound2State();
+            const initialHashArray = new Libs.Committee.EncryptionHashArray(
+                [...Array(committee.numberOfMembers).keys()].map(() =>
+                    Field(0),
+                ),
+            );
+            let proof = await FinalizeRound2.firstStep(
+                new ZkApp.Round2.Round2Input({
+                    previousActionState: Field(0),
+                    action: ZkApp.Round2.Action.empty(),
+                }),
+                Field(committee.threshold),
+                Field(committee.numberOfMembers),
+                round2State.contribution,
+                round2State.reduceState,
+                this._round2.contribution.calculateLevel1Index({
+                    committeeId: Field(committeeId),
+                    keyId: Field(keyId),
+                }),
+                initialHashArray,
+                this._round2.contribution.getLevel1Witness(
+                    this._round2.contribution.calculateLevel1Index({
+                        committeeId: Field(committeeId),
+                        keyId: Field(keyId),
+                    }),
+                ),
+            );
+            const round2s = await this.round2Model.find({
+                committeeId: committeeId,
+                keyId: keyId,
+                active: true,
+            });
+            const contribution = this._round2.contribution;
+            const encryption = this._round2.encryption;
+            const contributions = [];
+            for (let i = 0; i < round2s.length; i++) {
+                const round2 = round2s[i];
+                const round2Action = await this.round2ActionModel.findOne({
+                    actionId: round2.actionId,
+                });
+                contributions.push(
+                    ZkApp.Round2.Action.fromFields(
+                        Utilities.stringArrayToFields(round2Action.actions),
+                    ).contribution,
+                );
+            }
+
+            for (let i = 0; i < round2s.length; i++) {
+                const round2 = round2s[i];
+                const round2Action = await this.round2ActionModel.findOne({
+                    actionId: round2.actionId,
+                });
+                proof = await FinalizeRound2.nextStep(
+                    new ZkApp.Round2.Round2Input({
+                        previousActionState: Field(
+                            round2Action.previousActionState,
+                        ),
+                        action: ZkApp.Round2.Action.fromFields(
+                            Utilities.stringArrayToFields(round2Action.actions),
+                        ),
+                    }),
+                    proof,
+                    contribution.getWitness(
+                        contribution.calculateLevel1Index({
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        }),
+                        contribution.calculateLevel2Index(
+                            Field(round2.memberId),
+                        ),
+                    ),
+                    this._round2.reduceState.getWitness(
+                        Field(round2Action.currentActionState),
+                    ),
+                );
+                contribution.updateLeaf(
+                    {
+                        level1Index: contribution.calculateLevel1Index({
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        }),
+                        level2Index: contribution.calculateLevel2Index(
+                            Field(round2.memberId),
+                        ),
+                    },
+                    contribution.calculateLeaf(
+                        ZkApp.Round2.Action.fromFields(
+                            Utilities.stringArrayToFields(round2Action.actions),
+                        ).contribution,
+                    ),
+                );
+                encryption.updateLeaf(
+                    {
+                        level1Index: contribution.calculateLevel1Index({
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        }),
+                        level2Index: contribution.calculateLevel2Index(
+                            Field(round2.memberId),
+                        ),
+                    },
+                    encryption.calculateLeaf({
+                        contributions: contributions,
+                        memberId: Field(round2.memberId),
+                    }),
+                );
+            }
+            const round2Contract = new Round2Contract(
+                PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    round2Contract.finalize(
+                        proof,
+                        encryption.getLevel1Witness(
+                            encryption.calculateLevel1Index({
+                                committeeId: Field(committeeId),
+                                keyId: Field(keyId),
+                            }),
+                        ),
+                        new Storage.SharedStorage.ZkAppRef({
+                            address: PublicKey.fromBase58(
+                                process.env.COMMITTEE_ADDRESS,
+                            ),
+                            witness: this._round2.zkApp.getWitness(
+                                Field(ZkAppEnum.COMMITTEE),
+                            ),
+                        }),
+                        new Storage.SharedStorage.ZkAppRef({
+                            address: PublicKey.fromBase58(
+                                process.env.DKG_ADDRESS,
+                            ),
+                            witness: this._round2.zkApp.getWitness(
+                                Field(ZkAppEnum.DKG),
+                            ),
+                        }),
+                        this.committeeContractService.settingTree.getLevel1Witness(
+                            Field(committeeId),
+                        ),
+                        this._dkg.keyStatus.getLevel1Witness(
                             this._dkg.keyStatus.calculateLevel1Index({
                                 committeeId: Field(committeeId),
                                 keyId: Field(keyId),
