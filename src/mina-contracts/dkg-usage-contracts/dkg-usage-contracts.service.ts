@@ -140,8 +140,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            await this.compile();
-            await this.rollupDkgResponse();
+            // await this.compile();
+            // await this.rollupDkgResponse();
         } catch (err) {
             console.log(err);
         }

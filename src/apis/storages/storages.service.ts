@@ -44,6 +44,12 @@ export class StoragesService {
         return result;
     }
 
+    getMemberTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.committeeContractsService.memberTree.leafs;
+    }
+
     getMemberTreeLevel2(level1Index: number) {
         const result: MerkleLeaf[] = [];
         if (this.committeeContractsService.memberTree.level2s[level1Index]) {
@@ -77,7 +83,13 @@ export class StoragesService {
         return result;
     }
 
-    getDKGZkAppTree(): MerkleLeaf[] {
+    getSettingTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.committeeContractsService.settingTree.leafs;
+    }
+
+    getDkgZkAppTree(): MerkleLeaf[] {
         const leafCount =
             this.dkgContractService.dkg.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
@@ -87,6 +99,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getDkgZkAppTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.zkApp.addresses;
     }
 
     getKeyCounterTreeLevel1(): MerkleLeaf[] {
@@ -103,6 +121,12 @@ export class StoragesService {
         return result;
     }
 
+    getKeyCounterTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.keyCounter.leafs;
+    }
+
     getKeyStatusTreeLevel1(): MerkleLeaf[] {
         const leafCount =
             this.dkgContractService.dkg.keyStatus.level1.leafCount;
@@ -115,6 +139,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getKeyStatusTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.keyStatus.leafs;
     }
 
     getRound1ZkAppTree(): MerkleLeaf[] {
@@ -131,6 +161,10 @@ export class StoragesService {
         return result;
     }
 
+    getRound1ZkAppTreeLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round1.zkApp.addresses;
+    }
+
     getRound1ReduceTree(): { [key: string]: MerkleLeaf } {
         const indexes = this.dkgContractService.round1.reducedActions;
         const result: { [key: string]: MerkleLeaf } = {};
@@ -141,6 +175,12 @@ export class StoragesService {
                     .toJSON();
         }
         return result;
+    }
+
+    getRound1ReduceTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.round1.reduceState.actions;
     }
 
     getRound1ContributionTreeLevel1(): MerkleLeaf[] {
@@ -155,6 +195,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getRound1ContributionTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.round1.contribution.leafs;
     }
 
     getRound1ContributionTreeLevel2(level1Index: number): MerkleLeaf[] {
@@ -190,6 +236,12 @@ export class StoragesService {
         return result;
     }
 
+    getRound1PublicKeyTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.round1.publicKey.leafs;
+    }
+
     getRound1PublickeyTreeLevel2(level1Index: number): MerkleLeaf[] {
         const result: MerkleLeaf[] = [];
         if (this.dkgContractService.round1.publicKey.level2s[level1Index]) {
@@ -223,6 +275,10 @@ export class StoragesService {
         return result;
     }
 
+    getRound2ZkAppTreeLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round2.zkApp.addresses;
+    }
+
     getRound2ReduceTree(): { [key: string]: MerkleLeaf } {
         const indexes = this.dkgContractService.round2.reducedActions;
         const result: { [key: string]: MerkleLeaf } = {};
@@ -233,6 +289,10 @@ export class StoragesService {
                     .toJSON();
         }
         return result;
+    }
+
+    getRound2ReduceTreeLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round2.reduceState.actions;
     }
 
     getRound2ContributionTreeLevel1(): MerkleLeaf[] {
@@ -247,6 +307,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getRound2ContributionTreeLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round2.contribution.leafs;
     }
 
     getRound2ContributionTreeLevel2(level1Index: number): MerkleLeaf[] {
@@ -282,6 +346,10 @@ export class StoragesService {
         return result;
     }
 
+    getRound2EncryptionTreeLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round2.encryption.leafs;
+    }
+
     getRound2EncryptionTreeLevel2(level1Index: number): MerkleLeaf[] {
         const result: MerkleLeaf[] = [];
         if (this.dkgContractService.round2.encryption.level2s[level1Index]) {
@@ -313,16 +381,8 @@ export class StoragesService {
         return result;
     }
 
-    getRequesterLeavesLevel1(): { [key: string]: string } {
-        const indexes = this.dkgUsageContractService.requestIds;
-        const result: { [key: string]: string } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgUsageContractService.dkgRequest.requester.level1
-                    .get(Field(indexes[i]))
-                    .toJSON();
-        }
-        return result;
+    getRequesterTreeLeafs(): { [key: string]: any } {
+        return this.dkgUsageContractService.dkgRequest.requester.leafs;
     }
 
     getRequestStatusTreeLevel1(): { [key: string]: MerkleLeaf } {
@@ -337,6 +397,10 @@ export class StoragesService {
         return result;
     }
 
+    getRequestStatusTreeLeafs(): { [key: string]: any } {
+        return this.dkgUsageContractService.dkgRequest.requestStatus.leafs;
+    }
+
     getRequestStatusLeavesLevel1(): { [key: string]: string } {
         const indexes = this.dkgUsageContractService.requestIds;
         const result: { [key: string]: string } = {};
@@ -349,9 +413,9 @@ export class StoragesService {
         return result;
     }
 
-    getResponseZkApTree(): MerkleLeaf[] {
+    getResponseZkAppTree(): MerkleLeaf[] {
         const leafCount =
-            this.dkgContractService.dkg.zkApp.addressMap.leafCount;
+            this.dkgUsageContractService.dkgResponse.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
@@ -361,6 +425,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getResponseZkApTreeLeafs(): { [key: string]: any } {
+        return this.dkgUsageContractService.dkgResponse.zkApp.addresses;
     }
 
     getResponseReduceTree(): { [key: string]: MerkleLeaf } {
@@ -375,6 +443,10 @@ export class StoragesService {
         return result;
     }
 
+    getResponseReduceTreeLeafs(): { [key: string]: any } {
+        return this.dkgUsageContractService.dkgResponse.reduceState.actions;
+    }
+
     getResponseContributionTreeLevel1(): { [key: string]: MerkleLeaf } {
         const indexes = this.dkgUsageContractService.requestIds;
         const result: { [key: string]: MerkleLeaf } = {};
@@ -385,6 +457,10 @@ export class StoragesService {
                     .toJSON();
         }
         return result;
+    }
+
+    getResponseContributionTreeLeafs(): { [key: string]: any } {
+        return this.dkgUsageContractService.dkgResponse.contribution.leafs;
     }
 
     getResponseContributionTreeLevel2(level1Index: string): MerkleLeaf[] {

@@ -13,6 +13,14 @@ export class StoragesController {
         return this.storagesService.getMemberTreeLevel1();
     }
 
+    @Get('committee/member/leafs')
+    @ApiTags('Storage Committee')
+    getMemberTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getMemberTreeLeafs();
+    }
+
     @Get('committee/member/level2/:level1Index')
     @ApiTags('Storage Committee')
     getMemberTreeLevel2(
@@ -27,10 +35,26 @@ export class StoragesController {
         return this.storagesService.getSettingTreeLevel1();
     }
 
+    @Get('committee/setting/leafs')
+    @ApiTags('Storage Committee')
+    getSettingTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getSettingTreeLeafs();
+    }
+
     @Get('dkg/zkapps')
     @ApiTags('Storage DKG')
-    getDKGZkApps(): MerkleLeaf[] {
-        return this.storagesService.getDKGZkAppTree();
+    getDkgZkApps(): MerkleLeaf[] {
+        return this.storagesService.getDkgZkAppTree();
+    }
+
+    @Get('dkg/zkapps/leafs')
+    @ApiTags('Storage DKG')
+    getDkgZkAppTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getDkgZkAppTreeLeafs();
     }
 
     @Get('dkg/key-counter/level1')
@@ -39,10 +63,26 @@ export class StoragesController {
         return this.storagesService.getKeyCounterTreeLevel1();
     }
 
+    @Get('dkg/key-counter/leafs')
+    @ApiTags('Storage DKG')
+    getKeyCounterTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getKeyCounterTreeLeafs();
+    }
+
     @Get('dkg/key-status/level1')
     @ApiTags('Storage DKG')
     getKeyStatusTreeLevel1(): MerkleLeaf[] {
         return this.storagesService.getKeyStatusTreeLevel1();
+    }
+
+    @Get('dkg/key-status/leafs')
+    @ApiTags('Storage DKG')
+    getKeyStatusTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getKeyStatusTreeLeafs();
     }
 
     @Get('round1/zkapps')
@@ -51,16 +91,38 @@ export class StoragesController {
         return this.storagesService.getRound1ZkAppTree();
     }
 
+    @Get('round1/zkapps/leafs')
+    @ApiTags('Storage Round1')
+    getRound1ZkAppTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound1ZkAppTreeLeafs();
+    }
+
     @Get('round1/reduce')
     @ApiTags('Storage Round1')
     getRound1ReduceTree(): { [key: string]: MerkleLeaf } {
         return this.storagesService.getRound1ReduceTree();
     }
 
+    @Get('round1/reduce/leafs')
+    @ApiTags('Storage Round1')
+    getRound1ReduceTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRound1ReduceTreeLeafs();
+    }
+
     @Get('round1/contribution/level1')
     @ApiTags('Storage Round1')
     getRound1ContributionTreeLevel1(): MerkleLeaf[] {
         return this.storagesService.getRound1ContributionTreeLevel1();
+    }
+
+    @Get('round1/contribution/leafs')
+    @ApiTags('Storage Round1')
+    getRound1ContributionTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRound1ContributionTreeLeafs();
     }
 
     @Get('round1/contribution/level2/:level1Index')
@@ -79,6 +141,14 @@ export class StoragesController {
         return this.storagesService.getRound1PublicKeyTreeLevel1();
     }
 
+    @Get('round1/public-key/leafs')
+    @ApiTags('Storage Round1')
+    getRound1PublicKeyTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRound1PublicKeyTreeLeafs();
+    }
+
     @Get('round1/public-key/level2/:level1Index')
     @ApiTags('Storage Round1')
     getRound1PublicKeyTreeLevel2(
@@ -93,16 +163,34 @@ export class StoragesController {
         return this.storagesService.getRound2ZkAppTree();
     }
 
+    @Get('round2/zkapps/leafs')
+    @ApiTags('Storage Round2')
+    getRound2ZkAppTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound2ZkAppTreeLeafs();
+    }
+
     @Get('round2/reduce')
     @ApiTags('Storage Round2')
     getRound2ReduceTree(): { [key: string]: MerkleLeaf } {
         return this.storagesService.getRound2ReduceTree();
     }
 
+    @Get('round2/reduce/leafs')
+    @ApiTags('Storage Round2')
+    getRound2ReduceTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound2ReduceTreeLeafs();
+    }
+
     @Get('round2/contribution/level1')
     @ApiTags('Storage Round2')
     getRound2ContributionTreeLevel1(): MerkleLeaf[] {
         return this.storagesService.getRound2ContributionTreeLevel1();
+    }
+
+    @Get('round2/contribution/leafs')
+    @ApiTags('Storage Round2')
+    getRound2ContributionTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound2ContributionTreeLeafs();
     }
 
     @Get('round2/contribution/level2/:level1Index')
@@ -121,6 +209,12 @@ export class StoragesController {
         return this.storagesService.getRound2EncryptionTreeLevel1();
     }
 
+    @Get('round2/encryption/leafs')
+    @ApiTags('Storage Round2')
+    getRound2EncryptionTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound2EncryptionTreeLeafs();
+    }
+
     @Get('round2/encryption/level2/:level1Index')
     @ApiTags('Storage Round2')
     getRound2EncryptionTreeLevel2(
@@ -135,10 +229,10 @@ export class StoragesController {
         return this.storagesService.getRequesterTreeLevel1();
     }
 
-    @Get('request/requester/leaves/level1')
+    @Get('request/requester/leafs')
     @ApiTags('Storage Request')
-    getRequesterLeavesLevel1(): { [key: string]: string } {
-        return this.storagesService.getRequesterLeavesLevel1();
+    getRequesterTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequesterTreeLeafs();
     }
 
     @Get('request/request-status/level1')
@@ -147,16 +241,22 @@ export class StoragesController {
         return this.storagesService.getRequestStatusTreeLevel1();
     }
 
-    @Get('request/request-status/leaves/level1')
+    @Get('request/request-status/leafs')
     @ApiTags('Storage Request')
-    getRequestStatusLeavesLevel1(): { [key: string]: string } {
-        return this.storagesService.getRequestStatusLeavesLevel1();
+    getRequestStatusTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequestStatusTreeLeafs();
     }
 
     @Get('response/zkapps')
     @ApiTags('Storage Response')
     getResponseZkApps(): MerkleLeaf[] {
-        return this.storagesService.getResponseZkApTree();
+        return this.storagesService.getResponseZkAppTree();
+    }
+
+    @Get('response/zkapps/leafs')
+    @ApiTags('Storage Response')
+    getResponseZkAppsLeafs(): { [key: string]: any } {
+        return this.storagesService.getResponseZkApTreeLeafs();
     }
 
     @Get('response/reduce')
@@ -165,10 +265,22 @@ export class StoragesController {
         return this.storagesService.getResponseReduceTree();
     }
 
+    @Get('response/reduce/leafs')
+    @ApiTags('Storage Response')
+    getResponseReduceTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getResponseReduceTreeLeafs();
+    }
+
     @Get('response/contribution/level1')
     @ApiTags('Storage Response')
     getResponseContributionTreeLevel1(): { [key: string]: MerkleLeaf } {
         return this.storagesService.getResponseContributionTreeLevel1();
+    }
+
+    @Get('response/contribution/leafs')
+    @ApiTags('Storage Response')
+    getResponseContributionTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getResponseContributionTreeLeafs();
     }
 
     @Get('response/contribution/level2/:level1Index')
