@@ -427,7 +427,7 @@ export class StoragesService {
         return result;
     }
 
-    getResponseZkApTreeLeafs(): { [key: string]: any } {
+    getResponseZkAppTreeLeafs(): { [key: string]: any } {
         return this.dkgUsageContractService.dkgResponse.zkApp.addresses;
     }
 
@@ -504,6 +504,10 @@ export class StoragesService {
         return result;
     }
 
+    getCampaignInfoTreeLeafs(): { [key: string]: any } {
+        return this.campaignContractService.info.leafs;
+    }
+
     getCampaignOwnerTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.campaignContractService.owner.level1.leafCount;
         const result: MerkleLeaf[] = [];
@@ -515,6 +519,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getCampaignOwnerTreeLeafs(): { [key: string]: any } {
+        return this.campaignContractService.owner.leafs;
     }
 
     getCampaignStatusTreeLevel1(): MerkleLeaf[] {
@@ -530,6 +538,10 @@ export class StoragesService {
         return result;
     }
 
+    getCampaignStatusTreeLeafs(): { [key: string]: any } {
+        return this.campaignContractService.status.leafs;
+    }
+
     getCampaignConfigTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.campaignContractService.config.level1.leafCount;
         const result: MerkleLeaf[] = [];
@@ -541,6 +553,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getCampaignConfigTreeLeafs(): { [key: string]: any } {
+        return this.campaignContractService.config.leafs;
     }
 
     getCampaignZkAppTree(): MerkleLeaf[] {
@@ -557,6 +573,10 @@ export class StoragesService {
         return result;
     }
 
+    getCampaignZkAppTreeLeafs(): { [key: string]: any } {
+        return this.campaignContractService.zkApp.addresses;
+    }
+
     getParticipationCounterTreeLevel1(): MerkleLeaf[] {
         const leafCount =
             this.participationContractService.counter.level1.leafCount;
@@ -569,6 +589,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getParticipationCounterTreeLeafs(): { [key: string]: any } {
+        return this.participationContractService.counter.leafs;
     }
 
     getParticipationIndexTreeLevel1(): MerkleLeaf[] {
@@ -585,6 +609,10 @@ export class StoragesService {
         return result;
     }
 
+    getParticipationIndexTreeLeafs(): { [key: string]: any } {
+        return this.participationContractService.index.leafs;
+    }
+
     getParticipationInfoTreeLevel1(): MerkleLeaf[] {
         const leafCount =
             this.participationContractService.info.level1.leafCount;
@@ -597,6 +625,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getParticipationInfoTreeLeafs(): { [key: string]: any } {
+        return this.participationContractService.info.leafs;
     }
 
     getParticipationZkAppTree(): MerkleLeaf[] {
@@ -613,6 +645,10 @@ export class StoragesService {
         return result;
     }
 
+    getParticipationZkAppTreeLeafs(): { [key: string]: any } {
+        return this.participationContractService.zkApp.addresses;
+    }
+
     getProjectInfoTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.projectContractService.info.level1.leafCount;
         const result: MerkleLeaf[] = [];
@@ -626,6 +662,10 @@ export class StoragesService {
         return result;
     }
 
+    getProjectInfoTreeLeafs(): { [key: string]: any } {
+        return this.projectContractService.info.leafs;
+    }
+
     getProjectMemberTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.projectContractService.member.level1.leafCount;
         const result: MerkleLeaf[] = [];
@@ -637,6 +677,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getProjectMemberTreeLeafs(): { [key: string]: any } {
+        return this.projectContractService.member.leafs;
     }
 
     getProjectMemberTreeLevel2(level1Index: number): MerkleLeaf[] {
@@ -670,6 +714,9 @@ export class StoragesService {
         }
         return result;
     }
+    getProjectAddressTreeLeafs(): { [key: string]: any } {
+        return this.projectContractService.address.leafs;
+    }
 
     getFundingTotalMTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.fundingContractService.totalM.level1.leafCount;
@@ -684,6 +731,10 @@ export class StoragesService {
         return result;
     }
 
+    getFundingTotalMTreeLeafs(): { [key: string]: any } {
+        return this.fundingContractService.totalM.leafs;
+    }
+
     getFundingTotalRTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.fundingContractService.totalR.level1.leafCount;
         const result: MerkleLeaf[] = [];
@@ -695,6 +746,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getFundingTotalRTreeLeafs(): { [key: string]: any } {
+        return this.fundingContractService.totalR.leafs;
     }
 
     getFundingRequestIdTreeLevel1(): MerkleLeaf[] {
@@ -711,6 +766,10 @@ export class StoragesService {
         return result;
     }
 
+    getFundingRequestIdTreeLeafs(): { [key: string]: any } {
+        return this.fundingContractService.requestId.leafs;
+    }
+
     getFundingZkAppTree(): MerkleLeaf[] {
         const leafCount =
             this.fundingContractService.zkApp.addressMap.leafCount;
@@ -721,6 +780,10 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getFundingZkAppTreeLeafs(): { [key: string]: any } {
+        return this.fundingContractService.zkApp.addresses;
     }
 
     getTreasuryClaimedTreeLevel1(): MerkleLeaf[] {
@@ -736,6 +799,10 @@ export class StoragesService {
         return result;
     }
 
+    getTreasuryClaimedTreeLeafs(): { [key: string]: any } {
+        return this.treasuryContractService.claimed.leafs;
+    }
+
     getTreasuryZkAppTree(): MerkleLeaf[] {
         const leafCount =
             this.treasuryContractService.zkApp.addressMap.leafCount;
@@ -748,5 +815,9 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getTreasuryZkAppTreeLeafs(): { [key: string]: any } {
+        return this.treasuryContractService.zkApp.addresses;
     }
 }
