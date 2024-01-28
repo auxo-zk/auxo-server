@@ -93,7 +93,6 @@ import { MainContractServicesConsumer } from './consumers/main-contract-services
         MongooseModule.forRoot(process.env.DB, {
             connectTimeoutMS: 10000,
             socketTimeoutMS: 10000,
-            tlsCAFile: process.env.CA_CRT_PATH,
         }),
         MongooseModule.forFeature([
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
