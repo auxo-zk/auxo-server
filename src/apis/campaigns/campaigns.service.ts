@@ -136,6 +136,7 @@ export class CampaignsService {
             {
                 $match: {
                     campaignId: campaignId,
+                    active: true,
                 },
             },
             {
@@ -159,6 +160,7 @@ export class CampaignsService {
     async getCampaignResult(campaignId: number): Promise<{ projects: any }> {
         const exist = await this.campaignModel.exists({
             campaignId: campaignId,
+            active: true,
         });
         if (exist) {
             const projects = await this.participationModel.aggregate([
