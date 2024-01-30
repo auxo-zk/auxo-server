@@ -275,20 +275,20 @@ export class CampaignContractService implements ContractServiceInterface {
                 const infoLeaf = this._info.calculateLeaf(
                     IPFSHash.fromString(campaign.ipfsHash),
                 );
-                this._info.updateLeaf(infoLeaf, level1Index);
+                this._info.updateLeaf(level1Index, infoLeaf);
                 const ownerLeaf = this._owner.calculateLeaf(
                     PublicKey.fromBase58(campaign.owner),
                 );
-                this._owner.updateLeaf(ownerLeaf, level1Index);
+                this._owner.updateLeaf(level1Index, ownerLeaf);
                 const statusLeaf = this._status.calculateLeaf(
                     campaign.status as number,
                 );
-                this._status.updateLeaf(statusLeaf, level1Index);
+                this._status.updateLeaf(level1Index, statusLeaf);
                 const configLeaf = this._config.calculateLeaf({
                     committeeId: Field(campaign.committeeId),
                     keyId: Field(campaign.keyId),
                 });
-                this._config.updateLeaf(configLeaf, level1Index);
+                this._config.updateLeaf(level1Index, configLeaf);
             }
         } catch (err) {}
     }

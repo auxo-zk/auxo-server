@@ -290,7 +290,7 @@ export class FundingContractService implements ContractServiceInterface {
                 const requestIdLeaf = this._requestId.calculateLeaf(
                     Field(fundingResult.requestId),
                 );
-                this._requestId.updateLeaf(requestIdLeaf, level1Index);
+                this._requestId.updateLeaf(level1Index, requestIdLeaf);
                 const totalR = DkgZkApp.Request.RequestVector.empty();
                 fundingResult.sumR.map((dimension, index) => {
                     totalR.set(
@@ -306,9 +306,9 @@ export class FundingContractService implements ContractServiceInterface {
                     );
                 });
                 const totalRLeaf = this._totalR.calculateLeaf(totalR);
-                this._totalR.updateLeaf(totalRLeaf, level1Index);
+                this._totalR.updateLeaf(level1Index, totalRLeaf);
                 const totalMLeaf = this._totalR.calculateLeaf(totalM);
-                this._totalM.updateLeaf(totalMLeaf, level1Index);
+                this._totalM.updateLeaf(level1Index, totalMLeaf);
             }
         } catch (err) {}
     }
