@@ -155,9 +155,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             // await this.dkgContractsService.updateMerkleTrees();
             // await this.committeeContractService.compile();
             // await this.dkgContractsService.compile();
-            Provable.log(await this.fetchDkgRequestState());
-            Provable.log(this._dkgRequest.requester.root);
-            Provable.log(this._dkgRequest.requestStatus.root);
+            // Provable.log(await this.fetchDkgRequestState());
+            // Provable.log(this._dkgRequest.requester.root);
+            // Provable.log(this._dkgRequest.requestStatus.root);
             // await this.compile();
             // await this.completeResponse(
             //     '12093081614815863619214532154360970982308161609942049374872723136383185918643',
