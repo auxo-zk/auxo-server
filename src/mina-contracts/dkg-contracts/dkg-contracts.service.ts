@@ -193,8 +193,10 @@ export class DkgContractsService implements ContractServiceInterface {
             // console.log(await this.getKeysReadyForRound2Finalization());
             // await this.committeeContractService.compile();
             // await this.compile();
-            // await this.finalizeRound1(4, 0);
             // await this.rollupDkg();
+            // await this.finalizeRound1(4, 0);
+            // await this.reduceRound2();
+            // await this.finalizeRound2(4, 0);
         } catch (err) {
             console.log(err);
         }
@@ -615,7 +617,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const key = await this.keyModel.findById(
             Utilities.getKeyObjectId(committeeId, keyId),
         );
-        if (key.status == KeyStatusEnum.ROUND_1_CONTRIBUTION) {
+        if (key && key.status == KeyStatusEnum.ROUND_1_CONTRIBUTION) {
             const committee = await this.committeeModel.findOne({
                 committeeId: committeeId,
             });
@@ -830,7 +832,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const key = await this.keyModel.findById(
             Utilities.getKeyObjectId(committeeId, keyId),
         );
-        if (key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION) {
+        if (key && key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION) {
             const committee = await this.committeeModel.findOne({
                 committeeId: committeeId,
             });

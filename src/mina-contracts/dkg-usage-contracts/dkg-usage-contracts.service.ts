@@ -26,6 +26,7 @@ import {
     RequestActionEnum,
     RequestEventEnum,
     RequestStatusEnum,
+    ZkAppEnum,
     zkAppCache,
 } from 'src/constants';
 import { Event } from 'src/interfaces/event.interface';
@@ -36,6 +37,7 @@ import {
     CompleteResponse,
     Constants,
     CreateRequest,
+    FinalizeRound2,
     ReduceResponse,
     RequestContract,
     ResponseContract,
@@ -49,6 +51,9 @@ import {
     DkgResponseState,
 } from 'src/interfaces/zkapp-state.interface';
 import { Utilities } from '../utilities';
+import { Committee } from 'src/schemas/committee.schema';
+import { DkgContractsService } from '../dkg-contracts/dkg-contracts.service';
+import { CommitteeContractService } from '../committee-contract/committee-contract.service';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
@@ -88,6 +93,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     constructor(
         private readonly queryService: QueryService,
+        private readonly dkgContractsService: DkgContractsService,
+        private readonly committeeContractService: CommitteeContractService,
         @InjectModel(RequestAction.name)
         private readonly requestActionModel: Model<RequestAction>,
         @InjectModel(RawDkgRequest.name)
@@ -98,6 +105,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly responseActionModel: Model<ResponseAction>,
         @InjectModel(DkgResponse.name)
         private readonly dkgResponseModel: Model<DkgResponse>,
+        @InjectModel(Committee.name)
+        private readonly committeeModel: Model<Committee>,
     ) {
         this._requestIds = [];
         this._dkgRequest = {
@@ -140,8 +149,22 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            PublicKey.fromBase58(
+                'B62qiTKpEPjGTSHZrtM8uXiKgn8So916pLmNJKDhKeyBQL9TDb3nvBG',
+            );
+            // Group.
+            // console.log(await this.getDkgRequestsReadyForResponseCompletion());
+            // await this.dkgContractsService.updateMerkleTrees();
+            // await this.committeeContractService.compile();
+            // await this.dkgContractsService.compile();
             // await this.compile();
-            // await this.rollupDkgResponse();
+            // await this.completeResponse(
+            //     '12093081614815863619214532154360970982308161609942049374872723136383185918643',
+            // );
+            // await this.reduceDkgResponse();
+            // await this.rollupDkgRequest();
+            // Error: Field.assertEquals(): 5337337110746055657362899311804370522895428350228310888606163526858316428203
+            // != 20283846391171896948510899288334205693157517959283851437093840931085587606944
         } catch (err) {
             console.log(err);
         }
@@ -168,6 +191,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     async compile() {
         const cache = zkAppCache;
+        await Utilities.compile(CreateRequest, cache, this.logger);
         await Utilities.compile(CreateRequest, cache, this.logger);
         await Utilities.compile(RequestContract, cache, this.logger);
         await Utilities.compile(ReduceResponse, cache, this.logger);
@@ -281,7 +305,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         }
     }
 
-    async rollupDkgResponse() {
+    async reduceDkgResponse() {
         const lastActiveDkgResponse = await this.dkgResponseModel.findOne(
             { active: true },
             {},
@@ -360,10 +384,187 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             );
         }
     }
+    async getDkgRequestsReadyForResponseCompletion(): Promise<DkgRequest[]> {
+        const dkgRequests = await this.dkgRequestModel.find({
+            status: RequestStatusEnum.REQUESTING,
+        });
+        const result: DkgRequest[] = [];
+        for (let i = 0; i < dkgRequests.length; i++) {
+            const committee = await this.committeeModel.findOne({
+                committeeId: dkgRequests[i].committeeId,
+            });
+            const numberOfResponses = await this.dkgResponseModel.count({
+                requestId: dkgRequests[i].requestId,
+            });
+            if (numberOfResponses > committee.threshold) {
+                result.push(dkgRequests[i]);
+            }
+        }
+        return result;
+    }
 
-    // ===== PRIVATE FUNCTIONS
+    async completeResponse(requestId: string) {
+        const dkgRequest = await this.dkgRequestModel.findOne({
+            requestId: requestId,
+            status: RequestStatusEnum.REQUESTING,
+        });
+        if (dkgRequest) {
+            const dkgResponses = await this.dkgResponseModel.find(
+                {
+                    requestId: requestId,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            const committee = await this.committeeModel.findOne({
+                committeeId: dkgRequest.committeeId,
+            });
 
-    private async fetchDkgRequestState(): Promise<DkgRequestState> {
+            if (dkgResponses.length >= committee.threshold) {
+                const dkgResponseState = await this.fetchDkgResponseState();
+                const contribution = this._dkgResponse.contribution;
+                const reduceState = this._dkgResponse.reduceState;
+                let proof = await CompleteResponse.firstStep(
+                    new ZkApp.Response.ResponseInput({
+                        previousActionState: Field(0),
+                        action: ZkApp.Response.Action.empty(),
+                    }),
+                    Field(committee.threshold),
+                    Field(committee.numberOfMembers),
+                    this._dkgResponse.contribution.root,
+                    this._dkgResponse.reduceState.root,
+                    Field(dkgRequest.requestId),
+                    Field(dkgRequest.R.length),
+                    Field.fromBits(
+                        dkgResponses
+                            .map((dkgResponse) =>
+                                Field(dkgResponse.memberId).toBits(
+                                    Constants.INDEX_SIZE,
+                                ),
+                            )
+                            .flat(),
+                    ),
+                    contribution.getLevel1Witness(
+                        contribution.calculateLevel1Index(
+                            Field(dkgRequest.requestId),
+                        ),
+                    ),
+                );
+                contribution.updateInternal(
+                    contribution.calculateLevel1Index(Field(requestId)),
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                );
+                for (let i = 0; i < committee.threshold; i++) {
+                    const dkgResponse = dkgResponses[i];
+                    const dkgResponseAction =
+                        await this.responseActionModel.findOne({
+                            actionId: dkgResponse.actionId,
+                        });
+                    const responseAction = ZkApp.Response.Action.fromFields(
+                        Utilities.stringArrayToFields(
+                            dkgResponseAction.actions,
+                        ),
+                    );
+                    proof = await CompleteResponse.nextStep(
+                        new ZkApp.Response.ResponseInput({
+                            previousActionState: Field(
+                                dkgResponseAction.previousActionState,
+                            ),
+                            action: responseAction,
+                        }),
+                        proof,
+                        contribution.getWitness(
+                            contribution.calculateLevel1Index(Field(requestId)),
+                            contribution.calculateLevel2Index(
+                                Field(dkgResponse.memberId),
+                            ),
+                        ),
+                        reduceState.getWitness(
+                            reduceState.calculateIndex(
+                                Field(dkgResponseAction.currentActionState),
+                            ),
+                        ),
+                    );
+                    contribution.updateLeaf(
+                        {
+                            level1Index: contribution.calculateLevel1Index(
+                                Field(requestId),
+                            ),
+                            level2Index: contribution.calculateLevel2Index(
+                                Field(dkgResponse.memberId),
+                            ),
+                        },
+                        contribution.calculateLeaf(responseAction.contribution),
+                    );
+                }
+                const dkgResponseContract = new ResponseContract(
+                    PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                await this.committeeContractService.fetchCommitteeState();
+                await this.dkgContractsService.fetchDkgState();
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                    },
+                    () => {
+                        dkgResponseContract.complete(
+                            proof,
+                            new Storage.SharedStorage.ZkAppRef({
+                                address: PublicKey.fromBase58(
+                                    process.env.COMMITTEE_ADDRESS,
+                                ),
+                                witness: this._dkgResponse.zkApp.getWitness(
+                                    Field(ZkAppEnum.COMMITTEE),
+                                ),
+                            }),
+                            new Storage.SharedStorage.ZkAppRef({
+                                address: PublicKey.fromBase58(
+                                    process.env.DKG_ADDRESS,
+                                ),
+                                witness: this._dkgResponse.zkApp.getWitness(
+                                    Field(ZkAppEnum.DKG),
+                                ),
+                            }),
+                            new Storage.SharedStorage.ZkAppRef({
+                                address: PublicKey.fromBase58(
+                                    process.env.REQUEST_ADDRESS,
+                                ),
+                                witness: this._dkgResponse.zkApp.getWitness(
+                                    Field(ZkAppEnum.REQUEST),
+                                ),
+                            }),
+                            this.committeeContractService.settingTree.getWitness(
+                                Field(committee.committeeId),
+                            ),
+
+                            this.dkgContractsService.dkg.keyStatus.getWitness(
+                                Storage.DKGStorage.KeyStatusStorage.calculateLevel1Index(
+                                    {
+                                        committeeId: Field(
+                                            committee.committeeId,
+                                        ),
+                                        keyId: Field(dkgRequest.keyId),
+                                    },
+                                ),
+                            ),
+                        );
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+            }
+        }
+    }
+
+    async fetchDkgRequestState(): Promise<DkgRequestState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.REQUEST_ADDRESS,
         );
@@ -375,7 +576,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         };
     }
 
-    private async fetchDkgResponseState(): Promise<DkgResponseState> {
+    async fetchDkgResponseState(): Promise<DkgResponseState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.RESPONSE_ADDRESS,
         );
@@ -386,7 +587,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         };
     }
 
-    private async fetchRequestActions() {
+    // ===== PRIVATE FUNCTIONS
+
+    async fetchRequestActions() {
         const lastAction = await this.requestActionModel.findOne(
             {},
             {},
@@ -760,38 +963,44 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 );
 
                 // create remaining trees
-                const dkgResponses = await this.dkgResponseModel.find({
-                    requestId: dkgRequest.requestId,
-                    active: true,
-                });
-                this._dkgResponse.contribution.updateInternal(
-                    level1Index,
-                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
-                );
-                for (let j = 0; j < dkgResponses.length; j++) {
-                    const dkgResponse = dkgResponses[j];
-                    const level2Index =
-                        this._dkgResponse.contribution.calculateLevel2Index(
-                            Field(dkgResponse.memberId),
-                        );
-                    const responseContribution = ResponseContribution.empty();
-                    dkgResponse.contribution.map((c, index) => {
-                        responseContribution.D.set(
-                            Field(index),
-                            Group.from(c.x, c.y),
-                        );
+                if (dkgRequest.status == RequestStatusEnum.RESOLVED) {
+                    const dkgResponses = await this.dkgResponseModel.find({
+                        requestId: dkgRequest.requestId,
+                        active: true,
                     });
-                    const leaf =
-                        this._dkgResponse.contribution.calculateLeaf(
-                            responseContribution,
-                        );
-                    this._dkgResponse.contribution.updateLeaf(
-                        { level1Index: level1Index, level2Index: level2Index },
-                        leaf,
+                    this._dkgResponse.contribution.updateInternal(
+                        level1Index,
+                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
                     );
-                }
-                if (!this._requestIds.includes(dkgRequest.requestId)) {
-                    this._requestIds.push(dkgRequest.requestId);
+                    for (let j = 0; j < dkgResponses.length; j++) {
+                        const dkgResponse = dkgResponses[j];
+                        const level2Index =
+                            this._dkgResponse.contribution.calculateLevel2Index(
+                                Field(dkgResponse.memberId),
+                            );
+                        const responseContribution =
+                            ResponseContribution.empty();
+                        dkgResponse.contribution.map((c, index) => {
+                            responseContribution.D.set(
+                                Field(index),
+                                Group.from(c.x, c.y),
+                            );
+                        });
+                        const leaf =
+                            this._dkgResponse.contribution.calculateLeaf(
+                                responseContribution,
+                            );
+                        this._dkgResponse.contribution.updateLeaf(
+                            {
+                                level1Index: level1Index,
+                                level2Index: level2Index,
+                            },
+                            leaf,
+                        );
+                    }
+                    if (!this._requestIds.includes(dkgRequest.requestId)) {
+                        this._requestIds.push(dkgRequest.requestId);
+                    }
                 }
             }
         } catch (err) {}
