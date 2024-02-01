@@ -1,6 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
-import { Field, Group, Mina, PrivateKey, PublicKey, Reducer } from 'o1js';
+import {
+    Field,
+    Group,
+    Mina,
+    PrivateKey,
+    Provable,
+    PublicKey,
+    Reducer,
+} from 'o1js';
 import { Model } from 'mongoose';
 import { DkgAction, getDkg } from 'src/schemas/actions/dkg-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
@@ -183,8 +191,12 @@ export class DkgContractsService implements ContractServiceInterface {
             await this.updateMerkleTrees();
             // console.log(await this.getKeysReadyForRound1Finalization());
             // console.log(await this.getKeysReadyForRound2Finalization());
+            // await this.committeeContractService.compile();
             // await this.compile();
-            // await this.finalizeRound1(5, 0);
+            // await this.rollupDkg();
+            // await this.finalizeRound1(4, 0);
+            // await this.reduceRound2();
+            // await this.finalizeRound2(4, 0);
         } catch (err) {
             console.log(err);
         }
@@ -295,7 +307,6 @@ export class DkgContractsService implements ContractServiceInterface {
                 const notReducedAction = notReducedActions[i];
                 const notActiveDkg = notActiveDkgs[i];
                 const committeeId = notActiveDkg.committeeId;
-                let keyId: number;
                 let key: {
                     committeeId: number;
                     keyId: number;
@@ -304,8 +315,8 @@ export class DkgContractsService implements ContractServiceInterface {
                 if (!keyMapping[committeeId]) {
                     keyMapping[committeeId] = {};
                 }
-                if (notActiveDkg.keyId) {
-                    key = keyMapping[committeeId][keyId];
+                if (notActiveDkg.keyId != undefined) {
+                    key = keyMapping[committeeId][notActiveDkg.keyId];
                     switch (notActiveDkg.actionEnum) {
                         case DkgActionEnum.FINALIZE_ROUND_2:
                             key.status = KeyStatusEnum.ACTIVE;
@@ -333,7 +344,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             ),
                         ),
                     );
-                    keyMapping[committeeId][keyId] = key;
+                    keyMapping[committeeId][key.keyId] = key;
                     keyStatus.updateLeaf(
                         {
                             level1Index:
@@ -347,10 +358,9 @@ export class DkgContractsService implements ContractServiceInterface {
                         Field(key.status),
                     );
                 } else {
-                    keyId = Object.keys(keyMapping[committeeId]).length;
                     key = {
                         committeeId: committeeId,
-                        keyId: keyId,
+                        keyId: Object.keys(keyMapping[committeeId]).length,
                         status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
                     };
 
@@ -361,7 +371,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             ),
                         ),
                         proof,
-                        Field(keyId),
+                        Field(key.keyId),
                         keyCounter.getWitness(
                             Storage.CommitteeStorage.KeyCounterStorage.calculateLevel1Index(
                                 Field(committeeId),
@@ -376,7 +386,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             ),
                         ),
                     );
-                    keyMapping[committeeId][keyId] = key;
+                    keyMapping[committeeId][key.keyId] = key;
                     keyCounter.updateLeaf(
                         {
                             level1Index:
@@ -607,7 +617,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const key = await this.keyModel.findById(
             Utilities.getKeyObjectId(committeeId, keyId),
         );
-        if (key.status == KeyStatusEnum.ROUND_1_CONTRIBUTION) {
+        if (key && key.status == KeyStatusEnum.ROUND_1_CONTRIBUTION) {
             const committee = await this.committeeModel.findOne({
                 committeeId: committeeId,
             });
@@ -652,6 +662,20 @@ export class DkgContractsService implements ContractServiceInterface {
 
                 const contribution = this._round1.contribution;
                 const publicKey = this._round1.publicKey;
+                contribution.updateInternal(
+                    contribution.calculateLevel1Index({
+                        committeeId: Field(committeeId),
+                        keyId: Field(keyId),
+                    }),
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                );
+                publicKey.updateInternal(
+                    publicKey.calculateLevel1Index({
+                        committeeId: Field(committeeId),
+                        keyId: Field(keyId),
+                    }),
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                );
                 for (let i = 0; i < round1s.length; i++) {
                     const round1 = round1s[i];
                     const round1Action = await this.round1ActionModel.findOne({
@@ -734,6 +758,8 @@ export class DkgContractsService implements ContractServiceInterface {
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
+                await this.committeeContractService.fetchCommitteeState();
+                await this.fetchDkgState();
                 const tx = await Mina.transaction(
                     {
                         sender: feePayerPrivateKey.toPublicKey(),
@@ -806,7 +832,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const key = await this.keyModel.findById(
             Utilities.getKeyObjectId(committeeId, keyId),
         );
-        if (key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION) {
+        if (key && key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION) {
             const committee = await this.committeeModel.findOne({
                 committeeId: committeeId,
             });
@@ -854,6 +880,13 @@ export class DkgContractsService implements ContractServiceInterface {
 
                 const contribution = this._round2.contribution;
                 const encryption = this._round2.encryption;
+                contribution.updateInternal(
+                    contribution.calculateLevel1Index({
+                        committeeId: Field(committeeId),
+                        keyId: Field(keyId),
+                    }),
+                    Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                );
                 const contributions = [];
                 for (let i = 0; i < round2s.length; i++) {
                     const round2 = round2s[i];
@@ -937,6 +970,8 @@ export class DkgContractsService implements ContractServiceInterface {
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
+                await this.committeeContractService.fetchCommitteeState();
+                await this.fetchDkgState();
                 const tx = await Mina.transaction(
                     {
                         sender: feePayerPrivateKey.toPublicKey(),
@@ -988,10 +1023,7 @@ export class DkgContractsService implements ContractServiceInterface {
             }
         }
     }
-
-    // ============ PRIVATE FUNCTIONS ============
-
-    private async fetchDkgState(): Promise<DkgState> {
+    async fetchDkgState(): Promise<DkgState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.DKG_ADDRESS,
         );
@@ -1003,7 +1035,7 @@ export class DkgContractsService implements ContractServiceInterface {
         return dkgState;
     }
 
-    private async fetchRound1State(): Promise<Round1State> {
+    async fetchRound1State(): Promise<Round1State> {
         const state = await this.queryService.fetchZkAppState(
             process.env.ROUND_1_ADDRESS,
         );
@@ -1016,7 +1048,7 @@ export class DkgContractsService implements ContractServiceInterface {
         return round1State;
     }
 
-    private async fetchRound2State(): Promise<Round2State> {
+    async fetchRound2State(): Promise<Round2State> {
         const state = await this.queryService.fetchZkAppState(
             process.env.ROUND_2_ADDRESS,
         );
@@ -1028,6 +1060,8 @@ export class DkgContractsService implements ContractServiceInterface {
         };
         return round2State;
     }
+
+    // ============ PRIVATE FUNCTIONS ============
 
     private async fetchDkgActions() {
         const lastAction = await this.dkgActionModel.findOne(
@@ -1442,6 +1476,7 @@ export class DkgContractsService implements ContractServiceInterface {
             }
         }
     }
+
     async updateMerkleTrees() {
         try {
             await this.updateMerkleTreesForDkg();
@@ -1449,6 +1484,7 @@ export class DkgContractsService implements ContractServiceInterface {
             await this.updateMerkleTreesForRound2();
         } catch (err) {}
     }
+
     private async updateMerkleTreesForDkg() {
         const keyCounters: { _id: number; count: number }[] =
             await this.dkgModel.aggregate([

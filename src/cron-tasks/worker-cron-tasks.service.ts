@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Interval } from '@nestjs/schedule';
+import { Cron, CronExpression, Interval } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 
@@ -19,7 +19,8 @@ export class WorkerCronTasksService implements OnModuleInit {
         });
     }
 
-    @Interval(180000)
+    // 6 minutes
+    @Interval(360000)
     async handleUpdateContracts() {
         this.logger.log('Register updateContracts task at ' + process.pid);
         this.contractServices.add('updateContracts', {
@@ -27,7 +28,7 @@ export class WorkerCronTasksService implements OnModuleInit {
         });
     }
 
-    // @Interval(600000)
+    // @Cron(CronExpression.EVERY_10_MINUTES)
     // async handleRollupContracts() {
     //     this.logger.log('Register rollupContracts task at ' + process.pid);
     //     this.contractServices.add('rollupContracts', {

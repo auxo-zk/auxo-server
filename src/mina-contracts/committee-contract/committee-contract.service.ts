@@ -203,9 +203,7 @@ export class CommitteeContractService implements ContractServiceInterface {
         }
     }
 
-    // ============ PRIVATE FUNCTIONS ============
-
-    private async fetchCommitteeState(): Promise<CommitteeState> {
+    async fetchCommitteeState(): Promise<CommitteeState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.COMMITTEE_ADDRESS,
         );
@@ -217,6 +215,8 @@ export class CommitteeContractService implements ContractServiceInterface {
         };
         return committeeState;
     }
+
+    // ============ PRIVATE FUNCTIONS ============
 
     private async fetchCommitteeActions(): Promise<void> {
         const lastAction = await this.committeeActionModel.findOne(

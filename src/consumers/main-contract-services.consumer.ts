@@ -8,6 +8,7 @@ import { CampaignContractService } from '../mina-contracts/campaign-contract/cam
 import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
+import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
 
 @Processor('main-contract-services')
 export class MainContractServicesConsumer {
@@ -20,6 +21,7 @@ export class MainContractServicesConsumer {
         private readonly participationContractService: ParticipationContractService,
         private readonly projectContractService: ProjectContractService,
         private readonly fundingContractService: FundingContractService,
+        private readonly treasuryContractService: TreasuryContractService,
     ) {}
 
     @Process('updateContractMerkleTrees')
@@ -33,6 +35,7 @@ export class MainContractServicesConsumer {
                 this.participationContractService.updateMerkleTrees(),
                 this.projectContractService.updateMerkleTrees(),
                 this.fundingContractService.updateMerkleTrees(),
+                this.treasuryContractService.updateMerkleTrees(),
             ]).then(async () => {
                 this.logger.log('All contract trees updated successfully');
                 await job.progress();
