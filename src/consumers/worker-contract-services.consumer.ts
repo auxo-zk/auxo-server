@@ -8,6 +8,7 @@ import { CampaignContractService } from '../mina-contracts/campaign-contract/cam
 import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
+import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
 
 @Processor('worker-contract-services')
 export class WorkerContractServicesConsumer {
@@ -20,6 +21,7 @@ export class WorkerContractServicesConsumer {
         private readonly participationContractService: ParticipationContractService,
         private readonly projectContractService: ProjectContractService,
         private readonly fundingContractService: FundingContractService,
+        private readonly treasuryContractService: TreasuryContractService,
     ) {}
 
     @Process('updateContractMerkleTrees')
@@ -33,6 +35,7 @@ export class WorkerContractServicesConsumer {
                 this.participationContractService.updateMerkleTrees(),
                 this.projectContractService.updateMerkleTrees(),
                 this.fundingContractService.updateMerkleTrees(),
+                this.treasuryContractService.updateMerkleTrees(),
             ]).then(async () => {
                 this.logger.log('All contract trees updated successfully');
                 await job.progress();
@@ -55,6 +58,7 @@ export class WorkerContractServicesConsumer {
                 this.participationContractService.update(),
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
+                this.treasuryContractService.update(),
             ]).then(async () => {
                 this.logger.log('All contracts updated successfully');
                 await job.progress();
@@ -77,6 +81,7 @@ export class WorkerContractServicesConsumer {
                 this.participationContractService.update(),
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
+                this.treasuryContractService.update(),
             ]).then(async () => {
                 await this.committeeContractService.rollup();
                 this.logger.log('All contract rolluped successfully');
@@ -95,6 +100,7 @@ export class WorkerContractServicesConsumer {
             Promise.all([
                 this.committeeContractService.compile(),
                 this.dkgContractsService.compile(),
+                this.dkgUsageContractsService.compile(),
             ]).then(async () => {
                 this.logger.log('All contracts compiled successfully');
                 await job.progress();

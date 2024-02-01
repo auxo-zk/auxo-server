@@ -10,6 +10,7 @@ import {
     Field,
     Group,
     Mina,
+    Poseidon,
     PrivateKey,
     Provable,
     PublicKey,
@@ -149,14 +150,14 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            PublicKey.fromBase58(
-                'B62qiTKpEPjGTSHZrtM8uXiKgn8So916pLmNJKDhKeyBQL9TDb3nvBG',
-            );
             // Group.
             // console.log(await this.getDkgRequestsReadyForResponseCompletion());
             // await this.dkgContractsService.updateMerkleTrees();
             // await this.committeeContractService.compile();
             // await this.dkgContractsService.compile();
+            Provable.log(await this.fetchDkgRequestState());
+            Provable.log(this._dkgRequest.requester.root);
+            Provable.log(this._dkgRequest.requestStatus.root);
             // await this.compile();
             // await this.completeResponse(
             //     '12093081614815863619214532154360970982308161609942049374872723136383185918643',
@@ -246,6 +247,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const notReducedAction = notReducedActions[i];
                 const notActiveRawDkgRequest = notActiveRawDkgRequests[i];
                 const requestId = Field(notActiveRawDkgRequest.requestId);
+                const dkgRequest = await this.dkgRequestModel.findOne({
+                    requestId: notActiveRawDkgRequest.requestId,
+                });
                 let status: RequestStatusEnum =
                     RequestStatusEnum.NOT_YET_REQUESTED;
                 if (
@@ -259,6 +263,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 ) {
                     status = RequestStatusEnum.RESOLVED;
                 }
+
                 proof = await CreateRequest.nextStep(
                     proof,
                     ZkApp.Request.RequestAction.fromFields(
@@ -266,7 +271,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     ),
                     requestStatus.getWitness(requestId),
                     requester.getWitness(requestId),
-                    PublicKey.fromBase58(notActiveRawDkgRequest.requester),
+                    PublicKey.fromBase58(dkgRequest.requester),
                 );
                 requestStatus.updateLeaf(
                     { level1Index: requestId },
@@ -274,12 +279,16 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         Field(status),
                     ),
                 );
-                requester.updateLeaf(
-                    { level1Index: requestId },
-                    Storage.RequestStorage.RequesterStorage.calculateLeaf(
-                        PublicKey.fromBase58(notActiveRawDkgRequest.requester),
-                    ),
-                );
+                notActiveRawDkgRequest.actionEnum == RequestActionEnum.RESOLVE
+                    ? ''
+                    : requester.updateLeaf(
+                          { level1Index: requestId },
+                          Storage.RequestStorage.RequesterStorage.calculateLeaf(
+                              PublicKey.fromBase58(
+                                  notActiveRawDkgRequest.requester,
+                              ),
+                          ),
+                      );
             }
             const dkgRequestContract = new RequestContract(
                 PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
@@ -940,19 +949,33 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const requesterLeaf = this._dkgRequest.requester.calculateLeaf(
                     PublicKey.fromBase58(dkgRequest.requester),
                 );
-                const requestVector = ZkApp.Request.RequestVector.empty();
-                dkgRequest.D.map((d, index) => {
-                    requestVector.set(Field(index), Group.from(d.x, d.y));
-                });
+                let requestVector: ZkApp.Request.RequestVector;
+                if (dkgRequest.status == RequestStatusEnum.RESOLVED) {
+                    const rawDkgRequest = await this.rawDkgRequestModel.findOne(
+                        {
+                            requestId: dkgRequest.requestId,
+                            actionEnum: RequestActionEnum.RESOLVE,
+                        },
+                    );
+                    const requestAction = await this.requestActionModel.findOne(
+                        { actionId: rawDkgRequest.actionId },
+                    );
+                    requestVector = ZkApp.Request.RequestAction.fromFields(
+                        Utilities.stringArrayToFields(requestAction.actions),
+                    ).D;
+                }
                 const requestStatusLeaf =
                     this._dkgRequest.requestStatus.calculateLeaf(
                         Field(
                             dkgRequest.status == RequestStatusEnum.REQUESTING
                                 ? RequestStatusEnum.REQUESTING
-                                : requestVector.hash(),
+                                : Poseidon.hash(
+                                      ZkApp.Request.RequestVector.toFields(
+                                          requestVector,
+                                      ),
+                                  ),
                         ),
                     );
-                // const requestContribution  =
                 this._dkgRequest.requestStatus.updateLeaf(
                     { level1Index: level1Index },
                     requestStatusLeaf,

@@ -142,7 +142,7 @@ export class TreasuryContractService implements ContractServiceInterface {
         }
     }
 
-    async updateTreasuries() {
+    private async updateTreasuries() {
         const lastTreasury = await this.treasuryModel.findOne(
             {},
             {},
