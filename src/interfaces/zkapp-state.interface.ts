@@ -39,3 +39,13 @@ export interface DkgResponseState {
     reduceState: Field;
     contribution: Field;
 }
+
+export interface CampaignState {
+    owner: Field;
+    info: Field;
+    status: Field;
+    config: Field;
+    zkApp: Field;
+    nextCampaignId: Field;
+    actionState: Field;
+}

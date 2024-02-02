@@ -1,23 +1,32 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
-import { Field, Provable, PublicKey, Reducer } from 'o1js';
+import { Field, Mina, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
 import {
     CampaignAction,
     getRawCampaign,
 } from 'src/schemas/actions/campaign-action.schema';
 import { RawCampaign } from 'src/schemas/raw-campaign.schema';
 import { Campaign } from 'src/schemas/campaign.schema';
-import { CampaignActionEnum } from 'src/constants';
+import { CampaignActionEnum, zkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { Constants, Storage } from '@auxo-dev/platform';
+import {
+    CampaignContract,
+    Constants,
+    CreateCampaign,
+    Storage,
+    ZkApp,
+} from '@auxo-dev/platform';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
+import { Utilities } from '../utilities';
+import { CampaignState } from 'src/interfaces/zkapp-state.interface';
 
 @Injectable()
 export class CampaignContractService implements ContractServiceInterface {
+    private readonly logger = new Logger(CampaignContractService.name);
     private readonly _info: Storage.CampaignStorage.InfoStorage;
     private readonly _owner: Storage.CampaignStorage.OwnerStorage;
     private readonly _status: Storage.CampaignStorage.StatusStorage;
@@ -125,6 +134,150 @@ export class CampaignContractService implements ContractServiceInterface {
             await this.updateCampaigns();
         } catch (err) {}
     }
+
+    async compile() {
+        const cache = zkAppCache;
+        await Utilities.compile(CreateCampaign, cache, this.logger);
+        await Utilities.compile(CampaignContract, cache, this.logger);
+    }
+
+    async fetchCampaignState(): Promise<CampaignState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.CAMPAIGN_ADDRESS,
+        );
+        const result: CampaignState = {
+            owner: Field(state[0]),
+            info: Field(state[1]),
+            status: Field(state[2]),
+            config: Field(state[3]),
+            zkApp: Field(state[4]),
+            nextCampaignId: Field(state[5]),
+            actionState: Field(state[6]),
+        };
+        return result;
+    }
+
+    async rollupCampaign() {
+        const lastActiveCampaign = await this.campaignModel.findOne(
+            { active: true },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const lastReducedAction = lastActiveCampaign
+            ? await this.campaignActionModel.findOne({
+                  actionId: lastActiveCampaign.campaignId,
+              })
+            : undefined;
+        const notReducedActions = await this.campaignActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+                },
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
+            const notActiveRawCampaigns = await this.rawCampaignModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
+                    },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            const state = await this.fetchCampaignState();
+            const nextCampaignId = lastActiveCampaign
+                ? lastActiveCampaign.campaignId + 1
+                : 0;
+            let proof = await CreateCampaign.firstStep(
+                state.owner,
+                state.info,
+                state.status,
+                state.config,
+                state.nextCampaignId,
+                lastReducedAction
+                    ? Field(lastReducedAction.currentActionState)
+                    : Reducer.initialActionState,
+            );
+            const owner = this._owner;
+            const info = this._info;
+            const status = this._status;
+            const config = this._config;
+
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                const notActiveRawCampaign = notActiveRawCampaigns[i];
+                proof = await CreateCampaign.createCampaign(
+                    proof,
+                    ZkApp.Campaign.CampaignAction.fromFields(
+                        Utilities.stringArrayToFields(notReducedAction.actions),
+                    ),
+                    owner.getLevel1Witness(
+                        owner.calculateLevel1Index(Field(nextCampaignId)),
+                    ),
+                    info.getLevel1Witness(
+                        info.calculateLevel1Index(Field(nextCampaignId)),
+                    ),
+                    status.getLevel1Witness(
+                        info.calculateLevel1Index(Field(nextCampaignId)),
+                    ),
+                    config.getLevel1Witness(
+                        info.calculateLevel1Index(Field(nextCampaignId)),
+                    ),
+                );
+                owner.updateLeaf(
+                    Field(nextCampaignId),
+                    owner.calculateLeaf(
+                        PublicKey.fromBase58(notActiveRawCampaign.owner),
+                    ),
+                );
+                info.updateLeaf(
+                    Field(nextCampaignId),
+                    info.calculateLeaf(
+                        IPFSHash.fromString(notActiveRawCampaign.ipfsHash),
+                    ),
+                );
+                status.updateLeaf(
+                    Field(nextCampaignId),
+                    status.calculateLeaf(Number(notActiveRawCampaign.status)),
+                );
+                config.updateLeaf(
+                    Field(nextCampaignId),
+                    config.calculateLeaf({
+                        committeeId: Field(notActiveRawCampaign.committeeId),
+                        keyId: Field(notActiveRawCampaign.keyId),
+                    }),
+                );
+            }
+            const campaignContract = new CampaignContract(
+                PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    campaignContract.rollup(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+        }
+    }
+
+    // ====== PRIVATE FUNCTIONS =======
 
     private async fetchCampaignActions() {
         const lastAction = await this.campaignActionModel.findOne(
@@ -275,20 +428,20 @@ export class CampaignContractService implements ContractServiceInterface {
                 const infoLeaf = this._info.calculateLeaf(
                     IPFSHash.fromString(campaign.ipfsHash),
                 );
-                this._info.updateLeaf(infoLeaf, level1Index);
+                this._info.updateLeaf(level1Index, infoLeaf);
                 const ownerLeaf = this._owner.calculateLeaf(
                     PublicKey.fromBase58(campaign.owner),
                 );
-                this._owner.updateLeaf(ownerLeaf, level1Index);
+                this._owner.updateLeaf(level1Index, ownerLeaf);
                 const statusLeaf = this._status.calculateLeaf(
                     campaign.status as number,
                 );
-                this._status.updateLeaf(statusLeaf, level1Index);
+                this._status.updateLeaf(level1Index, statusLeaf);
                 const configLeaf = this._config.calculateLeaf({
                     committeeId: Field(campaign.committeeId),
                     keyId: Field(campaign.keyId),
                 });
-                this._config.updateLeaf(configLeaf, level1Index);
+                this._config.updateLeaf(level1Index, configLeaf);
             }
         } catch (err) {}
     }
