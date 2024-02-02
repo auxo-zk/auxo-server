@@ -702,20 +702,20 @@ export class StoragesService {
         }
     }
 
-    getProjectAddressTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.projectContractService.address.level1.leafCount;
+    getProjectPayeeTreeLevel1(): MerkleLeaf[] {
+        const leafCount = this.projectContractService.payee.level1.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.projectContractService.address
+                this.projectContractService.payee
                     .getLevel1Witness(Field(i))
                     .toJSON(),
             );
         }
         return result;
     }
-    getProjectAddressTreeLeafs(): { [key: string]: any } {
-        return this.projectContractService.address.leafs;
+    getProjectPayeeTreeLeafs(): { [key: string]: any } {
+        return this.projectContractService.payee.leafs;
     }
 
     getFundingTotalMTreeLevel1(): MerkleLeaf[] {

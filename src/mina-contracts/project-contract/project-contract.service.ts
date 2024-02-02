@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -7,20 +7,28 @@ import {
 } from 'src/schemas/actions/project-action.schema';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
-import { Field, Provable, PublicKey, Reducer } from 'o1js';
+import { Field, Mina, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
 import { RawProject } from 'src/schemas/raw-project.schema';
 import { Project } from 'src/schemas/project.schema';
-import { ProjectActionEnum } from 'src/constants';
+import { ProjectActionEnum, zkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { Storage } from '@auxo-dev/platform';
+import {
+    CreateProject,
+    ProjectContract,
+    Storage,
+    ZkApp,
+} from '@auxo-dev/platform';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
+import { Utilities } from '../utilities';
+import { ProjectState } from 'src/interfaces/zkapp-state.interface';
 
 @Injectable()
 export class ProjectContractService implements ContractServiceInterface {
+    private readonly logger = new Logger(ProjectContractService.name);
     private readonly _info: Storage.ProjectStorage.InfoStorage;
     private readonly _member: Storage.ProjectStorage.MemberStorage;
-    private readonly _address: Storage.ProjectStorage.AddressStorage;
+    private readonly _payee: Storage.ProjectStorage.AddressStorage;
 
     public get info(): Storage.ProjectStorage.InfoStorage {
         return this._info;
@@ -28,8 +36,8 @@ export class ProjectContractService implements ContractServiceInterface {
     public get member(): Storage.ProjectStorage.MemberStorage {
         return this._member;
     }
-    public get address(): Storage.ProjectStorage.AddressStorage {
-        return this._address;
+    public get payee(): Storage.ProjectStorage.AddressStorage {
+        return this._payee;
     }
 
     constructor(
@@ -44,7 +52,7 @@ export class ProjectContractService implements ContractServiceInterface {
     ) {
         this._info = new Storage.ProjectStorage.InfoStorage();
         this._member = new Storage.ProjectStorage.MemberStorage();
-        this._address = new Storage.ProjectStorage.AddressStorage();
+        this._payee = new Storage.ProjectStorage.AddressStorage();
     }
 
     async onModuleInit() {
@@ -70,6 +78,148 @@ export class ProjectContractService implements ContractServiceInterface {
             console.log(err);
         }
     }
+
+    async compile() {
+        const cache = zkAppCache;
+        await Utilities.compile(CreateProject, cache, this.logger);
+        await Utilities.compile(ProjectContract, cache, this.logger);
+    }
+
+    async fetchProjectState(): Promise<ProjectState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.PROJECT_ADDRESS,
+        );
+        const result: ProjectState = {
+            nextProjectId: Field(state[0]),
+            member: Field(state[1]),
+            info: Field(state[2]),
+            payee: Field(state[3]),
+            actionState: Field(state[4]),
+        };
+        return result;
+    }
+
+    async rollupProject() {
+        const lastActiveProject = await this.projectModel.findOne(
+            { active: true },
+            {},
+            { sort: { projectId: -1 } },
+        );
+        const lastReducedAction = lastActiveProject
+            ? await this.projectActionModel.findOne({
+                  actionId: lastActiveProject.projectId,
+              })
+            : undefined;
+        const notReducedActions = await this.projectActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+                },
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
+            const notActiveProjects = await this.projectModel.find(
+                {
+                    projectId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
+                    },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            const state = await this.fetchProjectState();
+            let nextProjectId = lastActiveProject
+                ? lastActiveProject.projectId + 1
+                : 0;
+            let proof = await CreateProject.firstStep(
+                state.nextProjectId,
+                state.member,
+                state.info,
+                state.payee,
+                lastReducedAction
+                    ? Field(lastReducedAction.currentActionState)
+                    : Reducer.initialActionState,
+            );
+            const member = this._member;
+            const info = this._info;
+            const payee = this._payee;
+
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                const notActiveProject = notActiveProjects[i];
+                proof = await CreateProject.nextStep(
+                    proof,
+                    ZkApp.Project.ProjectAction.fromFields(
+                        Utilities.stringArrayToFields(notReducedAction.actions),
+                    ),
+                    member.getLevel1Witness(
+                        member.calculateLevel1Index(Field(nextProjectId)),
+                    ),
+                    info.getLevel1Witness(
+                        info.calculateLevel1Index(Field(nextProjectId)),
+                    ),
+                    payee.getLevel1Witness(
+                        payee.calculateLevel1Index(Field(nextProjectId)),
+                    ),
+                );
+                member.updateInternal(
+                    Field(nextProjectId),
+                    Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
+                );
+                for (let j = 0; j < notActiveProject.members.length; j++) {
+                    member.updateLeaf(
+                        {
+                            level1Index: Field(nextProjectId),
+                            level2Index: Field(j),
+                        },
+                        member.calculateLeaf(
+                            PublicKey.fromBase58(notActiveProject.members[j]),
+                        ),
+                    );
+                }
+                info.updateLeaf(
+                    { level1Index: Field(nextProjectId) },
+                    info.calculateLeaf(
+                        IPFSHash.fromString(notActiveProject.ipfsHash),
+                    ),
+                );
+                payee.updateLeaf(
+                    { level1Index: Field(nextProjectId) },
+                    payee.calculateLeaf(
+                        PublicKey.fromBase58(notActiveProject.payeeAccount),
+                    ),
+                );
+                nextProjectId += 1;
+            }
+            const projectContract = new ProjectContract(
+                PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    projectContract.rollup(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+        }
+    }
+
+    // ====== PRIVATE FUNCTIONS ========
 
     private async fetchProjectActions() {
         const lastAction = await this.projectActionModel.findOne(
@@ -204,13 +354,10 @@ export class ProjectContractService implements ContractServiceInterface {
                     IPFSHash.fromString(project.ipfsHash),
                 );
                 this._info.updateLeaf({ level1Index: level1Index }, infoLeaf);
-                const addressLeaf = this._address.calculateLeaf(
+                const payeeLeaf = this._payee.calculateLeaf(
                     PublicKey.fromBase58(project.payeeAccount),
                 );
-                this._address.updateLeaf(
-                    { level1Index: level1Index },
-                    addressLeaf,
-                );
+                this._payee.updateLeaf({ level1Index: level1Index }, payeeLeaf);
                 this._member.updateInternal(
                     level1Index,
                     Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),

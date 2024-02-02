@@ -161,7 +161,7 @@ export class CampaignContractService implements ContractServiceInterface {
         const lastActiveCampaign = await this.campaignModel.findOne(
             { active: true },
             {},
-            { sort: { actionId: -1 } },
+            { sort: { campaignId: -1 } },
         );
         const lastReducedAction = lastActiveCampaign
             ? await this.campaignActionModel.findOne({
@@ -178,9 +178,9 @@ export class CampaignContractService implements ContractServiceInterface {
             { sort: { actionId: 1 } },
         );
         if (notReducedActions.length > 0) {
-            const notActiveRawCampaigns = await this.rawCampaignModel.find(
+            const notActiveCampaigns = await this.campaignModel.find(
                 {
-                    actionId: {
+                    campaignId: {
                         $gt: lastReducedAction
                             ? lastReducedAction.actionId
                             : -1,
@@ -190,7 +190,7 @@ export class CampaignContractService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             const state = await this.fetchCampaignState();
-            const nextCampaignId = lastActiveCampaign
+            let nextCampaignId = lastActiveCampaign
                 ? lastActiveCampaign.campaignId + 1
                 : 0;
             let proof = await CreateCampaign.firstStep(
@@ -210,7 +210,7 @@ export class CampaignContractService implements ContractServiceInterface {
 
             for (let i = 0; i < notReducedActions.length; i++) {
                 const notReducedAction = notReducedActions[i];
-                const notActiveRawCampaign = notActiveRawCampaigns[i];
+                const notActiveCampaign = notActiveCampaigns[i];
                 proof = await CreateCampaign.createCampaign(
                     proof,
                     ZkApp.Campaign.CampaignAction.fromFields(
@@ -232,26 +232,27 @@ export class CampaignContractService implements ContractServiceInterface {
                 owner.updateLeaf(
                     Field(nextCampaignId),
                     owner.calculateLeaf(
-                        PublicKey.fromBase58(notActiveRawCampaign.owner),
+                        PublicKey.fromBase58(notActiveCampaign.owner),
                     ),
                 );
                 info.updateLeaf(
                     Field(nextCampaignId),
                     info.calculateLeaf(
-                        IPFSHash.fromString(notActiveRawCampaign.ipfsHash),
+                        IPFSHash.fromString(notActiveCampaign.ipfsHash),
                     ),
                 );
                 status.updateLeaf(
                     Field(nextCampaignId),
-                    status.calculateLeaf(Number(notActiveRawCampaign.status)),
+                    status.calculateLeaf(Number(notActiveCampaign.status)),
                 );
                 config.updateLeaf(
                     Field(nextCampaignId),
                     config.calculateLeaf({
-                        committeeId: Field(notActiveRawCampaign.committeeId),
-                        keyId: Field(notActiveRawCampaign.keyId),
+                        committeeId: Field(notActiveCampaign.committeeId),
+                        keyId: Field(notActiveCampaign.keyId),
                     }),
                 );
+                nextCampaignId += 1;
             }
             const campaignContract = new CampaignContract(
                 PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),

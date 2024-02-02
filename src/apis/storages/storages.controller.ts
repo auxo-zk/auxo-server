@@ -413,16 +413,16 @@ export class StoragesController {
         return this.storagesService.getProjectInfoTreeLeafs();
     }
 
-    @Get('project/address/level1')
+    @Get('project/payee/level1')
     @ApiTags('Storage Project')
-    getProjectAddressTreeLevel1(): MerkleLeaf[] {
-        return this.storagesService.getProjectAddressTreeLevel1();
+    getProjectPayeeTreeLevel1(): MerkleLeaf[] {
+        return this.storagesService.getProjectPayeeTreeLevel1();
     }
 
     @Get('project/address/leafs')
     @ApiTags('Storage Project')
     getProjectAddressTreeLeafs(): { [key: string]: any } {
-        return this.storagesService.getProjectAddressTreeLeafs();
+        return this.storagesService.getProjectPayeeTreeLeafs();
     }
 
     @Get('project/member/level1')

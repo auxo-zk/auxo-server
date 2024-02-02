@@ -49,3 +49,11 @@ export interface CampaignState {
     nextCampaignId: Field;
     actionState: Field;
 }
+
+export interface ProjectState {
+    nextProjectId: Field;
+    member: Field;
+    info: Field;
+    payee: Field;
+    actionState: Field;
+}
