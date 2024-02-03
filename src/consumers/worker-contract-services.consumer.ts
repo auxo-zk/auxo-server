@@ -70,8 +70,8 @@ export class WorkerContractServicesConsumer {
         }
     }
 
-    @Process('rollupContracts')
-    async rollupContracts(job: Job<unknown>) {
+    @Process('rollupContractsFirstOrder')
+    async rollupContractsFirstOrder(job: Job<unknown>) {
         try {
             Promise.all([
                 this.committeeContractService.update(),
@@ -83,9 +83,100 @@ export class WorkerContractServicesConsumer {
                 this.fundingContractService.update(),
                 this.treasuryContractService.update(),
             ]).then(async () => {
-                await this.committeeContractService.rollup();
-                this.logger.log('All contract rolluped successfully');
+                const runs = await Promise.all([
+                    this.committeeContractService.rollup(),
+                    this.dkgContractsService.rollupDkg(),
+                    this.dkgContractsService.reduceRound1(),
+                    this.dkgContractsService.reduceRound2(),
+                    this.dkgUsageContractsService.reduceDkgResponse(),
+                    this.dkgUsageContractsService.rollupDkgRequest(),
+                ]);
+                if (!runs.includes(true)) {
+                    const keysForRound1Finalization =
+                        await this.dkgContractsService.getKeysReadyForRound1Finalization();
+                    const keysForRound2Finalization =
+                        await this.dkgContractsService.getKeysReadyForRound2Finalization();
+                    const requestsForResponseCompletion =
+                        await this.dkgUsageContractsService.getDkgRequestsReadyForResponseCompletion();
+                    await Promise.all([
+                        keysForRound1Finalization.length > 0
+                            ? this.dkgContractsService.finalizeRound1(
+                                  keysForRound1Finalization[0].committeeId,
+                                  keysForRound1Finalization[0].keyId,
+                              )
+                            : undefined,
+                        keysForRound2Finalization.length > 0
+                            ? this.dkgContractsService.finalizeRound2(
+                                  keysForRound2Finalization[0].committeeId,
+                                  keysForRound2Finalization[0].keyId,
+                              )
+                            : undefined,
+                        requestsForResponseCompletion.length > 0
+                            ? this.dkgUsageContractsService.completeResponse(
+                                  requestsForResponseCompletion[0].requestId,
+                              )
+                            : undefined,
+                    ]);
+                }
                 await job.progress();
+                this.logger.log('All contract rolluped successfully');
+                return {};
+            });
+        } catch (err) {
+            this.logger.error('Error during rolluping contracts: ', err);
+            return undefined;
+        }
+    }
+    @Process('rollupContractsSecondOrder')
+    async rollupContractsSecondOrder(job: Job<unknown>) {
+        try {
+            Promise.all([
+                this.committeeContractService.update(),
+                this.dkgContractsService.update(),
+                this.dkgUsageContractsService.update(),
+                this.campaignContractService.update(),
+                this.participationContractService.update(),
+                this.projectContractService.update(),
+                this.fundingContractService.update(),
+                this.treasuryContractService.update(),
+            ]).then(async () => {
+                const keysForRound1Finalization =
+                    await this.dkgContractsService.getKeysReadyForRound1Finalization();
+                const keysForRound2Finalization =
+                    await this.dkgContractsService.getKeysReadyForRound2Finalization();
+                const requestsForResponseCompletion =
+                    await this.dkgUsageContractsService.getDkgRequestsReadyForResponseCompletion();
+                const runs = await Promise.all([
+                    keysForRound1Finalization.length > 0
+                        ? this.dkgContractsService.finalizeRound1(
+                              keysForRound1Finalization[0].committeeId,
+                              keysForRound1Finalization[0].keyId,
+                          )
+                        : undefined,
+                    keysForRound2Finalization.length > 0
+                        ? this.dkgContractsService.finalizeRound2(
+                              keysForRound2Finalization[0].committeeId,
+                              keysForRound2Finalization[0].keyId,
+                          )
+                        : undefined,
+                    requestsForResponseCompletion.length > 0
+                        ? this.dkgUsageContractsService.completeResponse(
+                              requestsForResponseCompletion[0].requestId,
+                          )
+                        : undefined,
+                ]);
+                if (!runs.includes(true)) {
+                    await Promise.all([
+                        this.committeeContractService.rollup(),
+                        this.dkgContractsService.rollupDkg(),
+                        this.dkgContractsService.reduceRound1(),
+                        this.dkgContractsService.reduceRound2(),
+                        this.dkgUsageContractsService.reduceDkgResponse(),
+                        this.dkgUsageContractsService.rollupDkgRequest(),
+                    ]);
+                }
+                await job.progress();
+                this.logger.log('All contract rolluped successfully');
                 return {};
             });
         } catch (err) {

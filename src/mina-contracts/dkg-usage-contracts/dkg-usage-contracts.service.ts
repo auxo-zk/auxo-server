@@ -201,7 +201,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         await Utilities.compile(ResponseContract, cache, this.logger);
     }
 
-    async rollupDkgRequest() {
+    async rollupDkgRequest(): Promise<boolean> {
         const lastActiveRawDkgRequest = await this.rawDkgRequestModel.findOne(
             {
                 active: true,
@@ -311,10 +311,12 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 false,
                 this.logger,
             );
+            return true;
         }
+        return false;
     }
 
-    async reduceDkgResponse() {
+    async reduceDkgResponse(): Promise<boolean> {
         const lastActiveDkgResponse = await this.dkgResponseModel.findOne(
             { active: true },
             {},
@@ -391,8 +393,11 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 false,
                 this.logger,
             );
+            return true;
         }
+        return false;
     }
+
     async getDkgRequestsReadyForResponseCompletion(): Promise<DkgRequest[]> {
         const dkgRequests = await this.dkgRequestModel.find({
             status: RequestStatusEnum.REQUESTING,
@@ -412,7 +417,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         return result;
     }
 
-    async completeResponse(requestId: string) {
+    async completeResponse(requestId: string): Promise<boolean> {
         const dkgRequest = await this.dkgRequestModel.findOne({
             requestId: requestId,
             status: RequestStatusEnum.REQUESTING,
@@ -569,8 +574,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     false,
                     this.logger,
                 );
+                return true;
             }
         }
+        return false;
     }
 
     async fetchDkgRequestState(): Promise<DkgRequestState> {

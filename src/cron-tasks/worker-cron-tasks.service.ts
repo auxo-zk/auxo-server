@@ -20,19 +20,33 @@ export class WorkerCronTasksService implements OnModuleInit {
     }
 
     // 6 minutes
-    @Interval(360000)
-    async handleUpdateContracts() {
-        this.logger.log('Register updateContracts task at ' + process.pid);
-        this.contractServices.add('updateContracts', {
+    // @Interval(360000)
+    // async handleUpdateContracts() {
+    //     this.logger.log('Register updateContracts task at ' + process.pid);
+    //     this.contractServices.add('updateContracts', {
+    //         date: Date.now(),
+    //     });
+    // }
+
+    @Cron(CronExpression.EVERY_10_MINUTES)
+    async handleRollupContractsFirstOrder() {
+        this.logger.log(
+            'Register rollupContracts for the first order task at ' +
+                process.pid,
+        );
+        this.contractServices.add('rollupContractsFirstOrder', {
             date: Date.now(),
         });
     }
 
-    // @Cron(CronExpression.EVERY_10_MINUTES)
-    // async handleRollupContracts() {
-    //     this.logger.log('Register rollupContracts task at ' + process.pid);
-    //     this.contractServices.add('rollupContracts', {
-    //         date: Date.now(),
-    //     });
-    // }
+    @Cron('5,15,25,35,45,55 * * * *')
+    async handleRollupContractsSecondOrder() {
+        this.logger.log(
+            'Register rollupContracts for the second order task at ' +
+                process.pid,
+        );
+        this.contractServices.add('rollupContractsSecondOrder', {
+            date: Date.now(),
+        });
+    }
 }

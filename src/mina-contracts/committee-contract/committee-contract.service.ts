@@ -94,7 +94,7 @@ export class CommitteeContractService implements ContractServiceInterface {
         await Utilities.compile(CommitteeContract, cache, this.logger);
     }
 
-    async rollup() {
+    async rollup(): Promise<boolean> {
         const lastActiveCommittee = await this.committeeModel.findOne(
             { active: true },
             {},
@@ -200,7 +200,9 @@ export class CommitteeContractService implements ContractServiceInterface {
                 false,
                 this.logger,
             );
+            return true;
         }
+        return false;
     }
 
     async fetchCommitteeState(): Promise<CommitteeState> {

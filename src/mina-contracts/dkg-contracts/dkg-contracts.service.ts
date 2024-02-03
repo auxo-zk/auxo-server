@@ -234,7 +234,7 @@ export class DkgContractsService implements ContractServiceInterface {
         await Utilities.compile(Round2Contract, cache, this.logger);
     }
 
-    async rollupDkg() {
+    async rollupDkg(): Promise<boolean> {
         const lastActiveDkg = await this.dkgModel.findOne(
             { active: true },
             {},
@@ -431,10 +431,13 @@ export class DkgContractsService implements ContractServiceInterface {
                 false,
                 this.logger,
             );
+            return true;
+        } else {
+            return false;
         }
     }
 
-    async reduceRound1() {
+    async reduceRound1(): Promise<boolean> {
         const lastActiveRound1 = await this.round1Model.findOne(
             { active: true },
             {},
@@ -512,10 +515,12 @@ export class DkgContractsService implements ContractServiceInterface {
                 false,
                 this.logger,
             );
+            return true;
         }
+        return false;
     }
 
-    async reduceRound2() {
+    async reduceRound2(): Promise<boolean> {
         const lastActiveRound2 = await this.round2Model.findOne(
             { active: true },
             {},
@@ -588,7 +593,9 @@ export class DkgContractsService implements ContractServiceInterface {
                 false,
                 this.logger,
             );
+            return true;
         }
+        return false;
     }
 
     async getKeysReadyForRound1Finalization(): Promise<Key[]> {
@@ -613,7 +620,7 @@ export class DkgContractsService implements ContractServiceInterface {
         return result;
     }
 
-    async finalizeRound1(committeeId: number, keyId: number) {
+    async finalizeRound1(committeeId: number, keyId: number): Promise<boolean> {
         const key = await this.keyModel.findById(
             Utilities.getKeyObjectId(committeeId, keyId),
         );
@@ -802,8 +809,10 @@ export class DkgContractsService implements ContractServiceInterface {
                     false,
                     this.logger,
                 );
+                return true;
             }
         }
+        return false;
     }
 
     async getKeysReadyForRound2Finalization(): Promise<Key[]> {
@@ -828,7 +837,7 @@ export class DkgContractsService implements ContractServiceInterface {
         return result;
     }
 
-    async finalizeRound2(committeeId: number, keyId: number) {
+    async finalizeRound2(committeeId: number, keyId: number): Promise<boolean> {
         const key = await this.keyModel.findById(
             Utilities.getKeyObjectId(committeeId, keyId),
         );
@@ -1020,9 +1029,12 @@ export class DkgContractsService implements ContractServiceInterface {
                     false,
                     this.logger,
                 );
+                return true;
             }
         }
+        return false;
     }
+
     async fetchDkgState(): Promise<DkgState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.DKG_ADDRESS,
