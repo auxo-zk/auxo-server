@@ -123,8 +123,8 @@ export class ProjectContractService implements ContractServiceInterface {
             const notActiveProjects = await this.projectModel.find(
                 {
                     projectId: {
-                        $gt: lastReducedAction
-                            ? lastReducedAction.actionId
+                        $gt: lastActiveProject
+                            ? lastActiveProject.projectId
                             : -1,
                     },
                 },

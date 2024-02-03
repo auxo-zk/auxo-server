@@ -57,3 +57,25 @@ export interface ProjectState {
     payee: Field;
     actionState: Field;
 }
+export interface ParticipationState {
+    index: Field;
+    info: Field;
+    counter: Field;
+    zkApp: Field;
+    actionState: Field;
+}
+
+export interface FundingState {
+    actionState: Field;
+    actionStatus: Field;
+    R: Field;
+    M: Field;
+    requestId: Field;
+    zkApp: Field;
+}
+
+export interface TreasuryState {
+    claimed: Field;
+    zkApp: Field;
+    actionState: Field;
+}

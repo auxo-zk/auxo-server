@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -10,12 +10,22 @@ import { Action } from 'src/interfaces/action.interface';
 import { Field, Provable, PublicKey, Reducer } from 'o1js';
 import { Participation } from 'src/schemas/participation.schema';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { Constants, Storage } from '@auxo-dev/platform';
+import {
+    Constants,
+    JoinCampaign,
+    ParticipationContract,
+    Storage,
+    ZkApp,
+} from '@auxo-dev/platform';
 import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
+import { zkAppCache } from 'src/constants';
+import { Utilities } from '../utilities';
+import { ParticipationState } from 'src/interfaces/zkapp-state.interface';
 
 @Injectable()
 export class ParticipationContractService implements ContractServiceInterface {
+    private readonly logger = new Logger(ParticipationContractService.name);
     private readonly _counter: Storage.ParticipationStorage.CounterStorage;
     private readonly _index: Storage.ParticipationStorage.IndexStorage;
     private readonly _info: Storage.ParticipationStorage.InfoStorage;
@@ -115,6 +125,106 @@ export class ParticipationContractService implements ContractServiceInterface {
             await this.updateParticipations();
         } catch (err) {}
     }
+
+    async compile() {
+        const cache = zkAppCache;
+        await Utilities.compile(JoinCampaign, cache, this.logger);
+        await Utilities.compile(ParticipationContract, cache, this.logger);
+    }
+
+    async fetchParticipationState(): Promise<ParticipationState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.PARTICIPATION_ADDRESS,
+        );
+        return {
+            index: Field(state[0]),
+            info: Field(state[1]),
+            counter: Field(state[2]),
+            zkApp: Field(state[3]),
+            actionState: Field(state[4]),
+        };
+    }
+
+    // async rollupParticipation() {
+    //     const lastActiveParticipation = await this.participationModel.findOne(
+    //         { active: true },
+    //         {},
+    //         { sort: { actionId: -1 } },
+    //     );
+    //     const lastReducedAction = lastActiveParticipation
+    //         ? await this.participationActionModel.findOne({
+    //               actionId: lastActiveParticipation.actionId,
+    //           })
+    //         : undefined;
+    //     const notReducedActions = await this.participationActionModel.find(
+    //         {
+    //             actionId: {
+    //                 $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+    //             },
+    //         },
+    //         {},
+    //         { sort: { actionId: 1 } },
+    //     );
+    //     if (notReducedActions.length > 0) {
+    //         const notActiveParticipations = await this.participationModel.find(
+    //             {
+    //                 projectId: {
+    //                     $gt: lastActiveParticipation
+    //                         ? lastActiveParticipation.actionId
+    //                         : -1,
+    //                 },
+    //             },
+    //             {},
+    //             { sort: { actionId: 1 } },
+    //         );
+    //         const state = await this.fetchParticipationState();
+    //         let proof = await JoinCampaign.firstStep(
+    //             state.index,
+    //             state.info,
+    //             state.counter,
+    //             lastReducedAction
+    //                 ? Field(lastReducedAction.currentActionState)
+    //                 : Reducer.initialActionState,
+    //         );
+    //         const index = this._index;
+    //         const info = this._info;
+    //         const counter = this._counter;
+    //         for (let i = 0; i < notReducedActions.length; i++) {
+    //             const notReducedAction = notReducedActions[i];
+    //             const notActiveParticipation = notActiveParticipations[i];
+    //             proof = await JoinCampaign.joinCampaign(
+    //                 proof,
+    //                 ZkApp.Participation.ParticipationAction.fromFields(
+    //                     Utilities.stringArrayToFields(notReducedAction.actions),
+    //                 ),
+    //                 index.getLevel1Witness(
+    //                     index.calculateLevel1Index({
+    //                         campaignId: Field(
+    //                             notActiveParticipation.campaignId,
+    //                         ),
+    //                         projectId: Field(notActiveParticipation.projectId),
+    //                     }),
+    //                 ),
+    //                 info.getLevel1Witness(
+    //                     info.calculateLevel1Index({
+    //                         campaignId: Field(
+    //                             notActiveParticipation.campaignId,
+    //                         ),
+    //                         projectId: Field(notActiveParticipation.projectId),
+    //                     }),
+    //                 ),
+    //                 Field(0),
+    //                 counter.getLevel1Witness(
+    //                     counter.calculateLevel1Index(
+    //                         Field(notActiveParticipation.campaignId),
+    //                     ),
+    //                 ),
+    //             );
+    //         }
+    //     }
+    // }
+
+    // ====== PRIVATE FUNCTIONS =====
 
     private async fetchParticipationActions() {
         const lastAction = await this.participationActionModel.findOne(
