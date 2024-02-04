@@ -430,7 +430,7 @@ export class ParticipationContractService implements ContractServiceInterface {
                 const counterLeaf = this._counter.calculateLeaf(
                     Field(projects.length),
                 );
-                this._counter.updateLeaf(counterLeaf, level1Index);
+                this._counter.updateLeaf(level1Index, counterLeaf);
                 for (let j = 0; j < projects.length; j++) {
                     const project = projects[j];
                     const index = this._index.calculateLevel1Index({
@@ -438,11 +438,11 @@ export class ParticipationContractService implements ContractServiceInterface {
                         projectId: Field(project.projectId),
                     });
                     const indexLeaf = this._index.calculateLeaf(Field(j + 1));
-                    this._index.updateLeaf(indexLeaf, index);
+                    this._index.updateLeaf(index, indexLeaf);
                     const infoLeaf = this._info.calculateLeaf(
                         IPFSHash.fromString(project.ipfsHash),
                     );
-                    this._info.updateLeaf(infoLeaf, index);
+                    this._info.updateLeaf(index, infoLeaf);
                 }
             }
         } catch (err) {}

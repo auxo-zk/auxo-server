@@ -214,11 +214,11 @@ export class TreasuryContractService implements ContractServiceInterface {
                 for (let j = 0; j < projects.length; j++) {
                     const projectId = projects[j].projectId;
                     this._claimed.updateLeaf(
-                        this._claimed.calculateLeaf(Bool(true)),
                         this._claimed.calculateLevel1Index({
                             campaignId: Field(campaignId),
                             projectId: Field(projectId),
                         }),
+                        this._claimed.calculateLeaf(Bool(true)),
                     );
                 }
             }
