@@ -7,7 +7,7 @@ import {
 } from 'src/schemas/actions/participation-action.schema';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
-import { Field, Provable, PublicKey, Reducer } from 'o1js';
+import { Field, Mina, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
 import { Participation } from 'src/schemas/participation.schema';
 import { Ipfs } from 'src/ipfs/ipfs';
 import {
@@ -145,84 +145,168 @@ export class ParticipationContractService implements ContractServiceInterface {
         };
     }
 
-    // async rollupParticipation() {
-    //     const lastActiveParticipation = await this.participationModel.findOne(
-    //         { active: true },
-    //         {},
-    //         { sort: { actionId: -1 } },
-    //     );
-    //     const lastReducedAction = lastActiveParticipation
-    //         ? await this.participationActionModel.findOne({
-    //               actionId: lastActiveParticipation.actionId,
-    //           })
-    //         : undefined;
-    //     const notReducedActions = await this.participationActionModel.find(
-    //         {
-    //             actionId: {
-    //                 $gt: lastReducedAction ? lastReducedAction.actionId : -1,
-    //             },
-    //         },
-    //         {},
-    //         { sort: { actionId: 1 } },
-    //     );
-    //     if (notReducedActions.length > 0) {
-    //         const notActiveParticipations = await this.participationModel.find(
-    //             {
-    //                 projectId: {
-    //                     $gt: lastActiveParticipation
-    //                         ? lastActiveParticipation.actionId
-    //                         : -1,
-    //                 },
-    //             },
-    //             {},
-    //             { sort: { actionId: 1 } },
-    //         );
-    //         const state = await this.fetchParticipationState();
-    //         let proof = await JoinCampaign.firstStep(
-    //             state.index,
-    //             state.info,
-    //             state.counter,
-    //             lastReducedAction
-    //                 ? Field(lastReducedAction.currentActionState)
-    //                 : Reducer.initialActionState,
-    //         );
-    //         const index = this._index;
-    //         const info = this._info;
-    //         const counter = this._counter;
-    //         for (let i = 0; i < notReducedActions.length; i++) {
-    //             const notReducedAction = notReducedActions[i];
-    //             const notActiveParticipation = notActiveParticipations[i];
-    //             proof = await JoinCampaign.joinCampaign(
-    //                 proof,
-    //                 ZkApp.Participation.ParticipationAction.fromFields(
-    //                     Utilities.stringArrayToFields(notReducedAction.actions),
-    //                 ),
-    //                 index.getLevel1Witness(
-    //                     index.calculateLevel1Index({
-    //                         campaignId: Field(
-    //                             notActiveParticipation.campaignId,
-    //                         ),
-    //                         projectId: Field(notActiveParticipation.projectId),
-    //                     }),
-    //                 ),
-    //                 info.getLevel1Witness(
-    //                     info.calculateLevel1Index({
-    //                         campaignId: Field(
-    //                             notActiveParticipation.campaignId,
-    //                         ),
-    //                         projectId: Field(notActiveParticipation.projectId),
-    //                     }),
-    //                 ),
-    //                 Field(0),
-    //                 counter.getLevel1Witness(
-    //                     counter.calculateLevel1Index(
-    //                         Field(notActiveParticipation.campaignId),
-    //                     ),
-    //                 ),
-    //             );
-    //         }
-    //     }
-    // }
+    async rollupParticipation(): Promise<boolean> {
+        const lastActiveParticipation = await this.participationModel.findOne(
+            { active: true },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const lastReducedAction = lastActiveParticipation
+            ? await this.participationActionModel.findOne({
+                  actionId: lastActiveParticipation.actionId,
+              })
+            : undefined;
+        const notReducedActions = await this.participationActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+                },
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
+            const notActiveParticipations = await this.participationModel.find(
+                {
+                    projectId: {
+                        $gt: lastActiveParticipation
+                            ? lastActiveParticipation.actionId
+                            : -1,
+                    },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            const state = await this.fetchParticipationState();
+            let proof = await JoinCampaign.firstStep(
+                state.index,
+                state.info,
+                state.counter,
+                lastReducedAction
+                    ? Field(lastReducedAction.currentActionState)
+                    : Reducer.initialActionState,
+            );
+            const index = this._index;
+            const info = this._info;
+            const counter = this._counter;
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                const notActiveParticipation = notActiveParticipations[i];
+                const projectIndex =
+                    (
+                        await this.participationModel.aggregate([
+                            // Step 1: Filter by campaignId
+                            {
+                                $match: {
+                                    campaignId:
+                                        notActiveParticipation.campaignId,
+                                },
+                            },
+                            // Step 2: Sort by actionId
+                            {
+                                $sort: {
+                                    actionId: 1,
+                                },
+                            },
+                            // Step 3: Group and collect actionIds into an array
+                            {
+                                $group: {
+                                    _id: '$campaignId',
+                                    actionIds: {
+                                        $push: '$actionId',
+                                    },
+                                },
+                            },
+                            // Step 4: Project the index of your actionId in the array
+                            {
+                                $project: {
+                                    order: {
+                                        $indexOfArray: [
+                                            '$actionIds',
+                                            notActiveParticipation.actionId,
+                                        ],
+                                    },
+                                },
+                            },
+                        ])
+                    )[0]['order'] + 1;
+                proof = await JoinCampaign.joinCampaign(
+                    proof,
+                    ZkApp.Participation.ParticipationAction.fromFields(
+                        Utilities.stringArrayToFields(notReducedAction.actions),
+                    ),
+                    index.getLevel1Witness(
+                        index.calculateLevel1Index({
+                            campaignId: Field(
+                                notActiveParticipation.campaignId,
+                            ),
+                            projectId: Field(notActiveParticipation.projectId),
+                        }),
+                    ),
+                    info.getLevel1Witness(
+                        info.calculateLevel1Index({
+                            campaignId: Field(
+                                notActiveParticipation.campaignId,
+                            ),
+                            projectId: Field(notActiveParticipation.projectId),
+                        }),
+                    ),
+                    Field(projectIndex - 1),
+                    counter.getLevel1Witness(
+                        counter.calculateLevel1Index(
+                            Field(notActiveParticipation.campaignId),
+                        ),
+                    ),
+                );
+
+                index.updateLeaf(
+                    index.calculateLevel1Index({
+                        campaignId: Field(notActiveParticipation.campaignId),
+                        projectId: Field(notActiveParticipation.projectId),
+                    }),
+                    index.calculateLeaf(Field(projectIndex)),
+                );
+                info.updateLeaf(
+                    info.calculateLevel1Index({
+                        campaignId: Field(notActiveParticipation.campaignId),
+                        projectId: Field(notActiveParticipation.projectId),
+                    }),
+                    info.calculateLeaf(
+                        IPFSHash.fromString(notActiveParticipation.ipfsHash),
+                    ),
+                );
+                counter.updateLeaf(
+                    counter.calculateLevel1Index(
+                        Field(notActiveParticipation.campaignId),
+                    ),
+                    counter.calculateLeaf(Field(projectIndex)),
+                );
+            }
+            const participationContract = new ParticipationContract(
+                PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    participationContract.rollup(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+            return true;
+        }
+        return false;
+    }
 
     // ====== PRIVATE FUNCTIONS =====
 
