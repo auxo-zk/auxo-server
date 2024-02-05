@@ -53,10 +53,14 @@ export class QueryService {
     }
 
     async fetchZkAppState(publicKey: string): Promise<Field[]> {
-        const result = await fetchAccount({
-            publicKey: publicKey,
-        });
-        const account = result.account;
-        return account.zkapp.appState;
+        try {
+            const result = await fetchAccount({
+                publicKey: publicKey,
+            });
+            const account = result.account;
+            return account.zkapp.appState;
+        } catch (err) {
+            throw err;
+        }
     }
 }
