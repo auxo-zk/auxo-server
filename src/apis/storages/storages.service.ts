@@ -786,6 +786,24 @@ export class StoragesService {
         return this.fundingContractService.zkApp.addresses;
     }
 
+    getFundingReduceTree(): { [key: string]: MerkleLeaf } {
+        const indexes = this.fundingContractService.reduceActions;
+        const result: { [key: string]: MerkleLeaf } = {};
+        for (let i = 0; i < indexes.length; i++) {
+            result[indexes[i].toString()] =
+                this.fundingContractService.reduceState
+                    .getWitness(indexes[i])
+                    .toJSON();
+        }
+        return result;
+    }
+
+    getFundingReduceTreeLeafs(): {
+        [key: string]: any;
+    } {
+        return this.fundingContractService.reduceState.actions;
+    }
+
     getTreasuryClaimedTreeLevel1(): MerkleLeaf[] {
         const leafCount = this.treasuryContractService.claimed.level1.leafCount;
         const result: MerkleLeaf[] = [];

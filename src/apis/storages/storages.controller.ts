@@ -493,6 +493,18 @@ export class StoragesController {
         return this.storagesService.getFundingZkAppTreeLeafs();
     }
 
+    @Get('funding/reduce')
+    @ApiTags('Storage Funding')
+    getFundingReduceTree(): { [key: string]: MerkleLeaf } {
+        return this.storagesService.getFundingReduceTree();
+    }
+
+    @Get('funding/reduce/leafs')
+    @ApiTags('Storage Funding')
+    getFundingReduceTreeLeafs(): { [key: string]: any } {
+        return this.storagesService.getFundingReduceTreeLeafs();
+    }
+
     @Get('treasury/claimed/level1')
     @ApiTags('Storage Treasury')
     getTreasuryClaimedTreeLevel1(): MerkleLeaf[] {
