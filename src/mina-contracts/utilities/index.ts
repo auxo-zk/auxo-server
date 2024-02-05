@@ -38,10 +38,14 @@ export class Utilities {
         cache?: Cache,
         logger?: Logger,
     ): Promise<void> {
-        if (logger) logger.debug(`Compiling ${prg.name}...`);
-        if (cache) await prg.compile({ cache });
-        else await prg.compile();
-        if (logger) logger.debug(`Compiled ${prg.name} successfully`);
+        try {
+            if (logger) logger.debug(`Compiling ${prg.name}...`);
+            if (cache) await prg.compile({ cache });
+            else await prg.compile();
+            if (logger) logger.debug(`Compiled ${prg.name} successfully`);
+        } catch (err) {
+            throw err;
+        }
     }
 
     static async proveAndSend(
@@ -50,33 +54,38 @@ export class Utilities {
         waitForSuccess = false,
         logger?: Logger,
     ) {
-        let retries = 3; // Number of retries
-        let res;
-        while (retries > 0) {
-            try {
-                await tx.prove();
-                res = await tx.sign([feePayer]).send();
-                if (logger) logger.debug('Tx sent! Hash: ' + res.hash() || '');
-                break; // Exit the loop if successful
-            } catch (error) {
-                if (logger) logger.error('Error: ' + error);
-                retries--; // Decrement the number of retries
-                if (retries === 0) {
-                    if (logger) logger.debug('Tx can not be sent');
-                    break;
+        try {
+            let retries = 3; // Number of retries
+            let res;
+            while (retries > 0) {
+                try {
+                    await tx.prove();
+                    res = await tx.sign([feePayer]).send();
+                    if (logger)
+                        logger.debug('Tx sent! Hash: ' + res.hash() || '');
+                    break; // Exit the loop if successful
+                } catch (error) {
+                    if (logger) logger.error('Error: ' + error);
+                    retries--; // Decrement the number of retries
+                    if (retries === 0) {
+                        if (logger) logger.debug('Tx can not be sent');
+                        break;
+                    }
+                    if (logger)
+                        logger.debug(`Retrying... (${retries} retries left)`);
                 }
-                if (logger)
-                    logger.debug(`Retrying... (${retries} retries left)`);
             }
-        }
-        if (res && waitForSuccess) {
-            try {
-                if (logger) logger.debug('Waiting for tx to succeed...');
-                await res.wait();
-                if (logger) logger.debug('Tx succeeded!');
-            } catch (error) {
-                if (logger) logger.error('Error:', error);
+            if (res && waitForSuccess) {
+                try {
+                    if (logger) logger.debug('Waiting for tx to succeed...');
+                    await res.wait();
+                    if (logger) logger.debug('Tx succeeded!');
+                } catch (error) {
+                    if (logger) logger.error('Error:', error);
+                }
             }
+        } catch (err) {
+            throw err;
         }
     }
 }
