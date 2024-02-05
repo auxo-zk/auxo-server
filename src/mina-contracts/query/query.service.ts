@@ -20,17 +20,21 @@ export class QueryService {
         from?: number,
         to?: number,
     ): Promise<Event[]> {
-        const events = await fetchEvents(
-            {
-                publicKey: publicKey,
-            },
-            undefined,
-            {
-                from: from == undefined ? undefined : UInt32.from(from),
-                to: to == undefined ? undefined : UInt32.from(to),
-            },
-        );
-        return events;
+        try {
+            const events = await fetchEvents(
+                {
+                    publicKey: publicKey,
+                },
+                undefined,
+                {
+                    from: from == undefined ? undefined : UInt32.from(from),
+                    to: to == undefined ? undefined : UInt32.from(to),
+                },
+            );
+            return events;
+        } catch (err) {
+            throw err;
+        }
     }
 
     async fetchActions(
@@ -38,10 +42,14 @@ export class QueryService {
         fromActionState?: Field,
         endActionState?: Field,
     ): Promise<Action[]> {
-        return (await Mina.fetchActions(PublicKey.fromBase58(publicKey), {
-            fromActionState: fromActionState,
-            endActionState: endActionState,
-        })) as Action[];
+        try {
+            return (await Mina.fetchActions(PublicKey.fromBase58(publicKey), {
+                fromActionState: fromActionState,
+                endActionState: endActionState,
+            })) as Action[];
+        } catch (err) {
+            throw err;
+        }
     }
 
     async fetchAccountBalance(publicKey: string): Promise<UInt64> {
