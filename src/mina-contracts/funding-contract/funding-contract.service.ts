@@ -26,6 +26,7 @@ import {
     Constants,
     CreateReduceProof,
     FundingContract,
+    ProofRollupAction,
     Storage,
     ZkApp,
 } from '@auxo-dev/platform';
@@ -159,6 +160,7 @@ export class FundingContractService implements ContractServiceInterface {
 
     async compile() {
         const cache = zkAppCache;
+        await Utilities.compile(ProofRollupAction, cache, this.logger);
         await Utilities.compile(CreateReduceProof, cache, this.logger);
         await Utilities.compile(FundingContract, cache, this.logger);
     }
