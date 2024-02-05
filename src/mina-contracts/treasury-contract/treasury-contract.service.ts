@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -8,12 +8,30 @@ import {
 import { Model } from 'mongoose';
 import { Treasury } from 'src/schemas/treasury.schema';
 import { Action } from 'src/interfaces/action.interface';
-import { Bool, Field, Provable, PublicKey, Reducer } from 'o1js';
-import { Constants, Storage } from '@auxo-dev/platform';
+import {
+    Bool,
+    Field,
+    Mina,
+    PrivateKey,
+    Provable,
+    PublicKey,
+    Reducer,
+} from 'o1js';
+import {
+    ClaimFund,
+    Constants,
+    Storage,
+    TreasuryContract,
+    ZkApp,
+} from '@auxo-dev/platform';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
+import { zkAppCache } from 'src/constants';
+import { Utilities } from '../utilities';
+import { TreasuryState } from 'src/interfaces/zkapp-state.interface';
 
 @Injectable()
 export class TreasuryContractService implements ContractServiceInterface {
+    private readonly logger = new Logger(TreasuryContractService.name);
     private readonly _claimed: Storage.TreasuryStorage.ClaimedStorage;
     private readonly _zkApp: Storage.SharedStorage.AddressStorage;
 
@@ -102,6 +120,118 @@ export class TreasuryContractService implements ContractServiceInterface {
             await this.updateTreasuries();
         } catch (err) {}
     }
+
+    async compile() {
+        const cache = zkAppCache;
+        await Utilities.compile(ClaimFund, cache, this.logger);
+        await Utilities.compile(TreasuryContract, cache, this.logger);
+    }
+
+    async fetchTreasuryState(): Promise<TreasuryState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.TREASURY_ADDRESS,
+        );
+        return {
+            claimed: Field(state[0]),
+            zkApp: Field(state[1]),
+            actionState: Field(state[2]),
+        };
+    }
+
+    async rollup() {
+        const lastActiveTreasury = await this.treasuryModel.findOne(
+            {
+                active: true,
+            },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const lastReducedAction = lastActiveTreasury
+            ? await this.treasuryActionModel.findOne({
+                  actionId: lastActiveTreasury.actionId,
+              })
+            : undefined;
+        const notReducedActions = await this.treasuryActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+                },
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
+            const treasuryState = await this.fetchTreasuryState();
+            const notActiveTreasuries = await this.treasuryModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
+                    },
+                },
+                {},
+                {
+                    sort: {
+                        actionId: 1,
+                    },
+                },
+            );
+            let proof = await ClaimFund.firstStep(
+                treasuryState.claimed,
+                treasuryState.actionState,
+            );
+            const claimed = await this._claimed;
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                const notActiveTreasury = notActiveTreasuries[i];
+                proof = await ClaimFund.nextStep(
+                    proof,
+                    ZkApp.Treasury.TreasuryAction.fromFields(
+                        Utilities.stringArrayToFields(notReducedAction.actions),
+                    ),
+                    claimed.getWitness(
+                        claimed.calculateLevel1Index({
+                            campaignId: Field(notActiveTreasury.campaignId),
+                            projectId: Field(notActiveTreasury.projectId),
+                        }),
+                    ),
+                );
+                claimed.updateLeaf(
+                    claimed.calculateLevel1Index({
+                        campaignId: Field(notActiveTreasury.campaignId),
+                        projectId: Field(notActiveTreasury.projectId),
+                    }),
+                    claimed.calculateLeaf(Bool(true)),
+                );
+            }
+            const treasuryContract = new TreasuryContract(
+                PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    treasuryContract.rollup(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+            return true;
+        }
+        return false;
+    }
+
+    // ===== PRIVATE FUNCTIONS ========
 
     async fetchTreasuryActions() {
         const lastAction = await this.treasuryActionModel.findOne(

@@ -190,21 +190,25 @@ export class FundingContractService implements ContractServiceInterface {
                   actionId: lastActiveFunding.actionId,
               })
             : undefined;
-        const notReducedActions = await this.fundingActionModel.find({
-            actionId: {
-                $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+        const notReducedActions = await this.fundingActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+                },
             },
-        });
+            {},
+            { sort: { actionId: 1 } },
+        );
         if (notReducedActions.length > 0) {
             const fundingState = await this.fetchFundingState();
-            const proof = await CreateReduceProof.firstStep(
+            let proof = await CreateReduceProof.firstStep(
                 fundingState.actionState,
                 fundingState.reduceState,
             );
             const reduceState = this._reduceState;
             for (let i = 0; i < notReducedActions.length; i++) {
                 const notReducedAction = notReducedActions[i];
-                await CreateReduceProof.nextStep(
+                proof = await CreateReduceProof.nextStep(
                     proof,
                     ZkApp.Funding.FundingAction.fromFields(
                         Utilities.stringArrayToFields(notReducedAction.actions),
