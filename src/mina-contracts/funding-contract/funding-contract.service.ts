@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -7,34 +7,68 @@ import {
 } from 'src/schemas/actions/funding-action.schema';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
-import { Field, Group, Provable, PublicKey, Reducer } from 'o1js';
+import {
+    Field,
+    Group,
+    Mina,
+    PrivateKey,
+    Provable,
+    PublicKey,
+    Reducer,
+} from 'o1js';
 import { Funding } from 'src/schemas/funding.schema';
-import { FundingEventEnum } from 'src/constants';
-import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
+import {
+    ActionReduceStatusEnum,
+    FundingEventEnum,
+    zkAppCache,
+} from 'src/constants';
+import {
+    Constants,
+    CreateReduceProof,
+    FundingContract,
+    Storage,
+    ZkApp,
+} from '@auxo-dev/platform';
 import { ZkApp as DkgZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { FundingResult } from 'src/schemas/funding-result.schema';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
+import { FundingState } from 'src/interfaces/zkapp-state.interface';
 
 @Injectable()
 export class FundingContractService implements ContractServiceInterface {
+    private readonly logger = new Logger(FundingContractService.name);
     private readonly _totalM: Storage.FundingStorage.ValueStorage;
     private readonly _totalR: Storage.FundingStorage.ValueStorage;
     private readonly _requestId: Storage.FundingStorage.RequestIdStorage;
     private readonly _zkApp: Storage.SharedStorage.AddressStorage;
+    private readonly _reduceState: Storage.SharedStorage.ReduceStorage;
+    private readonly _reduceActions: Field[];
 
     public get totalM(): Storage.FundingStorage.ValueStorage {
         return this._totalM;
     }
+
     public get totalR(): Storage.FundingStorage.ValueStorage {
         return this._totalR;
     }
+
     public get requestId(): Storage.FundingStorage.RequestIdStorage {
         return this._requestId;
     }
+
     public get zkApp(): Storage.SharedStorage.AddressStorage {
         return this._zkApp;
     }
+
+    public get reduceState(): Storage.SharedStorage.ReduceStorage {
+        return this._reduceState;
+    }
+
+    public get reduceActions(): Field[] {
+        return this._reduceActions;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(FundingAction.name)
@@ -95,6 +129,8 @@ export class FundingContractService implements ContractServiceInterface {
                 address: PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
             },
         ]);
+        this._reduceState = new Storage.SharedStorage.ReduceStorage();
+        this._reduceActions = [];
     }
 
     async onModuleInit() {
@@ -120,6 +156,98 @@ export class FundingContractService implements ContractServiceInterface {
             console.log(err);
         }
     }
+
+    async compile() {
+        const cache = zkAppCache;
+        await Utilities.compile(CreateReduceProof, cache, this.logger);
+        await Utilities.compile(FundingContract, cache, this.logger);
+    }
+
+    async fetchFundingState(): Promise<FundingState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.FUNDING_CONTRACT,
+        );
+        return {
+            actionState: Field(state[0]),
+            reduceState: Field(state[1]),
+            R: Field(state[2]),
+            M: Field(state[3]),
+            requestId: Field(state[4]),
+            zkApp: Field(state[5]),
+        };
+    }
+
+    async reduce(): Promise<boolean> {
+        const lastActiveFunding = await this.fundingModel.findOne(
+            {
+                active: true,
+            },
+            {},
+            { sort: { actionId: -1 } },
+        );
+        const lastReducedAction = lastActiveFunding
+            ? await this.fundingActionModel.findOne({
+                  actionId: lastActiveFunding.actionId,
+              })
+            : undefined;
+        const notReducedActions = await this.fundingActionModel.find({
+            actionId: {
+                $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+            },
+        });
+        if (notReducedActions.length > 0) {
+            const fundingState = await this.fetchFundingState();
+            const proof = await CreateReduceProof.firstStep(
+                fundingState.actionState,
+                fundingState.reduceState,
+            );
+            const reduceState = this._reduceState;
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                await CreateReduceProof.nextStep(
+                    proof,
+                    ZkApp.Funding.FundingAction.fromFields(
+                        Utilities.stringArrayToFields(notReducedAction.actions),
+                    ),
+                    reduceState.getWitness(
+                        Field(notReducedAction.currentActionState),
+                    ),
+                );
+                reduceState.updateLeaf(
+                    Field(notReducedAction.currentActionState),
+                    reduceState.calculateLeaf(
+                        Number(ActionReduceStatusEnum.REDUCED),
+                    ),
+                );
+            }
+            const fundingContract = new FundingContract(
+                PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                },
+                () => {
+                    fundingContract.reduce(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+            return true;
+        }
+        return false;
+    }
+    async getCampaignsReadyForRollup() {}
+
+    async rollup(campaignId: number) {}
 
     private async fetchFundingActions() {
         const lastAction = await this.fundingActionModel.findOne(
@@ -281,6 +409,32 @@ export class FundingContractService implements ContractServiceInterface {
 
     async updateMerkleTrees() {
         try {
+            const lastActiveFunding = await this.fundingModel.findOne(
+                {
+                    active: true,
+                },
+                {},
+                { sort: { actionId: -1 } },
+            );
+            const fundingActions: FundingAction[] = lastActiveFunding
+                ? await this.fundingActionModel.find({
+                      actionId: {
+                          $lte: lastActiveFunding.actionId,
+                      },
+                  })
+                : [];
+            fundingActions.map((action) => {
+                this._reduceActions.push(Field(action.currentActionState));
+                this._reduceState.updateLeaf(
+                    this._reduceState.calculateIndex(
+                        Field(action.currentActionState),
+                    ),
+                    this._reduceState.calculateLeaf(
+                        Number(ActionReduceStatusEnum.REDUCED),
+                    ),
+                );
+            });
+
             const fundingResults = await this.fundingResultModel.find({});
             for (let i = 0; i < fundingResults.length; i++) {
                 const fundingResult = fundingResults[i];

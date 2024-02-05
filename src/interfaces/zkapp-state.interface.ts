@@ -67,7 +67,7 @@ export interface ParticipationState {
 
 export interface FundingState {
     actionState: Field;
-    actionStatus: Field;
+    reduceState: Field;
     R: Field;
     M: Field;
     requestId: Field;
