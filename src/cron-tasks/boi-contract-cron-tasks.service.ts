@@ -4,11 +4,11 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 
 @Injectable()
-export class WorkerCronTasksService implements OnModuleInit {
-    private readonly logger = new Logger(WorkerCronTasksService.name);
+export class BoiContractCronTasksService implements OnModuleInit {
+    private readonly logger = new Logger(BoiContractCronTasksService.name);
 
     constructor(
-        @InjectQueue('worker-contract-services')
+        @InjectQueue('boi-contract-services')
         private readonly contractServices: Queue,
     ) {}
 
@@ -39,14 +39,14 @@ export class WorkerCronTasksService implements OnModuleInit {
         });
     }
 
-    @Cron('5,15,25,35,45,55 * * * *')
-    async handleRollupContractsSecondOrder() {
-        this.logger.log(
-            'Register rollupContracts for the second order task at ' +
-                process.pid,
-        );
-        this.contractServices.add('rollupContractsSecondOrder', {
-            date: Date.now(),
-        });
-    }
+    // @Cron('5,15,25,35,45,55 * * * *')
+    // async handleRollupContractsSecondOrder() {
+    //     this.logger.log(
+    //         'Register rollupContracts for the second order task at ' +
+    //             process.pid,
+    //     );
+    //     this.contractServices.add('rollupContractsSecondOrder', {
+    //         date: Date.now(),
+    //     });
+    // }
 }

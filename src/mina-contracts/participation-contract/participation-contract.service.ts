@@ -145,7 +145,7 @@ export class ParticipationContractService implements ContractServiceInterface {
         };
     }
 
-    async rollupParticipation(): Promise<boolean> {
+    async rollup(): Promise<boolean> {
         const lastActiveParticipation = await this.participationModel.findOne(
             { active: true },
             {},

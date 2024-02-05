@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MinaContractsModule } from './mina-contracts/mina-contracts.module';
-import { WorkerCronTasksService } from './cron-tasks/worker-cron-tasks.service';
 import { BullModule } from '@nestjs/bull';
-import { WorkerContractServicesConsumer } from './consumers/worker-contract-services.consumer';
+import { BoiContractCronTasksService } from './cron-tasks/boi-contract-cron-tasks.service';
+import { BoiContractServicesConsumer } from './consumers/boi-contract-services.consumer';
 
 @Module({
     imports: [
@@ -22,9 +22,9 @@ import { WorkerContractServicesConsumer } from './consumers/worker-contract-serv
             }),
         }),
         BullModule.registerQueue({
-            name: 'worker-contract-services',
+            name: 'boi-contract-services',
         }),
     ],
-    providers: [WorkerCronTasksService, WorkerContractServicesConsumer],
+    providers: [BoiContractCronTasksService, BoiContractServicesConsumer],
 })
-export class WorkerModule {}
+export class BoiContractWorkerModule {}

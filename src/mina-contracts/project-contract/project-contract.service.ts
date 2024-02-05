@@ -99,7 +99,7 @@ export class ProjectContractService implements ContractServiceInterface {
         return result;
     }
 
-    async rollupProject() {
+    async rollup() {
         const lastActiveProject = await this.projectModel.findOne(
             { active: true },
             {},

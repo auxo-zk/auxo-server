@@ -157,7 +157,7 @@ export class CampaignContractService implements ContractServiceInterface {
         return result;
     }
 
-    async rollupCampaign() {
+    async rollup() {
         const lastActiveCampaign = await this.campaignModel.findOne(
             { active: true },
             {},
