@@ -10,6 +10,7 @@ import {
 } from 'o1js';
 import { Event } from '../../interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
+import { MaxRetries } from 'src/constants';
 
 @Injectable()
 export class QueryService {
@@ -20,20 +21,22 @@ export class QueryService {
         from?: number,
         to?: number,
     ): Promise<Event[]> {
-        try {
-            const events = await fetchEvents(
-                {
-                    publicKey: publicKey,
-                },
-                undefined,
-                {
-                    from: from == undefined ? undefined : UInt32.from(from),
-                    to: to == undefined ? undefined : UInt32.from(to),
-                },
-            );
-            return events;
-        } catch (err) {
-            throw err;
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                const events = await fetchEvents(
+                    {
+                        publicKey: publicKey,
+                    },
+                    undefined,
+                    {
+                        from: from == undefined ? undefined : UInt32.from(from),
+                        to: to == undefined ? undefined : UInt32.from(to),
+                    },
+                );
+                return events;
+            } catch (err) {
+                throw err;
+            }
         }
     }
 
@@ -42,13 +45,18 @@ export class QueryService {
         fromActionState?: Field,
         endActionState?: Field,
     ): Promise<Action[]> {
-        try {
-            return (await Mina.fetchActions(PublicKey.fromBase58(publicKey), {
-                fromActionState: fromActionState,
-                endActionState: endActionState,
-            })) as Action[];
-        } catch (err) {
-            throw err;
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                return (await Mina.fetchActions(
+                    PublicKey.fromBase58(publicKey),
+                    {
+                        fromActionState: fromActionState,
+                        endActionState: endActionState,
+                    },
+                )) as Action[];
+            } catch (err) {
+                throw err;
+            }
         }
     }
 
@@ -61,14 +69,16 @@ export class QueryService {
     }
 
     async fetchZkAppState(publicKey: string): Promise<Field[]> {
-        try {
-            const result = await fetchAccount({
-                publicKey: publicKey,
-            });
-            const account = result.account;
-            return account.zkapp.appState;
-        } catch (err) {
-            throw err;
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                const result = await fetchAccount({
+                    publicKey: publicKey,
+                });
+                const account = result.account;
+                return account.zkapp.appState;
+            } catch (err) {
+                throw err;
+            }
         }
     }
 }

@@ -103,3 +103,5 @@ export enum ZkAppEnum {
     FUNDING,
     TREASURY,
 }
+
+export const MaxRetries = 5;

@@ -10,7 +10,7 @@ import {
 } from 'src/schemas/actions/campaign-action.schema';
 import { RawCampaign } from 'src/schemas/raw-campaign.schema';
 import { Campaign } from 'src/schemas/campaign.schema';
-import { CampaignActionEnum, zkAppCache } from 'src/constants';
+import { CampaignActionEnum, MaxRetries, zkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
 import {
     CampaignContract,
@@ -128,11 +128,16 @@ export class CampaignContractService implements ContractServiceInterface {
     }
 
     async fetch() {
-        try {
-            await this.fetchCampaignActions();
-            await this.updateRawCampaigns();
-            await this.updateCampaigns();
-        } catch (err) {}
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                await this.fetchCampaignActions();
+                await this.updateRawCampaigns();
+                await this.updateCampaigns();
+                count = MaxRetries;
+            } catch (err) {
+                this.logger.error(err);
+            }
+        }
     }
 
     async compile() {
@@ -157,124 +162,148 @@ export class CampaignContractService implements ContractServiceInterface {
         return result;
     }
 
-    async rollup() {
-        const lastActiveCampaign = await this.campaignModel.findOne(
-            { active: true },
-            {},
-            { sort: { campaignId: -1 } },
-        );
-        const lastReducedAction = lastActiveCampaign
-            ? await this.campaignActionModel.findOne({
-                  actionId: lastActiveCampaign.campaignId,
-              })
-            : undefined;
-        const notReducedActions = await this.campaignActionModel.find(
-            {
-                actionId: {
-                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
-                },
-            },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        if (notReducedActions.length > 0) {
-            const notActiveCampaigns = await this.campaignModel.find(
-                {
-                    campaignId: {
-                        $gt: lastReducedAction
-                            ? lastReducedAction.actionId
-                            : -1,
+    async rollup(): Promise<boolean> {
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                const lastActiveCampaign = await this.campaignModel.findOne(
+                    { active: true },
+                    {},
+                    { sort: { campaignId: -1 } },
+                );
+                const lastReducedAction = lastActiveCampaign
+                    ? await this.campaignActionModel.findOne({
+                          actionId: lastActiveCampaign.campaignId,
+                      })
+                    : undefined;
+                const notReducedActions = await this.campaignActionModel.find(
+                    {
+                        actionId: {
+                            $gt: lastReducedAction
+                                ? lastReducedAction.actionId
+                                : -1,
+                        },
                     },
-                },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            const state = await this.fetchCampaignState();
-            let nextCampaignId = lastActiveCampaign
-                ? lastActiveCampaign.campaignId + 1
-                : 0;
-            let proof = await CreateCampaign.firstStep(
-                state.owner,
-                state.info,
-                state.status,
-                state.config,
-                state.nextCampaignId,
-                lastReducedAction
-                    ? Field(lastReducedAction.currentActionState)
-                    : Reducer.initialActionState,
-            );
-            const owner = this._owner;
-            const info = this._info;
-            const status = this._status;
-            const config = this._config;
+                    {},
+                    { sort: { actionId: 1 } },
+                );
+                if (notReducedActions.length > 0) {
+                    const notActiveCampaigns = await this.campaignModel.find(
+                        {
+                            campaignId: {
+                                $gt: lastReducedAction
+                                    ? lastReducedAction.actionId
+                                    : -1,
+                            },
+                        },
+                        {},
+                        { sort: { actionId: 1 } },
+                    );
+                    const state = await this.fetchCampaignState();
+                    let nextCampaignId = lastActiveCampaign
+                        ? lastActiveCampaign.campaignId + 1
+                        : 0;
+                    let proof = await CreateCampaign.firstStep(
+                        state.owner,
+                        state.info,
+                        state.status,
+                        state.config,
+                        state.nextCampaignId,
+                        lastReducedAction
+                            ? Field(lastReducedAction.currentActionState)
+                            : Reducer.initialActionState,
+                    );
+                    const owner = this._owner;
+                    const info = this._info;
+                    const status = this._status;
+                    const config = this._config;
 
-            for (let i = 0; i < notReducedActions.length; i++) {
-                const notReducedAction = notReducedActions[i];
-                const notActiveCampaign = notActiveCampaigns[i];
-                proof = await CreateCampaign.createCampaign(
-                    proof,
-                    ZkApp.Campaign.CampaignAction.fromFields(
-                        Utilities.stringArrayToFields(notReducedAction.actions),
-                    ),
-                    owner.getLevel1Witness(
-                        owner.calculateLevel1Index(Field(nextCampaignId)),
-                    ),
-                    info.getLevel1Witness(
-                        info.calculateLevel1Index(Field(nextCampaignId)),
-                    ),
-                    status.getLevel1Witness(
-                        info.calculateLevel1Index(Field(nextCampaignId)),
-                    ),
-                    config.getLevel1Witness(
-                        info.calculateLevel1Index(Field(nextCampaignId)),
-                    ),
-                );
-                owner.updateLeaf(
-                    Field(nextCampaignId),
-                    owner.calculateLeaf(
-                        PublicKey.fromBase58(notActiveCampaign.owner),
-                    ),
-                );
-                info.updateLeaf(
-                    Field(nextCampaignId),
-                    info.calculateLeaf(
-                        IPFSHash.fromString(notActiveCampaign.ipfsHash),
-                    ),
-                );
-                status.updateLeaf(
-                    Field(nextCampaignId),
-                    status.calculateLeaf(Number(notActiveCampaign.status)),
-                );
-                config.updateLeaf(
-                    Field(nextCampaignId),
-                    config.calculateLeaf({
-                        committeeId: Field(notActiveCampaign.committeeId),
-                        keyId: Field(notActiveCampaign.keyId),
-                    }),
-                );
-                nextCampaignId += 1;
+                    for (let i = 0; i < notReducedActions.length; i++) {
+                        const notReducedAction = notReducedActions[i];
+                        const notActiveCampaign = notActiveCampaigns[i];
+                        proof = await CreateCampaign.createCampaign(
+                            proof,
+                            ZkApp.Campaign.CampaignAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notReducedAction.actions,
+                                ),
+                            ),
+                            owner.getLevel1Witness(
+                                owner.calculateLevel1Index(
+                                    Field(nextCampaignId),
+                                ),
+                            ),
+                            info.getLevel1Witness(
+                                info.calculateLevel1Index(
+                                    Field(nextCampaignId),
+                                ),
+                            ),
+                            status.getLevel1Witness(
+                                info.calculateLevel1Index(
+                                    Field(nextCampaignId),
+                                ),
+                            ),
+                            config.getLevel1Witness(
+                                info.calculateLevel1Index(
+                                    Field(nextCampaignId),
+                                ),
+                            ),
+                        );
+                        owner.updateLeaf(
+                            Field(nextCampaignId),
+                            owner.calculateLeaf(
+                                PublicKey.fromBase58(notActiveCampaign.owner),
+                            ),
+                        );
+                        info.updateLeaf(
+                            Field(nextCampaignId),
+                            info.calculateLeaf(
+                                IPFSHash.fromString(notActiveCampaign.ipfsHash),
+                            ),
+                        );
+                        status.updateLeaf(
+                            Field(nextCampaignId),
+                            status.calculateLeaf(
+                                Number(notActiveCampaign.status),
+                            ),
+                        );
+                        config.updateLeaf(
+                            Field(nextCampaignId),
+                            config.calculateLeaf({
+                                committeeId: Field(
+                                    notActiveCampaign.committeeId,
+                                ),
+                                keyId: Field(notActiveCampaign.keyId),
+                            }),
+                        );
+                        nextCampaignId += 1;
+                    }
+                    const campaignContract = new CampaignContract(
+                        PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+                    );
+                    const feePayerPrivateKey = PrivateKey.fromBase58(
+                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    );
+                    const tx = await Mina.transaction(
+                        {
+                            sender: feePayerPrivateKey.toPublicKey(),
+                            fee: process.env.FEE,
+                        },
+                        () => {
+                            campaignContract.rollup(proof);
+                        },
+                    );
+                    await Utilities.proveAndSend(
+                        tx,
+                        feePayerPrivateKey,
+                        false,
+                        this.logger,
+                    );
+                    return true;
+                }
+                return false;
+            } catch (err) {
+                this.logger.error(err);
             }
-            const campaignContract = new CampaignContract(
-                PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-            );
-            const feePayerPrivateKey = PrivateKey.fromBase58(
-                process.env.FEE_PAYER_PRIVATE_KEY,
-            );
-            const tx = await Mina.transaction(
-                {
-                    sender: feePayerPrivateKey.toPublicKey(),
-                    fee: process.env.FEE,
-                },
-                () => {
-                    campaignContract.rollup(proof);
-                },
-            );
-            await Utilities.proveAndSend(
-                tx,
-                feePayerPrivateKey,
-                false,
-                this.logger,
-            );
         }
     }
 
