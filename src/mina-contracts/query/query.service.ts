@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
     Field,
     Mina,
@@ -14,6 +14,7 @@ import { MaxRetries } from 'src/constants';
 
 @Injectable()
 export class QueryService {
+    private readonly logger = new Logger(QueryService.name);
     constructor() {}
 
     async fetchEvents(
@@ -61,11 +62,38 @@ export class QueryService {
     }
 
     async fetchAccountBalance(publicKey: string): Promise<UInt64> {
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                await fetchAccount({
+                    publicKey: publicKey,
+                });
+                const account = Mina.getAccount(
+                    PublicKey.fromBase58(publicKey),
+                );
+                return account.balance;
+            } catch (err) {
+                this.logger.error(err);
+            }
+        }
         await fetchAccount({
             publicKey: publicKey,
         });
-        const account = Mina.getAccount(PublicKey.fromBase58(publicKey));
-        return account.balance;
+    }
+
+    async fetchAccountNonce(publicKey: string): Promise<UInt32> {
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                await fetchAccount({
+                    publicKey: publicKey,
+                });
+                const account = Mina.getAccount(
+                    PublicKey.fromBase58(publicKey),
+                );
+                return account.nonce;
+            } catch (err) {
+                this.logger.error(err);
+            }
+        }
     }
 
     async fetchZkAppState(publicKey: string): Promise<Field[]> {
