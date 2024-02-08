@@ -36,7 +36,7 @@ export class QueryService {
                 );
                 return events;
             } catch (err) {
-                throw err;
+                this.logger.error(err);
             }
         }
     }
@@ -56,7 +56,7 @@ export class QueryService {
                     },
                 )) as Action[];
             } catch (err) {
-                throw err;
+                this.logger.error(err);
             }
         }
     }
@@ -75,9 +75,6 @@ export class QueryService {
                 this.logger.error(err);
             }
         }
-        await fetchAccount({
-            publicKey: publicKey,
-        });
     }
 
     async fetchAccountNonce(publicKey: string): Promise<UInt32> {
@@ -105,7 +102,7 @@ export class QueryService {
                 const account = result.account;
                 return account.zkapp.appState;
             } catch (err) {
-                throw err;
+                this.logger.error(err);
             }
         }
     }
