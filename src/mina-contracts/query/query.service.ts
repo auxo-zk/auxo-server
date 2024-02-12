@@ -77,7 +77,7 @@ export class QueryService {
         }
     }
 
-    async fetchAccountNonce(publicKey: string): Promise<UInt32> {
+    async fetchAccountNonce(publicKey: string): Promise<number> {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await fetchAccount({
@@ -86,7 +86,7 @@ export class QueryService {
                 const account = Mina.getAccount(
                     PublicKey.fromBase58(publicKey),
                 );
-                return account.nonce;
+                return Number(account.nonce.toBigint());
             } catch (err) {
                 this.logger.error(err);
             }

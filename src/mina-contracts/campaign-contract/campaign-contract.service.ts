@@ -287,6 +287,9 @@ export class CampaignContractService implements ContractServiceInterface {
                         {
                             sender: feePayerPrivateKey.toPublicKey(),
                             fee: process.env.FEE,
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
                         () => {
                             campaignContract.rollup(proof);

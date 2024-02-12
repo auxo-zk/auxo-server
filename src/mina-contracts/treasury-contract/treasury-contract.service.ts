@@ -230,6 +230,9 @@ export class TreasuryContractService implements ContractServiceInterface {
                         {
                             sender: feePayerPrivateKey.toPublicKey(),
                             fee: process.env.FEE,
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
                         () => {
                             treasuryContract.rollup(proof);

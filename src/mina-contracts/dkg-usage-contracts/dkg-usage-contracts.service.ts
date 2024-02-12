@@ -316,6 +316,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         {
                             sender: feePayerPrivateKey.toPublicKey(),
                             fee: process.env.FEE,
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
                         () => {
                             dkgRequestContract.rollupRequest(proof);
@@ -409,6 +412,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         {
                             sender: feePayerPrivateKey.toPublicKey(),
                             fee: process.env.FEE,
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
                         () => {
                             dkgResponseContract.reduce(proof);

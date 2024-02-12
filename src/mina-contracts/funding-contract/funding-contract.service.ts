@@ -247,6 +247,9 @@ export class FundingContractService implements ContractServiceInterface {
                         {
                             sender: feePayerPrivateKey.toPublicKey(),
                             fee: process.env.FEE,
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
                         () => {
                             fundingContract.reduce(proof);

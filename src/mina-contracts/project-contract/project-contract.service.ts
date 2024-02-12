@@ -226,6 +226,9 @@ export class ProjectContractService implements ContractServiceInterface {
                         {
                             sender: feePayerPrivateKey.toPublicKey(),
                             fee: process.env.FEE,
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
                         () => {
                             projectContract.rollup(proof);

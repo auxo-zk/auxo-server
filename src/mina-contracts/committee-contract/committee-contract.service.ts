@@ -37,6 +37,7 @@ import { MaxRetries, zkAppCache } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
 import { CommitteeState } from 'src/interfaces/zkapp-state.interface';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
+import { error } from 'console';
 
 @Injectable()
 export class CommitteeContractService implements ContractServiceInterface {
@@ -202,6 +203,9 @@ export class CommitteeContractService implements ContractServiceInterface {
                         {
                             sender: feePayerPrivateKey.toPublicKey(),
                             fee: process.env.FEE,
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
                         () => {
                             committeeContract.rollupIncrements(proof);
@@ -218,6 +222,7 @@ export class CommitteeContractService implements ContractServiceInterface {
                 return false;
             } catch (err) {
                 this.logger.error(err);
+                console.log(error);
             }
         }
     }
