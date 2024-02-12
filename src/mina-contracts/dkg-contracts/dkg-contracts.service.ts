@@ -195,7 +195,7 @@ export class DkgContractsService implements ContractServiceInterface {
             // await this.committeeContractService.compile();
             // await this.compile();
             // await this.rollupDkg();
-            // await this.finalizeRound1(4, 0);
+            // await this.finalizeRound1(3, 0);
             // await this.reduceRound2();
             // await this.finalizeRound2(4, 0);
         } catch (err) {
@@ -656,7 +656,15 @@ export class DkgContractsService implements ContractServiceInterface {
                 active: true,
             });
             if (round1s.length == committee.numberOfMembers) {
-                result.push(key);
+                if (
+                    !(await this.dkgModel.exists({
+                        committeeId: key.committeeId,
+                        keyId: key.keyId,
+                        actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
+                    }))
+                ) {
+                    result.push(key);
+                }
             }
         }
         return result;
@@ -879,7 +887,15 @@ export class DkgContractsService implements ContractServiceInterface {
                 active: true,
             });
             if (round2s.length == committee.numberOfMembers) {
-                result.push(key);
+                if (
+                    !(await this.dkgModel.find({
+                        committeeId: key.committeeId,
+                        keyId: key.keyId,
+                        actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
+                    }))
+                ) {
+                    result.push(key);
+                }
             }
         }
         return result;
