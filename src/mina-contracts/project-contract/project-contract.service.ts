@@ -103,147 +103,137 @@ export class ProjectContractService implements ContractServiceInterface {
     }
 
     async rollup() {
-        for (let count = 0; count < MaxRetries; count++) {
-            try {
-                const lastActiveProject = await this.projectModel.findOne(
-                    { active: true },
-                    {},
-                    { sort: { projectId: -1 } },
-                );
-                const lastReducedAction = lastActiveProject
-                    ? await this.projectActionModel.findOne({
-                          actionId: lastActiveProject.projectId,
-                      })
-                    : undefined;
-                const notReducedActions = await this.projectActionModel.find(
+        try {
+            const lastActiveProject = await this.projectModel.findOne(
+                { active: true },
+                {},
+                { sort: { projectId: -1 } },
+            );
+            const lastReducedAction = lastActiveProject
+                ? await this.projectActionModel.findOne({
+                      actionId: lastActiveProject.projectId,
+                  })
+                : undefined;
+            const notReducedActions = await this.projectActionModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
+                    },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notReducedActions.length > 0) {
+                const notActiveProjects = await this.projectModel.find(
                     {
-                        actionId: {
-                            $gt: lastReducedAction
-                                ? lastReducedAction.actionId
+                        projectId: {
+                            $gt: lastActiveProject
+                                ? lastActiveProject.projectId
                                 : -1,
                         },
                     },
                     {},
                     { sort: { actionId: 1 } },
                 );
-                if (notReducedActions.length > 0) {
-                    const notActiveProjects = await this.projectModel.find(
-                        {
-                            projectId: {
-                                $gt: lastActiveProject
-                                    ? lastActiveProject.projectId
-                                    : -1,
-                            },
-                        },
-                        {},
-                        { sort: { actionId: 1 } },
-                    );
-                    const state = await this.fetchProjectState();
-                    let nextProjectId = lastActiveProject
-                        ? lastActiveProject.projectId + 1
-                        : 0;
-                    let proof = await CreateProject.firstStep(
-                        state.nextProjectId,
-                        state.member,
-                        state.info,
-                        state.payee,
-                        lastReducedAction
-                            ? Field(lastReducedAction.currentActionState)
-                            : Reducer.initialActionState,
-                    );
-                    const member = this._member;
-                    const info = this._info;
-                    const payee = this._payee;
+                const state = await this.fetchProjectState();
+                let nextProjectId = lastActiveProject
+                    ? lastActiveProject.projectId + 1
+                    : 0;
+                let proof = await CreateProject.firstStep(
+                    state.nextProjectId,
+                    state.member,
+                    state.info,
+                    state.payee,
+                    lastReducedAction
+                        ? Field(lastReducedAction.currentActionState)
+                        : Reducer.initialActionState,
+                );
+                const member = this._member;
+                const info = this._info;
+                const payee = this._payee;
 
-                    for (let i = 0; i < notReducedActions.length; i++) {
-                        const notReducedAction = notReducedActions[i];
-                        const notActiveProject = notActiveProjects[i];
-                        proof = await CreateProject.nextStep(
-                            proof,
-                            ZkApp.Project.ProjectAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
-                                ),
+                for (let i = 0; i < notReducedActions.length; i++) {
+                    const notReducedAction = notReducedActions[i];
+                    const notActiveProject = notActiveProjects[i];
+                    proof = await CreateProject.nextStep(
+                        proof,
+                        ZkApp.Project.ProjectAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notReducedAction.actions,
                             ),
-                            member.getLevel1Witness(
-                                member.calculateLevel1Index(
-                                    Field(nextProjectId),
-                                ),
-                            ),
-                            info.getLevel1Witness(
-                                info.calculateLevel1Index(Field(nextProjectId)),
-                            ),
-                            payee.getLevel1Witness(
-                                payee.calculateLevel1Index(
-                                    Field(nextProjectId),
-                                ),
-                            ),
-                        );
-                        member.updateInternal(
-                            Field(nextProjectId),
-                            Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
-                        );
-                        for (
-                            let j = 0;
-                            j < notActiveProject.members.length;
-                            j++
-                        ) {
-                            member.updateLeaf(
-                                {
-                                    level1Index: Field(nextProjectId),
-                                    level2Index: Field(j),
-                                },
-                                member.calculateLeaf(
-                                    PublicKey.fromBase58(
-                                        notActiveProject.members[j],
-                                    ),
-                                ),
-                            );
-                        }
-                        info.updateLeaf(
-                            { level1Index: Field(nextProjectId) },
-                            info.calculateLeaf(
-                                IPFSHash.fromString(notActiveProject.ipfsHash),
-                            ),
-                        );
-                        payee.updateLeaf(
-                            { level1Index: Field(nextProjectId) },
-                            payee.calculateLeaf(
+                        ),
+                        member.getLevel1Witness(
+                            member.calculateLevel1Index(Field(nextProjectId)),
+                        ),
+                        info.getLevel1Witness(
+                            info.calculateLevel1Index(Field(nextProjectId)),
+                        ),
+                        payee.getLevel1Witness(
+                            payee.calculateLevel1Index(Field(nextProjectId)),
+                        ),
+                    );
+                    member.updateInternal(
+                        Field(nextProjectId),
+                        Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
+                    );
+                    for (let j = 0; j < notActiveProject.members.length; j++) {
+                        member.updateLeaf(
+                            {
+                                level1Index: Field(nextProjectId),
+                                level2Index: Field(j),
+                            },
+                            member.calculateLeaf(
                                 PublicKey.fromBase58(
-                                    notActiveProject.payeeAccount,
+                                    notActiveProject.members[j],
                                 ),
                             ),
                         );
-                        nextProjectId += 1;
                     }
-                    const projectContract = new ProjectContract(
-                        PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+                    info.updateLeaf(
+                        { level1Index: Field(nextProjectId) },
+                        info.calculateLeaf(
+                            IPFSHash.fromString(notActiveProject.ipfsHash),
+                        ),
                     );
-                    const feePayerPrivateKey = PrivateKey.fromBase58(
-                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    payee.updateLeaf(
+                        { level1Index: Field(nextProjectId) },
+                        payee.calculateLeaf(
+                            PublicKey.fromBase58(notActiveProject.payeeAccount),
+                        ),
                     );
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
-                        },
-                        () => {
-                            projectContract.rollup(proof);
-                        },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
-                    );
+                    nextProjectId += 1;
                 }
-            } catch (err) {
-                this.logger.error(err);
+                const projectContract = new ProjectContract(
+                    PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    () => {
+                        projectContract.rollup(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
             }
+        } catch (err) {
+            this.logger.error(err);
+        } finally {
+            return false;
         }
     }
 

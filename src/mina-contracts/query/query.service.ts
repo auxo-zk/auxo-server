@@ -39,6 +39,7 @@ export class QueryService {
                 this.logger.error(err);
             }
         }
+        return undefined;
     }
 
     async fetchActions(
@@ -59,6 +60,7 @@ export class QueryService {
                 this.logger.error(err);
             }
         }
+        return undefined;
     }
 
     async fetchAccountBalance(publicKey: string): Promise<UInt64> {
@@ -75,6 +77,7 @@ export class QueryService {
                 this.logger.error(err);
             }
         }
+        return undefined;
     }
 
     async fetchAccountNonce(publicKey: string): Promise<number> {
@@ -91,6 +94,7 @@ export class QueryService {
                 this.logger.error(err);
             }
         }
+        return undefined;
     }
 
     async fetchZkAppState(publicKey: string): Promise<Field[]> {
@@ -105,5 +109,6 @@ export class QueryService {
                 this.logger.error(err);
             }
         }
+        return undefined;
     }
 }

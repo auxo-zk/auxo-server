@@ -101,129 +101,125 @@ export class CommitteeContractService implements ContractServiceInterface {
     }
 
     async rollup(): Promise<boolean> {
-        for (let count = 0; count < MaxRetries; count++) {
-            try {
-                const lastActiveCommittee = await this.committeeModel.findOne(
-                    { active: true },
-                    {},
-                    { sort: { committeeId: -1 } },
-                );
-                const lastReducedAction = lastActiveCommittee
-                    ? await this.committeeActionModel.findOne({
-                          actionId: lastActiveCommittee.committeeId,
-                      })
-                    : undefined;
-                const notReducedActions = await this.committeeActionModel.find(
-                    {
-                        actionId: {
-                            $gt: lastReducedAction
-                                ? lastReducedAction.actionId
-                                : -1,
-                        },
+        try {
+            const lastActiveCommittee = await this.committeeModel.findOne(
+                { active: true },
+                {},
+                { sort: { committeeId: -1 } },
+            );
+            const lastReducedAction = lastActiveCommittee
+                ? await this.committeeActionModel.findOne({
+                      actionId: lastActiveCommittee.committeeId,
+                  })
+                : undefined;
+            const notReducedActions = await this.committeeActionModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
                     },
-                    {},
-                    { sort: { actionId: 1 } },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notReducedActions.length > 0) {
+                const state = await this.fetchCommitteeState();
+                let proof = await ZkApp.Committee.CreateCommittee.firstStep(
+                    state.actionState,
+                    state.committeeTreeRoot,
+                    state.settingTreeRoot,
+                    state.nextCommitteeId,
                 );
-                if (notReducedActions.length > 0) {
-                    const state = await this.fetchCommitteeState();
-                    let proof = await ZkApp.Committee.CreateCommittee.firstStep(
-                        state.actionState,
-                        state.committeeTreeRoot,
-                        state.settingTreeRoot,
-                        state.nextCommitteeId,
-                    );
-                    const memberTree = this._memberTree;
-                    const settingTree = this._settingTree;
-                    let nextCommitteeId = lastActiveCommittee
-                        ? lastActiveCommittee.committeeId + 1
-                        : 0;
-                    for (let i = 0; i < notReducedActions.length; i++) {
-                        const notReducedAction = notReducedActions[i];
-                        proof = await CreateCommittee.nextStep(
-                            proof,
-                            ZkApp.Committee.CommitteeAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
-                                ),
+                const memberTree = this._memberTree;
+                const settingTree = this._settingTree;
+                let nextCommitteeId = lastActiveCommittee
+                    ? lastActiveCommittee.committeeId + 1
+                    : 0;
+                for (let i = 0; i < notReducedActions.length; i++) {
+                    const notReducedAction = notReducedActions[i];
+                    proof = await CreateCommittee.nextStep(
+                        proof,
+                        ZkApp.Committee.CommitteeAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notReducedAction.actions,
                             ),
-                            memberTree.getLevel1Witness(
-                                Storage.CommitteeStorage.MemberStorage.calculateLevel1Index(
-                                    Field(nextCommitteeId),
-                                ),
-                            ),
-                            settingTree.getWitness(
-                                Storage.CommitteeStorage.SettingStorage.calculateLevel1Index(
-                                    Field(nextCommitteeId),
-                                ),
-                            ),
-                        );
-                        const committee = await this.committeeModel.findOne({
-                            committeeId: nextCommitteeId,
-                        });
-                        const memberTreeLevel2 =
-                            Storage.CommitteeStorage.EMPTY_LEVEL_2_TREE();
-                        for (let j = 0; j < committee.numberOfMembers; j++) {
-                            const publicKey = PublicKey.fromBase58(
-                                committee.publicKeys[j],
-                            );
-                            memberTreeLevel2.setLeaf(
-                                BigInt(j),
-                                Poseidon.hash(publicKey.toFields()),
-                            );
-                        }
-                        memberTree.updateInternal(
+                        ),
+                        memberTree.getLevel1Witness(
                             Storage.CommitteeStorage.MemberStorage.calculateLevel1Index(
                                 Field(nextCommitteeId),
                             ),
-                            memberTreeLevel2,
-                        );
-                        settingTree.updateLeaf(
-                            {
-                                level1Index:
-                                    Storage.CommitteeStorage.SettingStorage.calculateLevel1Index(
-                                        Field(nextCommitteeId),
-                                    ),
-                            },
-                            Storage.CommitteeStorage.SettingStorage.calculateLeaf(
-                                {
-                                    T: Field(committee.threshold),
-                                    N: Field(committee.numberOfMembers),
-                                },
+                        ),
+                        settingTree.getWitness(
+                            Storage.CommitteeStorage.SettingStorage.calculateLevel1Index(
+                                Field(nextCommitteeId),
                             ),
+                        ),
+                    );
+                    const committee = await this.committeeModel.findOne({
+                        committeeId: nextCommitteeId,
+                    });
+                    const memberTreeLevel2 =
+                        Storage.CommitteeStorage.EMPTY_LEVEL_2_TREE();
+                    for (let j = 0; j < committee.numberOfMembers; j++) {
+                        const publicKey = PublicKey.fromBase58(
+                            committee.publicKeys[j],
                         );
-                        nextCommitteeId += 1;
+                        memberTreeLevel2.setLeaf(
+                            BigInt(j),
+                            Poseidon.hash(publicKey.toFields()),
+                        );
                     }
-                    const committeeContract = new CommitteeContract(
-                        PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                    memberTree.updateInternal(
+                        Storage.CommitteeStorage.MemberStorage.calculateLevel1Index(
+                            Field(nextCommitteeId),
+                        ),
+                        memberTreeLevel2,
                     );
-                    const feePayerPrivateKey = PrivateKey.fromBase58(
-                        process.env.FEE_PAYER_PRIVATE_KEY,
-                    );
-                    const tx = await Mina.transaction(
+                    settingTree.updateLeaf(
                         {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
+                            level1Index:
+                                Storage.CommitteeStorage.SettingStorage.calculateLevel1Index(
+                                    Field(nextCommitteeId),
+                                ),
                         },
-                        () => {
-                            committeeContract.rollupIncrements(proof);
-                        },
+                        Storage.CommitteeStorage.SettingStorage.calculateLeaf({
+                            T: Field(committee.threshold),
+                            N: Field(committee.numberOfMembers),
+                        }),
                     );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
-                    );
-                    return true;
+                    nextCommitteeId += 1;
                 }
-                return false;
-            } catch (err) {
-                this.logger.error(err);
-                console.log(error);
+                const committeeContract = new CommitteeContract(
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    () => {
+                        committeeContract.rollupIncrements(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+                return true;
             }
+        } catch (err) {
+            this.logger.error(err);
+        } finally {
+            return false;
         }
     }
 

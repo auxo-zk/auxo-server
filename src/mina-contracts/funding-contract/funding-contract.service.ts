@@ -185,88 +185,87 @@ export class FundingContractService implements ContractServiceInterface {
     }
 
     async reduce(): Promise<boolean> {
-        for (let count = 0; count < MaxRetries; count++) {
-            try {
-                const lastActiveFunding = await this.fundingModel.findOne(
-                    {
-                        active: true,
+        try {
+            const lastActiveFunding = await this.fundingModel.findOne(
+                {
+                    active: true,
+                },
+                {},
+                { sort: { actionId: -1 } },
+            );
+            const lastReducedAction = lastActiveFunding
+                ? await this.fundingActionModel.findOne({
+                      actionId: lastActiveFunding.actionId,
+                  })
+                : undefined;
+            const notReducedActions = await this.fundingActionModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
                     },
-                    {},
-                    { sort: { actionId: -1 } },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notReducedActions.length > 0) {
+                const fundingState = await this.fetchFundingState();
+                let proof = await CreateReduceProof.firstStep(
+                    fundingState.actionState,
+                    fundingState.reduceState,
                 );
-                const lastReducedAction = lastActiveFunding
-                    ? await this.fundingActionModel.findOne({
-                          actionId: lastActiveFunding.actionId,
-                      })
-                    : undefined;
-                const notReducedActions = await this.fundingActionModel.find(
-                    {
-                        actionId: {
-                            $gt: lastReducedAction
-                                ? lastReducedAction.actionId
-                                : -1,
-                        },
-                    },
-                    {},
-                    { sort: { actionId: 1 } },
-                );
-                if (notReducedActions.length > 0) {
-                    const fundingState = await this.fetchFundingState();
-                    let proof = await CreateReduceProof.firstStep(
-                        fundingState.actionState,
-                        fundingState.reduceState,
-                    );
-                    const reduceState = this._reduceState;
-                    for (let i = 0; i < notReducedActions.length; i++) {
-                        const notReducedAction = notReducedActions[i];
-                        proof = await CreateReduceProof.nextStep(
-                            proof,
-                            ZkApp.Funding.FundingAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
-                                ),
+                const reduceState = this._reduceState;
+                for (let i = 0; i < notReducedActions.length; i++) {
+                    const notReducedAction = notReducedActions[i];
+                    proof = await CreateReduceProof.nextStep(
+                        proof,
+                        ZkApp.Funding.FundingAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notReducedAction.actions,
                             ),
-                            reduceState.getWitness(
-                                Field(notReducedAction.currentActionState),
-                            ),
-                        );
-                        reduceState.updateLeaf(
+                        ),
+                        reduceState.getWitness(
                             Field(notReducedAction.currentActionState),
-                            reduceState.calculateLeaf(
-                                Number(ActionReduceStatusEnum.REDUCED),
-                            ),
-                        );
-                    }
-                    const fundingContract = new FundingContract(
-                        PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                        ),
                     );
-                    const feePayerPrivateKey = PrivateKey.fromBase58(
-                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    reduceState.updateLeaf(
+                        Field(notReducedAction.currentActionState),
+                        reduceState.calculateLeaf(
+                            Number(ActionReduceStatusEnum.REDUCED),
+                        ),
                     );
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
-                        },
-                        () => {
-                            fundingContract.reduce(proof);
-                        },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
-                    );
-                    return true;
                 }
-                return false;
-            } catch (err) {
-                this.logger.error(err);
+                const fundingContract = new FundingContract(
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    () => {
+                        fundingContract.reduce(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+                return true;
             }
+        } catch (err) {
+            this.logger.error(err);
+        } finally {
+            return false;
         }
     }
     async getCampaignsReadyForRollup() {}

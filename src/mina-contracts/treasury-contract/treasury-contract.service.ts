@@ -144,21 +144,33 @@ export class TreasuryContractService implements ContractServiceInterface {
     }
 
     async rollup() {
-        for (let count = 0; count < MaxRetries; count++) {
-            try {
-                const lastActiveTreasury = await this.treasuryModel.findOne(
-                    {
-                        active: true,
+        try {
+            const lastActiveTreasury = await this.treasuryModel.findOne(
+                {
+                    active: true,
+                },
+                {},
+                { sort: { actionId: -1 } },
+            );
+            const lastReducedAction = lastActiveTreasury
+                ? await this.treasuryActionModel.findOne({
+                      actionId: lastActiveTreasury.actionId,
+                  })
+                : undefined;
+            const notReducedActions = await this.treasuryActionModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
                     },
-                    {},
-                    { sort: { actionId: -1 } },
-                );
-                const lastReducedAction = lastActiveTreasury
-                    ? await this.treasuryActionModel.findOne({
-                          actionId: lastActiveTreasury.actionId,
-                      })
-                    : undefined;
-                const notReducedActions = await this.treasuryActionModel.find(
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notReducedActions.length > 0) {
+                const treasuryState = await this.fetchTreasuryState();
+                const notActiveTreasuries = await this.treasuryModel.find(
                     {
                         actionId: {
                             $gt: lastReducedAction
@@ -167,89 +179,72 @@ export class TreasuryContractService implements ContractServiceInterface {
                         },
                     },
                     {},
-                    { sort: { actionId: 1 } },
+                    {
+                        sort: {
+                            actionId: 1,
+                        },
+                    },
                 );
-                if (notReducedActions.length > 0) {
-                    const treasuryState = await this.fetchTreasuryState();
-                    const notActiveTreasuries = await this.treasuryModel.find(
-                        {
-                            actionId: {
-                                $gt: lastReducedAction
-                                    ? lastReducedAction.actionId
-                                    : -1,
-                            },
-                        },
-                        {},
-                        {
-                            sort: {
-                                actionId: 1,
-                            },
-                        },
-                    );
-                    let proof = await ClaimFund.firstStep(
-                        treasuryState.claimed,
-                        treasuryState.actionState,
-                    );
-                    const claimed = await this._claimed;
-                    for (let i = 0; i < notReducedActions.length; i++) {
-                        const notReducedAction = notReducedActions[i];
-                        const notActiveTreasury = notActiveTreasuries[i];
-                        proof = await ClaimFund.nextStep(
-                            proof,
-                            ZkApp.Treasury.TreasuryAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
-                                ),
+                let proof = await ClaimFund.firstStep(
+                    treasuryState.claimed,
+                    treasuryState.actionState,
+                );
+                const claimed = await this._claimed;
+                for (let i = 0; i < notReducedActions.length; i++) {
+                    const notReducedAction = notReducedActions[i];
+                    const notActiveTreasury = notActiveTreasuries[i];
+                    proof = await ClaimFund.nextStep(
+                        proof,
+                        ZkApp.Treasury.TreasuryAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notReducedAction.actions,
                             ),
-                            claimed.getWitness(
-                                claimed.calculateLevel1Index({
-                                    campaignId: Field(
-                                        notActiveTreasury.campaignId,
-                                    ),
-                                    projectId: Field(
-                                        notActiveTreasury.projectId,
-                                    ),
-                                }),
-                            ),
-                        );
-                        claimed.updateLeaf(
+                        ),
+                        claimed.getWitness(
                             claimed.calculateLevel1Index({
                                 campaignId: Field(notActiveTreasury.campaignId),
                                 projectId: Field(notActiveTreasury.projectId),
                             }),
-                            claimed.calculateLeaf(Bool(true)),
-                        );
-                    }
-                    const treasuryContract = new TreasuryContract(
-                        PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
+                        ),
                     );
-                    const feePayerPrivateKey = PrivateKey.fromBase58(
-                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    claimed.updateLeaf(
+                        claimed.calculateLevel1Index({
+                            campaignId: Field(notActiveTreasury.campaignId),
+                            projectId: Field(notActiveTreasury.projectId),
+                        }),
+                        claimed.calculateLeaf(Bool(true)),
                     );
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
-                        },
-                        () => {
-                            treasuryContract.rollup(proof);
-                        },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
-                    );
-                    return true;
                 }
-                return false;
-            } catch (err) {
-                this.logger.error(err);
+                const treasuryContract = new TreasuryContract(
+                    PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    () => {
+                        treasuryContract.rollup(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+                return true;
             }
+        } catch (err) {
+            this.logger.error(err);
+        } finally {
+            return false;
         }
     }
 

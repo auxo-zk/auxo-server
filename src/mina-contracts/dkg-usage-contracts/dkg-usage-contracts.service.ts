@@ -206,232 +206,226 @@ export class DkgUsageContractsService implements ContractServiceInterface {
     }
 
     async rollupDkgRequest(): Promise<boolean> {
-        for (let count = 0; count < MaxRetries; count++) {
-            try {
-                const lastActiveRawDkgRequest =
-                    await this.rawDkgRequestModel.findOne(
-                        {
-                            active: true,
-                        },
-                        {},
-                        { sort: { actionId: -1 } },
-                    );
-                const lastReducedAction = lastActiveRawDkgRequest
-                    ? await this.requestActionModel.findOne({
-                          actionId: lastActiveRawDkgRequest.actionId,
-                      })
-                    : undefined;
-                const notReducedActions = await this.requestActionModel.find(
+        try {
+            const lastActiveRawDkgRequest =
+                await this.rawDkgRequestModel.findOne(
                     {
-                        actionId: {
-                            $gt: lastReducedAction
-                                ? lastReducedAction.actionId
-                                : -1,
-                        },
+                        active: true,
                     },
                     {},
-                    { sort: { actionId: 1 } },
+                    { sort: { actionId: -1 } },
                 );
-                if (notReducedActions.length > 0) {
-                    const state = await this.fetchDkgRequestState();
-                    let proof = await CreateRequest.firstStep(
-                        state.actionState,
-                        state.requestStatus,
-                        state.requester,
-                    );
-                    const notActiveRawDkgRequests =
-                        await this.rawDkgRequestModel.find(
-                            {
-                                actionId: {
-                                    $gt: lastReducedAction
-                                        ? lastReducedAction.actionId
-                                        : -1,
-                                },
+            const lastReducedAction = lastActiveRawDkgRequest
+                ? await this.requestActionModel.findOne({
+                      actionId: lastActiveRawDkgRequest.actionId,
+                  })
+                : undefined;
+            const notReducedActions = await this.requestActionModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
+                    },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notReducedActions.length > 0) {
+                const state = await this.fetchDkgRequestState();
+                let proof = await CreateRequest.firstStep(
+                    state.actionState,
+                    state.requestStatus,
+                    state.requester,
+                );
+                const notActiveRawDkgRequests =
+                    await this.rawDkgRequestModel.find(
+                        {
+                            actionId: {
+                                $gt: lastReducedAction
+                                    ? lastReducedAction.actionId
+                                    : -1,
                             },
-                            {},
-                            { sort: { actionId: 1 } },
-                        );
-                    const requestStatus = this._dkgRequest.requestStatus;
-                    const requester = this._dkgRequest.requester;
-                    for (let i = 0; i < notReducedActions.length; i++) {
-                        const notReducedAction = notReducedActions[i];
-                        const notActiveRawDkgRequest =
-                            notActiveRawDkgRequests[i];
-                        const requestId = Field(
-                            notActiveRawDkgRequest.requestId,
-                        );
-                        const dkgRequest = await this.dkgRequestModel.findOne({
-                            requestId: notActiveRawDkgRequest.requestId,
-                        });
-                        let status: RequestStatusEnum =
-                            RequestStatusEnum.NOT_YET_REQUESTED;
-                        if (
-                            notActiveRawDkgRequest.actionEnum ==
-                            RequestActionEnum.REQUEST
-                        ) {
-                            status = RequestStatusEnum.REQUESTING;
-                        } else if (
-                            notActiveRawDkgRequest.actionEnum ==
-                            RequestActionEnum.RESOLVE
-                        ) {
-                            status = RequestStatusEnum.RESOLVED;
-                        }
-
-                        proof = await CreateRequest.nextStep(
-                            proof,
-                            ZkApp.Request.RequestAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
-                                ),
-                            ),
-                            requestStatus.getWitness(requestId),
-                            requester.getWitness(requestId),
-                            PublicKey.fromBase58(dkgRequest.requester),
-                        );
-                        requestStatus.updateLeaf(
-                            { level1Index: requestId },
-                            Storage.RequestStorage.RequestStatusStorage.calculateLeaf(
-                                Field(status),
-                            ),
-                        );
+                        },
+                        {},
+                        { sort: { actionId: 1 } },
+                    );
+                const requestStatus = this._dkgRequest.requestStatus;
+                const requester = this._dkgRequest.requester;
+                for (let i = 0; i < notReducedActions.length; i++) {
+                    const notReducedAction = notReducedActions[i];
+                    const notActiveRawDkgRequest = notActiveRawDkgRequests[i];
+                    const requestId = Field(notActiveRawDkgRequest.requestId);
+                    const dkgRequest = await this.dkgRequestModel.findOne({
+                        requestId: notActiveRawDkgRequest.requestId,
+                    });
+                    let status: RequestStatusEnum =
+                        RequestStatusEnum.NOT_YET_REQUESTED;
+                    if (
+                        notActiveRawDkgRequest.actionEnum ==
+                        RequestActionEnum.REQUEST
+                    ) {
+                        status = RequestStatusEnum.REQUESTING;
+                    } else if (
                         notActiveRawDkgRequest.actionEnum ==
                         RequestActionEnum.RESOLVE
-                            ? ''
-                            : requester.updateLeaf(
-                                  { level1Index: requestId },
-                                  Storage.RequestStorage.RequesterStorage.calculateLeaf(
-                                      PublicKey.fromBase58(
-                                          notActiveRawDkgRequest.requester,
-                                      ),
-                                  ),
-                              );
+                    ) {
+                        status = RequestStatusEnum.RESOLVED;
                     }
-                    const dkgRequestContract = new RequestContract(
-                        PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-                    );
-                    const feePayerPrivateKey = PrivateKey.fromBase58(
-                        process.env.FEE_PAYER_PRIVATE_KEY,
-                    );
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
+
+                    proof = await CreateRequest.nextStep(
+                        proof,
+                        ZkApp.Request.RequestAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notReducedAction.actions,
                             ),
-                        },
-                        () => {
-                            dkgRequestContract.rollupRequest(proof);
-                        },
+                        ),
+                        requestStatus.getWitness(requestId),
+                        requester.getWitness(requestId),
+                        PublicKey.fromBase58(dkgRequest.requester),
                     );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
+                    requestStatus.updateLeaf(
+                        { level1Index: requestId },
+                        Storage.RequestStorage.RequestStatusStorage.calculateLeaf(
+                            Field(status),
+                        ),
                     );
-                    return true;
+                    notActiveRawDkgRequest.actionEnum ==
+                    RequestActionEnum.RESOLVE
+                        ? ''
+                        : requester.updateLeaf(
+                              { level1Index: requestId },
+                              Storage.RequestStorage.RequesterStorage.calculateLeaf(
+                                  PublicKey.fromBase58(
+                                      notActiveRawDkgRequest.requester,
+                                  ),
+                              ),
+                          );
                 }
-                return false;
-            } catch (err) {
-                this.logger.error(err);
+                const dkgRequestContract = new RequestContract(
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    () => {
+                        dkgRequestContract.rollupRequest(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+                return true;
             }
+        } catch (err) {
+            this.logger.error(err);
+        } finally {
+            return false;
         }
     }
 
     async reduceDkgResponse(): Promise<boolean> {
-        for (let count = 0; count < MaxRetries; count++) {
-            try {
-                const lastActiveDkgResponse =
-                    await this.dkgResponseModel.findOne(
-                        { active: true },
-                        {},
-                        { sort: { actionId: -1 } },
-                    );
-                const lastReducedAction = lastActiveDkgResponse
-                    ? await this.responseActionModel.findOne({
-                          actionId: lastActiveDkgResponse.actionId,
-                      })
-                    : undefined;
-                const notReducedActions = await this.responseActionModel.find(
-                    {
-                        actionId: {
-                            $gt: lastReducedAction
-                                ? lastReducedAction.actionId
-                                : -1,
-                        },
+        try {
+            const lastActiveDkgResponse = await this.dkgResponseModel.findOne(
+                { active: true },
+                {},
+                { sort: { actionId: -1 } },
+            );
+            const lastReducedAction = lastActiveDkgResponse
+                ? await this.responseActionModel.findOne({
+                      actionId: lastActiveDkgResponse.actionId,
+                  })
+                : undefined;
+            const notReducedActions = await this.responseActionModel.find(
+                {
+                    actionId: {
+                        $gt: lastReducedAction
+                            ? lastReducedAction.actionId
+                            : -1,
                     },
-                    {},
-                    { sort: { actionId: 1 } },
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notReducedActions.length > 0) {
+                const state = await this.fetchDkgResponseState();
+                let proof = await ReduceResponse.firstStep(
+                    lastReducedAction
+                        ? ZkApp.Response.Action.fromFields(
+                              Utilities.stringArrayToFields(
+                                  lastReducedAction.actions,
+                              ),
+                          )
+                        : ZkApp.Response.Action.empty(),
+                    state.reduceState,
+                    lastReducedAction
+                        ? Field(lastReducedAction.currentActionState)
+                        : Reducer.initialActionState,
                 );
-                if (notReducedActions.length > 0) {
-                    const state = await this.fetchDkgResponseState();
-                    let proof = await ReduceResponse.firstStep(
-                        lastReducedAction
-                            ? ZkApp.Response.Action.fromFields(
-                                  Utilities.stringArrayToFields(
-                                      lastReducedAction.actions,
-                                  ),
-                              )
-                            : ZkApp.Response.Action.empty(),
-                        state.reduceState,
-                        lastReducedAction
-                            ? Field(lastReducedAction.currentActionState)
-                            : Reducer.initialActionState,
-                    );
-                    const reduceState = this._dkgResponse.reduceState;
-                    for (let i = 0; i < notReducedActions.length; i++) {
-                        const notReducedAction = notReducedActions[i];
-                        proof = await ReduceResponse.nextStep(
-                            ZkApp.Response.Action.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
-                                ),
+                const reduceState = this._dkgResponse.reduceState;
+                for (let i = 0; i < notReducedActions.length; i++) {
+                    const notReducedAction = notReducedActions[i];
+                    proof = await ReduceResponse.nextStep(
+                        ZkApp.Response.Action.fromFields(
+                            Utilities.stringArrayToFields(
+                                notReducedAction.actions,
                             ),
-                            proof,
-                            reduceState.getWitness(
-                                Field(notReducedAction.currentActionState),
-                            ),
-                        );
-                        reduceState.updateLeaf(
-                            Storage.SharedStorage.ReduceStorage.calculateIndex(
-                                Field(notReducedAction.currentActionState),
-                            ),
-                            Storage.SharedStorage.ReduceStorage.calculateLeaf(
-                                Number(ActionReduceStatusEnum.REDUCED),
-                            ),
-                        );
-                    }
-                    const dkgResponseContract = new ResponseContract(
-                        PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                        ),
+                        proof,
+                        reduceState.getWitness(
+                            Field(notReducedAction.currentActionState),
+                        ),
                     );
-                    const feePayerPrivateKey = PrivateKey.fromBase58(
-                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    reduceState.updateLeaf(
+                        Storage.SharedStorage.ReduceStorage.calculateIndex(
+                            Field(notReducedAction.currentActionState),
+                        ),
+                        Storage.SharedStorage.ReduceStorage.calculateLeaf(
+                            Number(ActionReduceStatusEnum.REDUCED),
+                        ),
                     );
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
-                        },
-                        () => {
-                            dkgResponseContract.reduce(proof);
-                        },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
-                    );
-                    return true;
                 }
-                return false;
-            } catch (err) {
-                this.logger.error(err);
+                const dkgResponseContract = new ResponseContract(
+                    PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    () => {
+                        dkgResponseContract.reduce(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+                return true;
             }
+        } catch (err) {
+            this.logger.error(err);
+        } finally {
+            return false;
         }
     }
 
@@ -455,184 +449,174 @@ export class DkgUsageContractsService implements ContractServiceInterface {
     }
 
     async completeResponse(requestId: string): Promise<boolean> {
-        for (let count = 0; count < MaxRetries; count++) {
-            try {
-                const dkgRequest = await this.dkgRequestModel.findOne({
-                    requestId: requestId,
-                    status: RequestStatusEnum.REQUESTING,
+        try {
+            const dkgRequest = await this.dkgRequestModel.findOne({
+                requestId: requestId,
+                status: RequestStatusEnum.REQUESTING,
+            });
+            if (dkgRequest) {
+                const dkgResponses = await this.dkgResponseModel.find(
+                    {
+                        requestId: requestId,
+                    },
+                    {},
+                    { sort: { actionId: 1 } },
+                );
+                const committee = await this.committeeModel.findOne({
+                    committeeId: dkgRequest.committeeId,
                 });
-                if (dkgRequest) {
-                    const dkgResponses = await this.dkgResponseModel.find(
-                        {
-                            requestId: requestId,
-                        },
-                        {},
-                        { sort: { actionId: 1 } },
+
+                if (dkgResponses.length >= committee.threshold) {
+                    const dkgResponseState = await this.fetchDkgResponseState();
+                    const contribution = this._dkgResponse.contribution;
+                    const reduceState = this._dkgResponse.reduceState;
+                    let proof = await CompleteResponse.firstStep(
+                        new ZkApp.Response.ResponseInput({
+                            previousActionState: Field(0),
+                            action: ZkApp.Response.Action.empty(),
+                        }),
+                        Field(committee.threshold),
+                        Field(committee.numberOfMembers),
+                        this._dkgResponse.contribution.root,
+                        this._dkgResponse.reduceState.root,
+                        Field(dkgRequest.requestId),
+                        Field(dkgRequest.R.length),
+                        Field.fromBits(
+                            dkgResponses
+                                .map((dkgResponse) =>
+                                    Field(dkgResponse.memberId).toBits(
+                                        Constants.INDEX_SIZE,
+                                    ),
+                                )
+                                .flat(),
+                        ),
+                        contribution.getLevel1Witness(
+                            contribution.calculateLevel1Index(
+                                Field(dkgRequest.requestId),
+                            ),
+                        ),
                     );
-                    const committee = await this.committeeModel.findOne({
-                        committeeId: dkgRequest.committeeId,
-                    });
-
-                    if (dkgResponses.length >= committee.threshold) {
-                        const dkgResponseState =
-                            await this.fetchDkgResponseState();
-                        const contribution = this._dkgResponse.contribution;
-                        const reduceState = this._dkgResponse.reduceState;
-                        let proof = await CompleteResponse.firstStep(
+                    contribution.updateInternal(
+                        contribution.calculateLevel1Index(Field(requestId)),
+                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                    );
+                    for (let i = 0; i < committee.threshold; i++) {
+                        const dkgResponse = dkgResponses[i];
+                        const dkgResponseAction =
+                            await this.responseActionModel.findOne({
+                                actionId: dkgResponse.actionId,
+                            });
+                        const responseAction = ZkApp.Response.Action.fromFields(
+                            Utilities.stringArrayToFields(
+                                dkgResponseAction.actions,
+                            ),
+                        );
+                        proof = await CompleteResponse.nextStep(
                             new ZkApp.Response.ResponseInput({
-                                previousActionState: Field(0),
-                                action: ZkApp.Response.Action.empty(),
+                                previousActionState: Field(
+                                    dkgResponseAction.previousActionState,
+                                ),
+                                action: responseAction,
                             }),
-                            Field(committee.threshold),
-                            Field(committee.numberOfMembers),
-                            this._dkgResponse.contribution.root,
-                            this._dkgResponse.reduceState.root,
-                            Field(dkgRequest.requestId),
-                            Field(dkgRequest.R.length),
-                            Field.fromBits(
-                                dkgResponses
-                                    .map((dkgResponse) =>
-                                        Field(dkgResponse.memberId).toBits(
-                                            Constants.INDEX_SIZE,
-                                        ),
-                                    )
-                                    .flat(),
-                            ),
-                            contribution.getLevel1Witness(
+                            proof,
+                            contribution.getWitness(
                                 contribution.calculateLevel1Index(
-                                    Field(dkgRequest.requestId),
+                                    Field(requestId),
+                                ),
+                                contribution.calculateLevel2Index(
+                                    Field(dkgResponse.memberId),
+                                ),
+                            ),
+                            reduceState.getWitness(
+                                reduceState.calculateIndex(
+                                    Field(dkgResponseAction.currentActionState),
                                 ),
                             ),
                         );
-                        contribution.updateInternal(
-                            contribution.calculateLevel1Index(Field(requestId)),
-                            Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
-                        );
-                        for (let i = 0; i < committee.threshold; i++) {
-                            const dkgResponse = dkgResponses[i];
-                            const dkgResponseAction =
-                                await this.responseActionModel.findOne({
-                                    actionId: dkgResponse.actionId,
-                                });
-                            const responseAction =
-                                ZkApp.Response.Action.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        dkgResponseAction.actions,
-                                    ),
-                                );
-                            proof = await CompleteResponse.nextStep(
-                                new ZkApp.Response.ResponseInput({
-                                    previousActionState: Field(
-                                        dkgResponseAction.previousActionState,
-                                    ),
-                                    action: responseAction,
-                                }),
-                                proof,
-                                contribution.getWitness(
-                                    contribution.calculateLevel1Index(
-                                        Field(requestId),
-                                    ),
-                                    contribution.calculateLevel2Index(
-                                        Field(dkgResponse.memberId),
-                                    ),
-                                ),
-                                reduceState.getWitness(
-                                    reduceState.calculateIndex(
-                                        Field(
-                                            dkgResponseAction.currentActionState,
-                                        ),
-                                    ),
-                                ),
-                            );
-                            contribution.updateLeaf(
-                                {
-                                    level1Index:
-                                        contribution.calculateLevel1Index(
-                                            Field(requestId),
-                                        ),
-                                    level2Index:
-                                        contribution.calculateLevel2Index(
-                                            Field(dkgResponse.memberId),
-                                        ),
-                                },
-                                contribution.calculateLeaf(
-                                    responseAction.contribution,
-                                ),
-                            );
-                        }
-                        const dkgResponseContract = new ResponseContract(
-                            PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-                        );
-                        const feePayerPrivateKey = PrivateKey.fromBase58(
-                            process.env.FEE_PAYER_PRIVATE_KEY,
-                        );
-                        await this.committeeContractService.fetchCommitteeState();
-                        await this.dkgContractsService.fetchDkgState();
-                        const tx = await Mina.transaction(
+                        contribution.updateLeaf(
                             {
-                                sender: feePayerPrivateKey.toPublicKey(),
-                                fee: process.env.FEE,
+                                level1Index: contribution.calculateLevel1Index(
+                                    Field(requestId),
+                                ),
+                                level2Index: contribution.calculateLevel2Index(
+                                    Field(dkgResponse.memberId),
+                                ),
                             },
-                            () => {
-                                dkgResponseContract.complete(
-                                    proof,
-                                    new Storage.SharedStorage.ZkAppRef({
-                                        address: PublicKey.fromBase58(
-                                            process.env.COMMITTEE_ADDRESS,
-                                        ),
-                                        witness:
-                                            this._dkgResponse.zkApp.getWitness(
-                                                Field(ZkAppEnum.COMMITTEE),
-                                            ),
-                                    }),
-                                    new Storage.SharedStorage.ZkAppRef({
-                                        address: PublicKey.fromBase58(
-                                            process.env.DKG_ADDRESS,
-                                        ),
-                                        witness:
-                                            this._dkgResponse.zkApp.getWitness(
-                                                Field(ZkAppEnum.DKG),
-                                            ),
-                                    }),
-                                    new Storage.SharedStorage.ZkAppRef({
-                                        address: PublicKey.fromBase58(
-                                            process.env.REQUEST_ADDRESS,
-                                        ),
-                                        witness:
-                                            this._dkgResponse.zkApp.getWitness(
-                                                Field(ZkAppEnum.REQUEST),
-                                            ),
-                                    }),
-                                    this.committeeContractService.settingTree.getWitness(
-                                        Field(committee.committeeId),
-                                    ),
-
-                                    this.dkgContractsService.dkg.keyStatus.getWitness(
-                                        Storage.DKGStorage.KeyStatusStorage.calculateLevel1Index(
-                                            {
-                                                committeeId: Field(
-                                                    committee.committeeId,
-                                                ),
-                                                keyId: Field(dkgRequest.keyId),
-                                            },
-                                        ),
-                                    ),
-                                );
-                            },
+                            contribution.calculateLeaf(
+                                responseAction.contribution,
+                            ),
                         );
-                        await Utilities.proveAndSend(
-                            tx,
-                            feePayerPrivateKey,
-                            false,
-                            this.logger,
-                        );
-                        return true;
                     }
+                    const dkgResponseContract = new ResponseContract(
+                        PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                    );
+                    const feePayerPrivateKey = PrivateKey.fromBase58(
+                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    );
+                    await this.committeeContractService.fetchCommitteeState();
+                    await this.dkgContractsService.fetchDkgState();
+                    const tx = await Mina.transaction(
+                        {
+                            sender: feePayerPrivateKey.toPublicKey(),
+                            fee: process.env.FEE,
+                        },
+                        () => {
+                            dkgResponseContract.complete(
+                                proof,
+                                new Storage.SharedStorage.ZkAppRef({
+                                    address: PublicKey.fromBase58(
+                                        process.env.COMMITTEE_ADDRESS,
+                                    ),
+                                    witness: this._dkgResponse.zkApp.getWitness(
+                                        Field(ZkAppEnum.COMMITTEE),
+                                    ),
+                                }),
+                                new Storage.SharedStorage.ZkAppRef({
+                                    address: PublicKey.fromBase58(
+                                        process.env.DKG_ADDRESS,
+                                    ),
+                                    witness: this._dkgResponse.zkApp.getWitness(
+                                        Field(ZkAppEnum.DKG),
+                                    ),
+                                }),
+                                new Storage.SharedStorage.ZkAppRef({
+                                    address: PublicKey.fromBase58(
+                                        process.env.REQUEST_ADDRESS,
+                                    ),
+                                    witness: this._dkgResponse.zkApp.getWitness(
+                                        Field(ZkAppEnum.REQUEST),
+                                    ),
+                                }),
+                                this.committeeContractService.settingTree.getWitness(
+                                    Field(committee.committeeId),
+                                ),
+
+                                this.dkgContractsService.dkg.keyStatus.getWitness(
+                                    Storage.DKGStorage.KeyStatusStorage.calculateLevel1Index(
+                                        {
+                                            committeeId: Field(
+                                                committee.committeeId,
+                                            ),
+                                            keyId: Field(dkgRequest.keyId),
+                                        },
+                                    ),
+                                ),
+                            );
+                        },
+                    );
+                    await Utilities.proveAndSend(
+                        tx,
+                        feePayerPrivateKey,
+                        false,
+                        this.logger,
+                    );
+                    return true;
                 }
-                return false;
-            } catch (err) {
-                this.logger.error(err);
             }
+        } catch (err) {
+            this.logger.error(err);
+        } finally {
+            return false;
         }
     }
 
