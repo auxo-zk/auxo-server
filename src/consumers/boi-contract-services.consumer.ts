@@ -80,13 +80,13 @@ export class BoiContractServicesConsumer {
                 this.fundingContractService.update(),
                 this.treasuryContractService.update(),
             ]).then(async () => {
-                const runs = await Promise.all([
-                    this.campaignContractService.rollup(),
-                    this.participationContractService.rollup(),
-                    this.projectContractService.rollup(),
-                    this.fundingContractService.reduce(),
-                    this.treasuryContractService.rollup(),
-                ]);
+                const runs = [
+                    await this.campaignContractService.rollup(),
+                    await this.participationContractService.rollup(),
+                    await this.projectContractService.rollup(),
+                    await this.fundingContractService.reduce(),
+                    await this.treasuryContractService.rollup(),
+                ];
                 if (!runs.includes(true)) {
                 }
                 await job.progress();
