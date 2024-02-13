@@ -78,14 +78,14 @@ export class DkgContractServicesConsumer {
                 this.dkgContractsService.update(),
                 this.dkgUsageContractsService.update(),
             ]).then(async () => {
-                const runs = await Promise.all([
-                    this.committeeContractService.rollup(),
-                    this.dkgContractsService.rollupDkg(),
-                    this.dkgContractsService.reduceRound1(),
-                    this.dkgContractsService.reduceRound2(),
-                    this.dkgUsageContractsService.reduceDkgResponse(),
-                    this.dkgUsageContractsService.rollupDkgRequest(),
-                ]);
+                const runs = [
+                    await this.committeeContractService.rollup(),
+                    await this.dkgContractsService.rollupDkg(),
+                    await this.dkgContractsService.reduceRound1(),
+                    await this.dkgContractsService.reduceRound2(),
+                    await this.dkgUsageContractsService.reduceDkgResponse(),
+                    await this.dkgUsageContractsService.rollupDkgRequest(),
+                ];
                 if (!runs.includes(true)) {
                     const keysForRound1Finalization =
                         await this.dkgContractsService.getKeysReadyForRound1Finalization();
@@ -93,25 +93,24 @@ export class DkgContractServicesConsumer {
                         await this.dkgContractsService.getKeysReadyForRound2Finalization();
                     const requestsForResponseCompletion =
                         await this.dkgUsageContractsService.getDkgRequestsReadyForResponseCompletion();
-                    await Promise.all([
-                        keysForRound1Finalization.length > 0
-                            ? this.dkgContractsService.finalizeRound1(
-                                  keysForRound1Finalization[0].committeeId,
-                                  keysForRound1Finalization[0].keyId,
-                              )
-                            : undefined,
-                        keysForRound2Finalization.length > 0
-                            ? this.dkgContractsService.finalizeRound2(
-                                  keysForRound2Finalization[0].committeeId,
-                                  keysForRound2Finalization[0].keyId,
-                              )
-                            : undefined,
-                        requestsForResponseCompletion.length > 0
-                            ? this.dkgUsageContractsService.completeResponse(
-                                  requestsForResponseCompletion[0].requestId,
-                              )
-                            : undefined,
-                    ]);
+
+                    keysForRound1Finalization.length > 0
+                        ? await this.dkgContractsService.finalizeRound1(
+                              keysForRound1Finalization[0].committeeId,
+                              keysForRound1Finalization[0].keyId,
+                          )
+                        : false;
+                    keysForRound2Finalization.length > 0
+                        ? await this.dkgContractsService.finalizeRound2(
+                              keysForRound2Finalization[0].committeeId,
+                              keysForRound2Finalization[0].keyId,
+                          )
+                        : false;
+                    requestsForResponseCompletion.length > 0
+                        ? await this.dkgUsageContractsService.completeResponse(
+                              requestsForResponseCompletion[0].requestId,
+                          )
+                        : false;
                 }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
@@ -136,34 +135,32 @@ export class DkgContractServicesConsumer {
                     await this.dkgContractsService.getKeysReadyForRound2Finalization();
                 const requestsForResponseCompletion =
                     await this.dkgUsageContractsService.getDkgRequestsReadyForResponseCompletion();
-                const runs = await Promise.all([
+                const runs = [
                     keysForRound1Finalization.length > 0
-                        ? this.dkgContractsService.finalizeRound1(
+                        ? await this.dkgContractsService.finalizeRound1(
                               keysForRound1Finalization[0].committeeId,
                               keysForRound1Finalization[0].keyId,
                           )
-                        : undefined,
+                        : false,
                     keysForRound2Finalization.length > 0
-                        ? this.dkgContractsService.finalizeRound2(
+                        ? await this.dkgContractsService.finalizeRound2(
                               keysForRound2Finalization[0].committeeId,
                               keysForRound2Finalization[0].keyId,
                           )
-                        : undefined,
+                        : false,
                     requestsForResponseCompletion.length > 0
-                        ? this.dkgUsageContractsService.completeResponse(
+                        ? await this.dkgUsageContractsService.completeResponse(
                               requestsForResponseCompletion[0].requestId,
                           )
-                        : undefined,
-                ]);
+                        : false,
+                ];
                 if (!runs.includes(true)) {
-                    await Promise.all([
-                        this.committeeContractService.rollup(),
-                        this.dkgContractsService.rollupDkg(),
-                        this.dkgContractsService.reduceRound1(),
-                        this.dkgContractsService.reduceRound2(),
-                        this.dkgUsageContractsService.reduceDkgResponse(),
-                        this.dkgUsageContractsService.rollupDkgRequest(),
-                    ]);
+                    await this.committeeContractService.rollup();
+                    await this.dkgContractsService.rollupDkg();
+                    await this.dkgContractsService.reduceRound1();
+                    await this.dkgContractsService.reduceRound2();
+                    await this.dkgUsageContractsService.reduceDkgResponse();
+                    await this.dkgUsageContractsService.rollupDkgRequest();
                 }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');

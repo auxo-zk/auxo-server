@@ -28,7 +28,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
     //     });
     // }
 
-    @Cron('0,8,16,24,32,40,48,56 * * * *')
+    @Cron('0,14,28,42 * * * *')
     async handleRollupContractsFirstOrder() {
         this.logger.log(
             'Register rollupContracts for the first order task at ' +
@@ -39,7 +39,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
         });
     }
 
-    @Cron('4,12,20,28,36,44,52 * * * *')
+    @Cron('7,21,35,49 * * * *')
     async handleRollupContractsSecondOrder() {
         this.logger.log(
             'Register rollupContracts for the second order task at ' +
