@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Mina, fetchLastBlock } from 'o1js';
+import { Mina, fetchLastBlock, fetchTransactionStatus } from 'o1js';
 
 @Injectable()
 export class Network implements OnModuleInit {

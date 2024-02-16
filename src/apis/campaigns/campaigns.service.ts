@@ -33,7 +33,7 @@ export class CampaignsService {
         jwtPayload: JwtPayload,
     ): Promise<IpfsResponse> {
         if (jwtPayload.role == AuthRoleEnum.ORGANIZER) {
-            const result = await this.ipfs.upload(createCampaignDto);
+            const result = await this.ipfs.uploadJson(createCampaignDto);
             if (result == null) {
                 throw new BadRequestException();
             }

@@ -59,7 +59,7 @@ export class ProjectsService {
         jwtPayload: JwtPayload,
     ): Promise<IpfsResponse> {
         if (jwtPayload.role == AuthRoleEnum.BUILDER) {
-            const result = await this.ipfs.upload(createProjectDto);
+            const result = await this.ipfs.uploadJson(createProjectDto);
             if (result == null) {
                 throw new BadRequestException();
             }
@@ -143,7 +143,7 @@ export class ProjectsService {
             });
             if (project) {
                 if (project.payeeAccount == jwtPayload.sub) {
-                    const result = await this.ipfs.upload(
+                    const result = await this.ipfs.uploadJson(
                         createParticipationDto,
                     );
                     if (result == null) {

@@ -16,7 +16,7 @@ import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 export class IpfsController {
     constructor(private readonly ipfs: Ipfs) {}
 
-    @Post('upload-file')
+    @Post('upload-json')
     @ApiTags('Ipfs')
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -26,7 +26,7 @@ export class IpfsController {
         },
     })
     @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 1048576 } }))
-    async uploadFile(
+    async uploadJson(
         @UploadedFile(
             new ParseFilePipe({
                 validators: [
@@ -36,6 +36,6 @@ export class IpfsController {
         )
         file: Express.Multer.File,
     ): Promise<IpfsResponse> {
-        return await this.ipfs.uploadFile(file);
+        return await this.ipfs.uploadJsonFile(file);
     }
 }

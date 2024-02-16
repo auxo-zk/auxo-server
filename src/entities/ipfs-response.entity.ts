@@ -1,5 +1,5 @@
 export class IpfsResponse {
-    Name: string;
-    Hash: string;
-    Size: number;
+    IpfsHash: string;
+    Timestamp: string;
+    PinSize: number;
 }

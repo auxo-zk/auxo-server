@@ -222,7 +222,7 @@ export class CommitteesService {
     async createCommittee(
         createCommitteeDto: CreateCommitteeDto,
     ): Promise<IpfsResponse> {
-        const result = await this.ipfs.upload(createCommitteeDto);
+        const result = await this.ipfs.uploadJson(createCommitteeDto);
         if (result == null) {
             throw new BadRequestException();
         }

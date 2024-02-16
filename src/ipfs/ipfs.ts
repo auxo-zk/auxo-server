@@ -7,21 +7,13 @@ import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 export class Ipfs {
     constructor(private readonly httpService: HttpService) {}
 
-    async upload(data: object): Promise<IpfsResponse> {
-        const formData = new FormData();
-        formData.append('file', JSON.stringify(data));
-        const requestURL = process.env.IPFS_API_ENDPOINT + '/add';
-        const auth =
-            'Basic ' +
-            btoa(
-                process.env.IPFS_API_KEY +
-                    ':' +
-                    process.env.IPFS_API_SECRET_KEY,
-            );
+    async uploadJson(data: object): Promise<IpfsResponse> {
+        const requestURL =
+            process.env.PINATA_IPFS_ENDPOINT + '/pinning/pinJSONToIPFS';
         const response = await lastValueFrom(
-            this.httpService.post(requestURL, formData, {
+            this.httpService.post(requestURL, JSON.stringify(data), {
                 headers: {
-                    Authorization: auth,
+                    Authorization: 'Bearer ' + process.env.PINATA_JWT,
                 },
             }),
         );
@@ -32,23 +24,26 @@ export class Ipfs {
         }
     }
 
-    async uploadFile(file: Express.Multer.File): Promise<IpfsResponse> {
-        const formData = new FormData();
-        formData.append('file', file.buffer.toString());
-        const requestURL = process.env.IPFS_API_ENDPOINT + '/add';
-        const auth =
-            'Basic ' +
-            btoa(
-                process.env.IPFS_API_KEY +
-                    ':' +
-                    process.env.IPFS_API_SECRET_KEY,
-            );
+    async uploadJsonFile(file: Express.Multer.File): Promise<IpfsResponse> {
+        const form = new FormData();
+        form.append('file', file.buffer.toString());
+        const requestURL =
+            process.env.PINATA_IPFS_ENDPOINT + '/pinning/pinJSONToIPFS';
         const response = await lastValueFrom(
-            this.httpService.post(requestURL, formData, {
-                headers: {
-                    Authorization: auth,
+            this.httpService.post(
+                requestURL,
+                {
+                    pinataContent: JSON.parse(file.buffer.toString()),
+                    pinataMetadata: {
+                        name: file.originalname,
+                    },
                 },
-            }),
+                {
+                    headers: {
+                        Authorization: 'Bearer ' + process.env.PINATA_JWT,
+                    },
+                },
+            ),
         );
         if (response.status == HttpStatus.OK) {
             return response.data;
@@ -58,28 +53,8 @@ export class Ipfs {
     }
 
     async getData(ipfsHash: string): Promise<object> {
-        const requestURL = process.env.IPFS_API_ENDPOINT + '/cat';
-        const auth =
-            'Basic ' +
-            btoa(
-                process.env.IPFS_API_KEY +
-                    ':' +
-                    process.env.IPFS_API_SECRET_KEY,
-            );
-        const response = await lastValueFrom(
-            this.httpService.post(
-                requestURL,
-                {},
-                {
-                    params: {
-                        arg: ipfsHash,
-                    },
-                    headers: {
-                        Authorization: auth,
-                    },
-                },
-            ),
-        );
+        const requestURL = process.env.CLOUDFLARE_IPFS_GATEWAY + ipfsHash;
+        const response = await lastValueFrom(this.httpService.get(requestURL));
         if (response.status == HttpStatus.OK) {
             return response.data;
         } else {

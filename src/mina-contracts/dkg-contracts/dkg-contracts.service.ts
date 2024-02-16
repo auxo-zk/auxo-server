@@ -194,6 +194,7 @@ export class DkgContractsService implements ContractServiceInterface {
             // console.log(await this.getKeysReadyForRound2Finalization());
             // await this.committeeContractService.compile();
             // await this.compile();
+            // await this.reduceRound1();
             // await this.rollupDkg();
             // await this.finalizeRound1(3, 0);
             // await this.reduceRound2();
