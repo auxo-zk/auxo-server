@@ -1,14 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Mina, fetchLastBlock, fetchTransactionStatus } from 'o1js';
+import { BerkeleyNetwork, Lightnet } from 'src/constants';
 
 @Injectable()
 export class Network implements OnModuleInit {
     constructor() {
-        const network = Mina.Network({
-            mina: process.env.MINA,
-            archive: process.env.ARCHIVE,
-        });
-        Mina.setActiveInstance(network);
+        Mina.setActiveInstance(BerkeleyNetwork);
     }
 
     async onModuleInit() {
