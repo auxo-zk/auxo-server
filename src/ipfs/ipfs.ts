@@ -11,13 +11,14 @@ export class Ipfs {
         const requestURL =
             process.env.PINATA_IPFS_ENDPOINT + '/pinning/pinJSONToIPFS';
         const response = await lastValueFrom(
-            this.httpService.post(requestURL, JSON.stringify(data), {
+            this.httpService.post(requestURL, data, {
                 headers: {
                     Authorization: 'Bearer ' + process.env.PINATA_JWT,
                 },
             }),
         );
         if (response.status == HttpStatus.OK) {
+            response.data['Hash'] = response.data['IpfsHash'];
             return response.data;
         } else {
             return null;
@@ -46,6 +47,7 @@ export class Ipfs {
             ),
         );
         if (response.status == HttpStatus.OK) {
+            response.data['Hash'] = response.data['IpfsHash'];
             return response.data;
         } else {
             throw new BadRequestException();
@@ -53,12 +55,18 @@ export class Ipfs {
     }
 
     async getData(ipfsHash: string): Promise<object> {
-        const requestURL = process.env.CLOUDFLARE_IPFS_GATEWAY + ipfsHash;
-        const response = await lastValueFrom(this.httpService.get(requestURL));
-        if (response.status == HttpStatus.OK) {
-            return response.data;
-        } else {
-            return null;
+        try {
+            const requestURL = process.env.CLOUDFLARE_IPFS_GATEWAY + ipfsHash;
+            const response = await lastValueFrom(
+                this.httpService.get(requestURL),
+            );
+            if (response.status == HttpStatus.OK) {
+                return response.data;
+            } else {
+                return null;
+            }
+        } catch (err) {
+            return undefined;
         }
     }
 }
