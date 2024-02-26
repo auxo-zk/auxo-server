@@ -316,8 +316,8 @@ export class DkgContractsService implements ContractServiceInterface {
                         keyMapping[committeeId][keys[j]['keyId']] = keys[j];
                     }
                 }
-                const keyCounter = this._dkg.keyCounter;
-                const keyStatus = this._dkg.keyStatus;
+                const keyCounter = Object.assign({}, this._dkg.keyCounter);
+                const keyStatus = Object.assign({}, this._dkg.keyStatus);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveDkg = notActiveDkgs[i];
@@ -497,7 +497,7 @@ export class DkgContractsService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const reduceState = this._round1.reduceState;
+                const reduceState = Object.assign({}, this._round1.reduceState);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     proof = await ReduceRound1.nextStep(
@@ -585,7 +585,7 @@ export class DkgContractsService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const reduceState = this._round2.reduceState;
+                const reduceState = Object.assign({}, this._round2.reduceState);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     proof = await ReduceRound2.nextStep(
@@ -719,8 +719,11 @@ export class DkgContractsService implements ContractServiceInterface {
                         ),
                     );
 
-                    const contribution = this._round1.contribution;
-                    const publicKey = this._round1.publicKey;
+                    const contribution = Object.assign(
+                        {},
+                        this._round1.contribution,
+                    );
+                    const publicKey = Object.assign({}, this._round1.publicKey);
                     contribution.updateInternal(
                         contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),
@@ -954,8 +957,14 @@ export class DkgContractsService implements ContractServiceInterface {
                         ),
                     );
 
-                    const contribution = this._round2.contribution;
-                    const encryption = this._round2.encryption;
+                    const contribution = Object.assign(
+                        {},
+                        this._round2.contribution,
+                    );
+                    const encryption = Object.assign(
+                        {},
+                        this._round2.encryption,
+                    );
                     contribution.updateInternal(
                         contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),

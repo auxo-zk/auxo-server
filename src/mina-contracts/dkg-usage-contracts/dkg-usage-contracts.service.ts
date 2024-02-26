@@ -250,8 +250,11 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         {},
                         { sort: { actionId: 1 } },
                     );
-                const requestStatus = this._dkgRequest.requestStatus;
-                const requester = this._dkgRequest.requester;
+                const requestStatus = Object.assign(
+                    {},
+                    this._dkgRequest.requestStatus,
+                );
+                const requester = Object.assign({}, this._dkgRequest.requester);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveRawDkgRequest = notActiveRawDkgRequests[i];
@@ -373,7 +376,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const reduceState = this._dkgResponse.reduceState;
+                const reduceState = Object.assign(
+                    {},
+                    this._dkgResponse.reduceState,
+                );
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     proof = await ReduceResponse.nextStep(
@@ -468,8 +474,14 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
                 if (dkgResponses.length >= committee.threshold) {
                     const dkgResponseState = await this.fetchDkgResponseState();
-                    const contribution = this._dkgResponse.contribution;
-                    const reduceState = this._dkgResponse.reduceState;
+                    const contribution = Object.assign(
+                        {},
+                        this._dkgResponse.contribution,
+                    );
+                    const reduceState = Object.assign(
+                        {},
+                        this._dkgResponse.reduceState,
+                    );
                     let proof = await CompleteResponse.firstStep(
                         new ZkApp.Response.ResponseInput({
                             previousActionState: Field(0),

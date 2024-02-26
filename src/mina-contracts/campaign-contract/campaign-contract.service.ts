@@ -211,10 +211,10 @@ export class CampaignContractService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const owner = this._owner;
-                const info = this._info;
-                const status = this._status;
-                const config = this._config;
+                const owner = Object.assign({}, this._owner);
+                const info = Object.assign({}, this._info);
+                const status = Object.assign({}, this._status);
+                const config = Object.assign({}, this._config);
 
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];

@@ -131,8 +131,8 @@ export class CommitteeContractService implements ContractServiceInterface {
                     state.settingTreeRoot,
                     state.nextCommitteeId,
                 );
-                const memberTree = this._memberTree;
-                const settingTree = this._settingTree;
+                const memberTree = Object.assign({}, this._memberTree);
+                const settingTree = Object.assign({}, this._settingTree);
                 let nextCommitteeId = lastActiveCommittee
                     ? lastActiveCommittee.committeeId + 1
                     : 0;
