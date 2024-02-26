@@ -150,9 +150,12 @@ export class ProjectContractService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const member = Object.assign({}, this._member);
-                const info = Object.assign({}, this._info);
-                const payee = Object.assign({}, this._payee);
+                let member = new Storage.ProjectStorage.MemberStorage();
+                member = Object.assign(member, this._member);
+                let info = new Storage.ProjectStorage.InfoStorage();
+                info = Object.assign(info, this._info);
+                let payee = new Storage.ProjectStorage.AddressStorage();
+                payee = Object.assign(payee, this._payee);
 
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];

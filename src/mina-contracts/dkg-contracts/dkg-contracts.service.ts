@@ -316,8 +316,11 @@ export class DkgContractsService implements ContractServiceInterface {
                         keyMapping[committeeId][keys[j]['keyId']] = keys[j];
                     }
                 }
-                const keyCounter = Object.assign({}, this._dkg.keyCounter);
-                const keyStatus = Object.assign({}, this._dkg.keyStatus);
+                let keyCounter =
+                    new Storage.CommitteeStorage.KeyCounterStorage();
+                keyCounter = Object.assign(keyCounter, this._dkg.keyCounter);
+                let keyStatus = new Storage.DKGStorage.KeyStatusStorage();
+                keyStatus = Object.assign(keyStatus, this._dkg.keyStatus);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveDkg = notActiveDkgs[i];
@@ -497,7 +500,11 @@ export class DkgContractsService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const reduceState = Object.assign({}, this._round1.reduceState);
+                let reduceState = new Storage.SharedStorage.ReduceStorage();
+                reduceState = Object.assign(
+                    reduceState,
+                    this._round1.reduceState,
+                );
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     proof = await ReduceRound1.nextStep(
@@ -585,7 +592,11 @@ export class DkgContractsService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const reduceState = Object.assign({}, this._round2.reduceState);
+                let reduceState = new Storage.SharedStorage.ReduceStorage();
+                reduceState = Object.assign(
+                    reduceState,
+                    this._round2.reduceState,
+                );
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     proof = await ReduceRound2.nextStep(
@@ -719,11 +730,17 @@ export class DkgContractsService implements ContractServiceInterface {
                         ),
                     );
 
-                    const contribution = Object.assign(
-                        {},
+                    let contribution =
+                        new Storage.DKGStorage.Round1ContributionStorage();
+                    contribution = Object.assign(
+                        contribution,
                         this._round1.contribution,
                     );
-                    const publicKey = Object.assign({}, this._round1.publicKey);
+                    let publicKey = new Storage.DKGStorage.PublicKeyStorage();
+                    publicKey = Object.assign(
+                        publicKey,
+                        this._round1.publicKey,
+                    );
                     contribution.updateInternal(
                         contribution.calculateLevel1Index({
                             committeeId: Field(committeeId),
@@ -957,12 +974,15 @@ export class DkgContractsService implements ContractServiceInterface {
                         ),
                     );
 
-                    const contribution = Object.assign(
-                        {},
+                    let contribution =
+                        new Storage.DKGStorage.Round2ContributionStorage();
+                    contribution = Object.assign(
+                        contribution,
                         this._round2.contribution,
                     );
-                    const encryption = Object.assign(
-                        {},
+                    let encryption = new Storage.DKGStorage.EncryptionStorage();
+                    encryption = Object.assign(
+                        encryption,
                         this._round2.encryption,
                     );
                     contribution.updateInternal(

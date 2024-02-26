@@ -189,7 +189,8 @@ export class TreasuryContractService implements ContractServiceInterface {
                     treasuryState.claimed,
                     treasuryState.actionState,
                 );
-                const claimed = await this._claimed;
+                let claimed = new Storage.TreasuryStorage.ClaimedStorage();
+                claimed = Object.assign(claimed, this._claimed);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveTreasury = notActiveTreasuries[i];

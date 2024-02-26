@@ -70,8 +70,8 @@ export class CommitteeContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // await this.compile();
-            // await this.rollup();
+            await this.compile();
+            await this.rollup();
         } catch (err) {}
     }
 
@@ -131,8 +131,12 @@ export class CommitteeContractService implements ContractServiceInterface {
                     state.settingTreeRoot,
                     state.nextCommitteeId,
                 );
-                const memberTree = Object.assign({}, this._memberTree);
-                const settingTree = Object.assign({}, this._settingTree);
+                let memberTree: Storage.CommitteeStorage.MemberStorage =
+                    new Storage.CommitteeStorage.MemberStorage();
+                memberTree = Object.assign(memberTree, this._memberTree);
+                let settingTree: Storage.CommitteeStorage.SettingStorage =
+                    new Storage.CommitteeStorage.SettingStorage();
+                settingTree = Object.assign(settingTree, this._settingTree);
                 let nextCommitteeId = lastActiveCommittee
                     ? lastActiveCommittee.committeeId + 1
                     : 0;

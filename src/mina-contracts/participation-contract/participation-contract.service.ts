@@ -196,9 +196,12 @@ export class ParticipationContractService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const index = Object.assign({}, this._index);
-                const info = Object.assign({}, this._info);
-                const counter = Object.assign({}, this._counter);
+                let index = new Storage.ParticipationStorage.IndexStorage();
+                index = Object.assign(index, this._index);
+                let info = new Storage.ParticipationStorage.InfoStorage();
+                info = Object.assign(info, this._info);
+                let counter = new Storage.ParticipationStorage.CounterStorage();
+                counter = Object.assign(counter, this._counter);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveParticipation = notActiveParticipations[i];
