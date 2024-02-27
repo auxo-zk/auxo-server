@@ -22,6 +22,7 @@ import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { Utilities } from '../utilities';
 import { ProjectState } from 'src/interfaces/zkapp-state.interface';
+import * as _ from 'lodash';
 
 @Injectable()
 export class ProjectContractService implements ContractServiceInterface {
@@ -150,13 +151,9 @@ export class ProjectContractService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                let member = new Storage.ProjectStorage.MemberStorage();
-                member = Object.assign(member, this._member);
-                let info = new Storage.ProjectStorage.InfoStorage();
-                info = Object.assign(info, this._info);
-                let payee = new Storage.ProjectStorage.AddressStorage();
-                payee = Object.assign(payee, this._payee);
-
+                const member = _.cloneDeep(this._member);
+                const info = _.cloneDeep(this._info);
+                const payee = _.cloneDeep(this._payee);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveProject = notActiveProjects[i];

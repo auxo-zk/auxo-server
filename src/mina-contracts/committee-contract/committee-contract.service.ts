@@ -38,6 +38,7 @@ import { Action } from 'src/interfaces/action.interface';
 import { CommitteeState } from 'src/interfaces/zkapp-state.interface';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { error } from 'console';
+import * as _ from 'lodash';
 
 @Injectable()
 export class CommitteeContractService implements ContractServiceInterface {
@@ -65,14 +66,15 @@ export class CommitteeContractService implements ContractServiceInterface {
         this._settingTree = new Storage.CommitteeStorage.SettingStorage();
     }
 
-    // Why not calling update?
     async onModuleInit() {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
             // await this.compile();
             // await this.rollup();
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     async update() {
@@ -131,12 +133,8 @@ export class CommitteeContractService implements ContractServiceInterface {
                     state.settingTreeRoot,
                     state.nextCommitteeId,
                 );
-                let memberTree: Storage.CommitteeStorage.MemberStorage =
-                    new Storage.CommitteeStorage.MemberStorage();
-                memberTree = Object.assign(memberTree, this._memberTree);
-                let settingTree: Storage.CommitteeStorage.SettingStorage =
-                    new Storage.CommitteeStorage.SettingStorage();
-                settingTree = Object.assign(settingTree, this._settingTree);
+                const memberTree = _.cloneDeep(this._memberTree);
+                const settingTree = _.cloneDeep(this._settingTree);
                 let nextCommitteeId = lastActiveCommittee
                     ? lastActiveCommittee.committeeId + 1
                     : 0;

@@ -28,6 +28,7 @@ import { ContractServiceInterface } from 'src/interfaces/contract-service.interf
 import { MaxRetries, zkAppCache } from 'src/constants';
 import { Utilities } from '../utilities';
 import { TreasuryState } from 'src/interfaces/zkapp-state.interface';
+import * as _ from 'lodash';
 
 @Injectable()
 export class TreasuryContractService implements ContractServiceInterface {
@@ -189,8 +190,7 @@ export class TreasuryContractService implements ContractServiceInterface {
                     treasuryState.claimed,
                     treasuryState.actionState,
                 );
-                let claimed = new Storage.TreasuryStorage.ClaimedStorage();
-                claimed = Object.assign(claimed, this._claimed);
+                const claimed = _.cloneDeep(this._claimed);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveTreasury = notActiveTreasuries[i];

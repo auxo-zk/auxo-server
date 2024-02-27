@@ -23,6 +23,7 @@ import { IPFSHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { Utilities } from '../utilities';
 import { CampaignState } from 'src/interfaces/zkapp-state.interface';
+import * as _ from 'lodash';
 
 @Injectable()
 export class CampaignContractService implements ContractServiceInterface {
@@ -211,10 +212,11 @@ export class CampaignContractService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const owner = Object.assign({}, this._owner);
-                const info = Object.assign({}, this._info);
-                const status = Object.assign({}, this._status);
-                const config = Object.assign({}, this._config);
+
+                const owner = _.cloneDeep(this._owner);
+                const info = _.cloneDeep(this._info);
+                const status = _.cloneDeep(this._status);
+                const config = _.cloneDeep(this._config);
 
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];

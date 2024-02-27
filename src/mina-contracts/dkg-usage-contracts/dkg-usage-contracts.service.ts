@@ -56,6 +56,7 @@ import { Utilities } from '../utilities';
 import { Committee } from 'src/schemas/committee.schema';
 import { DkgContractsService } from '../dkg-contracts/dkg-contracts.service';
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
+import * as _ from 'lodash';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
@@ -250,17 +251,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         {},
                         { sort: { actionId: 1 } },
                     );
-                let requestStatus =
-                    new Storage.RequestStorage.RequestStatusStorage();
-                requestStatus = Object.assign(
-                    requestStatus,
+                const requestStatus = _.cloneDeep(
                     this._dkgRequest.requestStatus,
                 );
-                let requester = new Storage.RequestStorage.RequesterStorage();
-                requester = Object.assign(
-                    requester,
-                    this._dkgRequest.requester,
-                );
+                const requester = _.cloneDeep(this._dkgRequest.requester);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveRawDkgRequest = notActiveRawDkgRequests[i];
@@ -382,11 +376,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                let reduceState = new Storage.SharedStorage.ReduceStorage();
-                reduceState = Object.assign(
-                    reduceState,
-                    this._dkgResponse.reduceState,
-                );
+                const reduceState = _.cloneDeep(this._dkgResponse.reduceState);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     proof = await ReduceResponse.nextStep(
@@ -481,15 +471,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
                 if (dkgResponses.length >= committee.threshold) {
                     const dkgResponseState = await this.fetchDkgResponseState();
-                    let contribution =
-                        new Storage.RequestStorage.ResponseContributionStorage();
-                    contribution = Object.assign(
-                        contribution,
+                    const contribution = _.cloneDeep(
                         this._dkgResponse.contribution,
                     );
-                    let reduceState = new Storage.SharedStorage.ReduceStorage();
-                    reduceState = Object.assign(
-                        reduceState,
+                    const reduceState = _.cloneDeep(
                         this._dkgResponse.reduceState,
                     );
                     let proof = await CompleteResponse.firstStep(

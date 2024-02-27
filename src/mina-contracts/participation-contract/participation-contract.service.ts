@@ -22,6 +22,7 @@ import { ContractServiceInterface } from 'src/interfaces/contract-service.interf
 import { MaxRetries, zkAppCache } from 'src/constants';
 import { Utilities } from '../utilities';
 import { ParticipationState } from 'src/interfaces/zkapp-state.interface';
+import * as _ from 'lodash';
 
 @Injectable()
 export class ParticipationContractService implements ContractServiceInterface {
@@ -196,12 +197,9 @@ export class ParticipationContractService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                let index = new Storage.ParticipationStorage.IndexStorage();
-                index = Object.assign(index, this._index);
-                let info = new Storage.ParticipationStorage.InfoStorage();
-                info = Object.assign(info, this._info);
-                let counter = new Storage.ParticipationStorage.CounterStorage();
-                counter = Object.assign(counter, this._counter);
+                const index = _.cloneDeep(this._index);
+                const info = _.cloneDeep(this._info);
+                const counter = _.cloneDeep(this._counter);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     const notActiveParticipation = notActiveParticipations[i];
