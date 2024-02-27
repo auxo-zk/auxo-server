@@ -194,6 +194,11 @@ export class DkgContractsService implements ContractServiceInterface {
             // console.log(await this.getKeysReadyForRound1Finalization());
             // console.log(await this.getKeysReadyForRound2Finalization());
             // await this.committeeContractService.compile();
+            // Provable.log(await this.fetchRound1State());
+            // Provable.log(this._round1.contribution.root);
+            // Provable.log(this._round1.publicKey.root);
+            // Provable.log(this._round1.reduceState.root);
+            // Provable.log(this._round1.zkApp.root);
             // await this.compile();
             // await this.reduceRound1();
             // await this.rollupDkg();
@@ -508,7 +513,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             ),
                         ),
                         proof,
-                        this._round1.reduceState.getWitness(
+                        reduceState.getWitness(
                             Field(notReducedAction.currentActionState),
                         ),
                     );
@@ -549,6 +554,7 @@ export class DkgContractsService implements ContractServiceInterface {
             }
         } catch (err) {
             this.logger.error(err);
+            console.log(err);
         } finally {
             return false;
         }
@@ -596,7 +602,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             ),
                         ),
                         proof,
-                        this._round2.reduceState.getWitness(
+                        reduceState.getWitness(
                             Field(notReducedAction.currentActionState),
                         ),
                     );
