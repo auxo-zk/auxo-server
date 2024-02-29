@@ -9,37 +9,47 @@ import {
 
 export class ProjectMember {
     @IsString()
-    name: string;
+    @IsOptional()
+    name?: string;
 
     @IsString()
-    role: string;
+    @IsOptional()
+    role?: string;
 
     @IsString()
-    link: string;
+    @IsOptional()
+    link?: string;
 }
 
 export class CreateProjectDraftDto {
     @IsString()
-    name: string;
+    @IsOptional()
+    name?: string;
 
     @IsUrl()
-    avatarImage: string;
+    @IsOptional()
+    avatarImage?: string;
 
     @IsUrl()
-    coverImage: string;
+    @IsOptional()
+    coverImage?: string;
 
     @IsString()
-    publicKey: string;
+    @IsOptional()
+    publicKey?: string;
 
     @IsString()
-    description: string;
+    @IsOptional()
+    description?: string;
 
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => ProjectMember)
-    members: ProjectMember[];
+    @IsOptional()
+    members?: ProjectMember[];
 
     @IsArray()
     @IsUrl({}, { each: true })
-    documents: string[];
+    @IsOptional()
+    documents?: string[];
 }
