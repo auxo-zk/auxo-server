@@ -143,7 +143,7 @@ export class BuildersService {
                     {
                         name: updateProjectDraftDto.name,
                         avatarImage: updateProjectDraftDto.publicKey,
-                        coverImage: updateProjectDraftDto.description,
+                        coverImage: updateProjectDraftDto.coverImage,
                         publicKey: updateProjectDraftDto.publicKey,
                         description: updateProjectDraftDto.description,
                         members: updateProjectDraftDto.members,
