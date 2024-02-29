@@ -6,9 +6,9 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AuthRoleEnum } from 'src/constants';
-import { CreateProjectDraftDto } from 'src/dtos/create-draft.dto';
+import { CreateProjectDraftDto } from 'src/dtos/create-project-draft.dto';
 import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
-import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
+import { UpdateProjectDraftDto } from 'src/dtos/update-project-draft.dto';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { ObjectStorageService } from 'src/object-storage/object-storage.service';
 import { Builder } from 'src/schemas/builder.schema';
@@ -127,7 +127,7 @@ export class BuildersService {
 
     async updateDraft(
         draftId: string,
-        updateDraftDto: UpdateDraftDto,
+        updateProjectDraftDto: UpdateProjectDraftDto,
         jwtPayload: JwtPayload,
     ): Promise<ProjectDraft> {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
@@ -141,14 +141,13 @@ export class BuildersService {
                 return await this.projectDraftModel.findOneAndUpdate(
                     { _id: draftId, address: jwtPayload.sub },
                     {
-                        name: updateDraftDto.name,
-                        publicKey: updateDraftDto.publicKey,
-                        description: updateDraftDto.description,
-                        problemStatement: updateDraftDto.problemStatement,
-                        solution: updateDraftDto.solution,
-                        challengeAndRisks: updateDraftDto.challengeAndRisks,
-                        members: updateDraftDto.members,
-                        documents: updateDraftDto.documents,
+                        name: updateProjectDraftDto.name,
+                        avatarImage: updateProjectDraftDto.publicKey,
+                        coverImage: updateProjectDraftDto.description,
+                        publicKey: updateProjectDraftDto.publicKey,
+                        description: updateProjectDraftDto.description,
+                        members: updateProjectDraftDto.members,
+                        documents: updateProjectDraftDto.documents,
                     },
                     { new: true, upsert: true },
                 );

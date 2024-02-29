@@ -18,9 +18,9 @@ import { AuthGuard } from '../auth/auth.guard';
 import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
 import { Builder } from 'src/schemas/builder.schema';
 import { Project } from 'src/schemas/project.schema';
-import { CreateProjectDraftDto } from 'src/dtos/create-draft.dto';
+import { CreateProjectDraftDto } from 'src/dtos/create-project-draft.dto';
 import { ProjectDraft } from 'src/schemas/draft.schema';
-import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
+import { UpdateProjectDraftDto } from 'src/dtos/update-project-draft.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('builders')
@@ -92,12 +92,12 @@ export class BuildersController {
     @UseGuards(AuthGuard)
     async updateDraft(
         @Param('draftId') draftId: string,
-        @Body() updateDraftDto: UpdateDraftDto,
+        @Body() updateProjectDraftDto: UpdateProjectDraftDto,
         @Request() req: any,
     ): Promise<ProjectDraft> {
         return await this.buildersService.updateDraft(
             draftId,
-            updateDraftDto,
+            updateProjectDraftDto,
             req.user,
         );
     }
