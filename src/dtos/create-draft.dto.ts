@@ -1,53 +1,45 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+    IsArray,
+    IsOptional,
+    IsString,
+    IsUrl,
+    ValidateNested,
+} from 'class-validator';
 
-export class CreateDraftDto {
+export class ProjectMember {
     @IsString()
-    @IsOptional()
-    name?: string;
-
-    @IsString()
-    @IsOptional()
-    publicKey?: string;
-
-    @IsString()
-    @IsOptional()
-    description?: string;
+    name: string;
 
     @IsString()
-    @IsOptional()
-    problemStatement?: string;
+    role: string;
 
     @IsString()
-    @IsOptional()
-    solution?: string;
-
-    @IsString()
-    @IsOptional()
-    challengeAndRisks?: string;
-
-    @Type(() => Member)
-    @ValidateNested()
-    @IsOptional()
-    @IsArray()
-    members?: Member[];
-
-    @IsArray()
-    @IsString({ each: true })
-    @IsOptional()
-    documents?: string[];
+    link: string;
 }
 
-class Member {
+export class CreateProjectDraftDto {
     @IsString()
-    @IsOptional()
-    name?: string;
+    name: string;
+
+    @IsUrl()
+    avatarImage: string;
+
+    @IsUrl()
+    coverImage: string;
 
     @IsString()
-    @IsOptional()
-    role?: string;
+    publicKey: string;
 
     @IsString()
-    @IsOptional()
-    link?: string;
+    description: string;
+
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => ProjectMember)
+    members: ProjectMember[];
+
+    @IsArray()
+    @IsUrl({}, { each: true })
+    documents: string[];
 }

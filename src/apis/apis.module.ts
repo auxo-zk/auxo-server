@@ -23,7 +23,7 @@ import { Project, ProjectSchema } from 'src/schemas/project.schema';
 import { BuildersService } from './builders/builders.service';
 import { BuildersController } from './builders/builders.controller';
 import { Builder, BuilderSchema } from 'src/schemas/builder.schema';
-import { Draft, DraftSchema } from 'src/schemas/draft.schema';
+import { ProjectDraft, ProjectDraftSchema } from 'src/schemas/draft.schema';
 import { OrganizersController } from './organizers/organizers.controller';
 import { OrganizersService } from './organizers/organizers.service';
 import { Organizer, OrganizerSchema } from 'src/schemas/organizer.schema';
@@ -52,7 +52,7 @@ import {
             { name: DkgResponse.name, schema: DkgResponseSchema },
             { name: Project.name, schema: ProjectSchema },
             { name: Builder.name, schema: BuilderSchema },
-            { name: Draft.name, schema: DraftSchema },
+            { name: ProjectDraft.name, schema: ProjectDraftSchema },
             { name: Organizer.name, schema: OrganizerSchema },
             { name: Campaign.name, schema: CampaignSchema },
             { name: Participation.name, schema: ParticipationSchema },

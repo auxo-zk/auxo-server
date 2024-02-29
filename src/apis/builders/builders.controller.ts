@@ -18,8 +18,8 @@ import { AuthGuard } from '../auth/auth.guard';
 import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
 import { Builder } from 'src/schemas/builder.schema';
 import { Project } from 'src/schemas/project.schema';
-import { CreateDraftDto } from 'src/dtos/create-draft.dto';
-import { Draft } from 'src/schemas/draft.schema';
+import { CreateProjectDraftDto } from 'src/dtos/create-draft.dto';
+import { ProjectDraft } from 'src/schemas/draft.schema';
 import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -71,7 +71,7 @@ export class BuildersController {
     @ApiTags('Builder')
     @ApiBearerAuth('access-token')
     @UseGuards(AuthGuard)
-    async getDrafts(@Request() req: any): Promise<Draft[]> {
+    async getDrafts(@Request() req: any): Promise<ProjectDraft[]> {
         return await this.buildersService.getDrafts(req.user);
     }
 
@@ -82,7 +82,7 @@ export class BuildersController {
     async getDraft(
         @Param('draftId') draftId: string,
         @Request() req: any,
-    ): Promise<Draft> {
+    ): Promise<ProjectDraft> {
         return await this.buildersService.getDraft(draftId, req.user);
     }
 
@@ -94,7 +94,7 @@ export class BuildersController {
         @Param('draftId') draftId: string,
         @Body() updateDraftDto: UpdateDraftDto,
         @Request() req: any,
-    ): Promise<Draft> {
+    ): Promise<ProjectDraft> {
         return await this.buildersService.updateDraft(
             draftId,
             updateDraftDto,
@@ -118,10 +118,13 @@ export class BuildersController {
     @ApiBearerAuth('access-token')
     @UseGuards(AuthGuard)
     async createDraft(
-        @Body() createDraftDto: CreateDraftDto,
+        @Body() createProjectDraftDto: CreateProjectDraftDto,
         @Request() req: any,
-    ): Promise<Draft> {
-        return await this.buildersService.createDraft(createDraftDto, req.user);
+    ): Promise<ProjectDraft> {
+        return await this.buildersService.createDraft(
+            createProjectDraftDto,
+            req.user,
+        );
     }
 
     @Get(':address/projects')

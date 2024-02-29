@@ -6,13 +6,13 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AuthRoleEnum } from 'src/constants';
-import { CreateDraftDto } from 'src/dtos/create-draft.dto';
+import { CreateProjectDraftDto } from 'src/dtos/create-draft.dto';
 import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
 import { UpdateDraftDto } from 'src/dtos/update-draft.dto';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { ObjectStorageService } from 'src/object-storage/object-storage.service';
 import { Builder } from 'src/schemas/builder.schema';
-import { Draft } from 'src/schemas/draft.schema';
+import { ProjectDraft } from 'src/schemas/draft.schema';
 import { Project } from 'src/schemas/project.schema';
 
 @Injectable()
@@ -23,8 +23,8 @@ export class BuildersService {
         private readonly builderModel: Model<Builder>,
         @InjectModel(Project.name)
         private readonly projectModel: Model<Project>,
-        @InjectModel(Draft.name)
-        private readonly draftModel: Model<Draft>,
+        @InjectModel(ProjectDraft.name)
+        private readonly projectDraftModel: Model<ProjectDraft>,
     ) {}
 
     async getBuilder(address: string): Promise<Builder> {
@@ -79,20 +79,25 @@ export class BuildersService {
         return await this.projectModel.find({ members: address });
     }
 
-    async getDrafts(jwtPayload: JwtPayload): Promise<Draft[]> {
+    async getDrafts(jwtPayload: JwtPayload): Promise<ProjectDraft[]> {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
-            return await this.draftModel.find({ address: jwtPayload.sub });
+            return await this.projectDraftModel.find({
+                address: jwtPayload.sub,
+            });
         }
     }
 
-    async getDraft(draftId: string, jwtPayload: JwtPayload): Promise<Draft> {
+    async getDraft(
+        draftId: string,
+        jwtPayload: JwtPayload,
+    ): Promise<ProjectDraft> {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
             return (
-                (await this.draftModel.findOne({
+                (await this.projectDraftModel.findOne({
                     _id: draftId,
                     address: jwtPayload.sub,
                 })) || ({} as any)
@@ -101,22 +106,21 @@ export class BuildersService {
     }
 
     async createDraft(
-        createDraftDto: CreateDraftDto,
+        createProjectDraftDto: CreateProjectDraftDto,
         jwtPayload: JwtPayload,
-    ): Promise<Draft> {
+    ): Promise<ProjectDraft> {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
-            return await this.draftModel.create({
+            return await this.projectDraftModel.create({
                 address: jwtPayload.sub,
-                name: createDraftDto.name,
-                publicKey: createDraftDto.publicKey,
-                description: createDraftDto.description,
-                problemStatement: createDraftDto.problemStatement,
-                solution: createDraftDto.solution,
-                challengeAndRisks: createDraftDto.challengeAndRisks,
-                members: createDraftDto.members,
-                documents: createDraftDto.documents,
+                name: createProjectDraftDto.name,
+                avatarImage: createProjectDraftDto.avatarImage,
+                coverImage: createProjectDraftDto.coverImage,
+                publicKey: createProjectDraftDto.publicKey,
+                description: createProjectDraftDto.description,
+                members: createProjectDraftDto.members,
+                documents: createProjectDraftDto.documents,
             });
         }
     }
@@ -125,16 +129,16 @@ export class BuildersService {
         draftId: string,
         updateDraftDto: UpdateDraftDto,
         jwtPayload: JwtPayload,
-    ): Promise<Draft> {
+    ): Promise<ProjectDraft> {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
-            const exist = await this.draftModel.exists({
+            const exist = await this.projectDraftModel.exists({
                 _id: draftId,
                 address: jwtPayload.sub,
             });
             if (exist) {
-                return await this.draftModel.findOneAndUpdate(
+                return await this.projectDraftModel.findOneAndUpdate(
                     { _id: draftId, address: jwtPayload.sub },
                     {
                         name: updateDraftDto.name,
@@ -158,12 +162,12 @@ export class BuildersService {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
-            const exist = await this.draftModel.exists({
+            const exist = await this.projectDraftModel.exists({
                 _id: draftId,
                 address: jwtPayload.sub,
             });
             if (exist) {
-                await this.draftModel.deleteOne({
+                await this.projectDraftModel.deleteOne({
                     _id: draftId,
                     address: jwtPayload.sub,
                 });
