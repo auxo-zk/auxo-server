@@ -1,6 +1,8 @@
 import mongoose, { ObjectId } from 'mongoose';
 import { AccountUpdate, Cache, Field, Mina, PrivateKey } from 'o1js';
 import { Logger } from '@nestjs/common';
+import fs from 'fs';
+
 export class Utilities {
     static stringArrayToFields(input: string[]): Field[] {
         const result: Field[] = [];
@@ -87,5 +89,48 @@ export class Utilities {
         } catch (err) {
             throw err;
         }
+    }
+
+    static getProfiler(name: string) {
+        const round = (x: number) => Math.round(x * 100) / 100;
+        let times: Record<string, any> = {};
+        let label: string;
+
+        return {
+            get times() {
+                return times;
+            },
+            start(label_: string) {
+                label = label_;
+                times = {
+                    ...times,
+                    [label]: {
+                        start: performance.now(),
+                    },
+                };
+            },
+            stop() {
+                times[label].end = performance.now();
+                return this;
+            },
+            store() {
+                let profilingData = `## Times for ${name}\n\n`;
+                profilingData += `| Name | time passed in s |\n|---|---|`;
+                let totalTimePassed = 0;
+
+                Object.keys(times).forEach((k) => {
+                    const timePassed = (times[k].end - times[k].start) / 1000;
+                    totalTimePassed += timePassed;
+
+                    profilingData += `\n|${k}|${round(timePassed)}|`;
+                });
+
+                profilingData += `\n\nIn total, it took ${round(
+                    totalTimePassed,
+                )} seconds to run the entire benchmark\n\n\n`;
+
+                fs.appendFileSync('profiling.md', profilingData);
+            },
+        };
     }
 }
