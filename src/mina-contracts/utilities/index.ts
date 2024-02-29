@@ -1,7 +1,14 @@
 import mongoose, { ObjectId } from 'mongoose';
 import { AccountUpdate, Cache, Field, Mina, PrivateKey } from 'o1js';
 import { Logger } from '@nestjs/common';
-import fs from 'fs';
+import * as fs from 'fs';
+
+export type Profiler = {
+    times: Record<string, any>;
+    start: (label: string) => void;
+    stop: () => Profiler;
+    store: () => void;
+};
 
 export class Utilities {
     static stringArrayToFields(input: string[]): Field[] {
@@ -39,11 +46,29 @@ export class Utilities {
         prg: any,
         cache?: Cache,
         logger?: Logger,
+        profiling = true,
     ): Promise<void> {
         try {
             if (logger) logger.debug(`Compiling ${prg.name}...`);
-            if (cache) await prg.compile({ cache });
-            else await prg.compile();
+            if (cache) {
+                if (profiling) {
+                    const profiler = Utilities.getProfiler(prg.name);
+                    profiler.start(prg.name + '.cache.compile');
+                    await prg.compile({ cache });
+                    profiler.stop().store();
+                } else {
+                    await prg.compile({ cache });
+                }
+            } else {
+                if (profiling) {
+                    const profiler = Utilities.getProfiler(prg.name);
+                    profiler.start(prg.name + '.compile');
+                    await prg.compile();
+                    profiler.stop().store();
+                } else {
+                    await prg.compile();
+                }
+            }
             if (logger) logger.debug(`Compiled ${prg.name} successfully`);
         } catch (err) {
             throw err;
@@ -91,7 +116,7 @@ export class Utilities {
         }
     }
 
-    static getProfiler(name: string) {
+    static getProfiler(name: string): Profiler {
         const round = (x: number) => Math.round(x * 100) / 100;
         let times: Record<string, any> = {};
         let label: string;
