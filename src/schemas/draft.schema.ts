@@ -23,6 +23,15 @@ export class ProjectDraft {
     description?: string;
 
     @Prop()
+    problemStatement?: string;
+
+    @Prop()
+    solution?: string;
+
+    @Prop()
+    challengeAndRisk?: string;
+
+    @Prop()
     members?: Member[];
 
     @Prop()

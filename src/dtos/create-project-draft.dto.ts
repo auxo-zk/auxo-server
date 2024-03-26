@@ -42,6 +42,18 @@ export class CreateProjectDraftDto {
     @IsOptional()
     description?: string;
 
+    @IsString()
+    @IsOptional()
+    problemStatement?: string;
+
+    @IsString()
+    @IsOptional()
+    solution?: string;
+
+    @IsString()
+    @IsOptional()
+    challengeAndRisk?: string;
+
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => ProjectMember)

@@ -119,6 +119,9 @@ export class BuildersService {
                 coverImage: createProjectDraftDto.coverImage,
                 publicKey: createProjectDraftDto.publicKey,
                 description: createProjectDraftDto.description,
+                problemStatement: createProjectDraftDto.problemStatement,
+                solution: createProjectDraftDto.solution,
+                challengeAndRisk: createProjectDraftDto.challengeAndRisk,
                 members: createProjectDraftDto.members,
                 documents: createProjectDraftDto.documents,
             });
