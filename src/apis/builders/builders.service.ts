@@ -145,7 +145,7 @@ export class BuildersService {
                     { _id: draftId, address: jwtPayload.sub },
                     {
                         name: updateProjectDraftDto.name,
-                        avatarImage: updateProjectDraftDto.publicKey,
+                        avatarImage: updateProjectDraftDto.avatarImage,
                         coverImage: updateProjectDraftDto.coverImage,
                         publicKey: updateProjectDraftDto.publicKey,
                         description: updateProjectDraftDto.description,
