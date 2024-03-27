@@ -149,6 +149,11 @@ export class BuildersService {
                         coverImage: updateProjectDraftDto.coverImage,
                         publicKey: updateProjectDraftDto.publicKey,
                         description: updateProjectDraftDto.description,
+                        problemStatement:
+                            updateProjectDraftDto.problemStatement,
+                        solution: updateProjectDraftDto.solution,
+                        challengeAndRisk:
+                            updateProjectDraftDto.challengeAndRisk,
                         members: updateProjectDraftDto.members,
                         documents: updateProjectDraftDto.documents,
                     },
