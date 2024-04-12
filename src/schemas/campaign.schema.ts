@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { CampaignStatusEnum } from 'src/constants';
-
+import { Timeline } from './actions/campaign-action.schema';
 @Schema({ versionKey: false })
 export class Campaign {
     @Prop({ required: true, unique: true, index: true })
@@ -10,23 +9,20 @@ export class Campaign {
     @Prop()
     ipfsHash: string;
 
+    @Prop({ type: Object })
+    ipfsData: object;
+
     @Prop()
     owner: string;
 
-    @Prop()
-    status: CampaignStatusEnum;
+    @Prop({ type: Timeline })
+    timeline: Timeline;
 
     @Prop()
     committeeId: number;
 
     @Prop()
     keyId: number;
-
-    @Prop({ type: Object })
-    ipfsData: object;
-
-    @Prop({ required: true, default: false, index: true })
-    active?: boolean;
 }
 
 export type CampaignDocument = HydratedDocument<Campaign>;
