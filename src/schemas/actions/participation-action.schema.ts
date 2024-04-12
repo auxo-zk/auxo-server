@@ -5,6 +5,23 @@ import { Utilities } from 'src/mina-contracts/utilities';
 import { ZkApp } from '@auxo-dev/platform';
 import { Participation } from '../participation.schema';
 
+export class ParticipationActionData {
+    campaignId: number;
+    projectId: number;
+    ipfsHash: string;
+    timestamp: number;
+
+    static fromAction(
+        action: ZkApp.Participation.ParticipationAction,
+    ): ParticipationActionData {
+        return {
+            campaignId: Number(action.campaignId.toBigInt()),
+            projectId: Number(action.projectId.toBigInt()),
+            ipfsHash: action.ipfsHash.toString(),
+            timestamp: Number(action.timestamp.toBigInt()),
+        };
+    }
+}
 @Schema({ versionKey: false })
 export class ParticipationAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
@@ -16,28 +33,25 @@ export class ParticipationAction {
     @Prop({ required: true, unique: true })
     previousActionState: string;
 
-    @Prop()
+    @Prop([String])
     actions: string[];
+
+    @Prop({ type: ParticipationActionData })
+    actionData: ParticipationActionData;
+
+    @Prop({ required: true, default: false })
+    active?: boolean;
 }
 
 export type ParticipationActionDocument = HydratedDocument<ParticipationAction>;
 export const ParticipationActionSchema =
     SchemaFactory.createForClass(ParticipationAction);
 
-export function getParticipation(
-    participationAction: ParticipationAction,
-): Participation {
+export function getParticipationActionData(
+    actions: string[],
+): ParticipationActionData {
     const action = ZkApp.Participation.ParticipationAction.fromFields(
-        Utilities.stringArrayToFields(participationAction.actions),
+        Utilities.stringArrayToFields(actions),
     );
-    const campaignId = Number(action.campaignId.toString());
-    const projectId = Number(action.projectId.toString());
-
-    return {
-        actionId: participationAction.actionId,
-        campaignId: campaignId,
-        projectId: projectId,
-        ipfsHash: action.participationInfo.toString(),
-        currentApplicationInfoHash: action.curApplicationInfoHash.toString(),
-    };
+    return ParticipationActionData.fromAction(action);
 }

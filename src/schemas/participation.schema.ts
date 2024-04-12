@@ -3,9 +3,6 @@ import { HydratedDocument, ObjectId } from 'mongoose';
 
 @Schema({ versionKey: false })
 export class Participation {
-    @Prop({ required: true, unique: true, index: true })
-    actionId: number;
-
     @Prop({ index: true })
     campaignId: number;
 
@@ -19,10 +16,7 @@ export class Participation {
     ipfsData?: object;
 
     @Prop()
-    currentApplicationInfoHash: string;
-
-    @Prop({ required: true, default: false })
-    active?: boolean;
+    timestamp: number;
 }
 
 export type ParticipationDocument = HydratedDocument<Participation>;
