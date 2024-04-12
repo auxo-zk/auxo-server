@@ -1,11 +1,33 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { ZkApp } from '@auxo-dev/platform';
+import { Storage, ZkApp } from '@auxo-dev/platform';
 import { Utilities } from 'src/mina-contracts/utilities';
 import { RawProject } from '../raw-project.schema';
 import { Field, PublicKey } from 'o1js';
 import { ProjectActionEnum } from 'src/constants';
 
+export class ProjectActionData {
+    actionType: Storage.CampaignStorage.CampaignActionEnum;
+    projectId: number;
+    members: string[];
+    ipfsHash: string;
+    treasuryAddress: string;
+
+    static fromAction(action: ZkApp.Project.ProjectAction): ProjectActionData {
+        const members: string[] = [];
+        for (let i = 0; i < action.members.length.toBigInt(); i++) {
+            const publicKey = PublicKey.from(action.members.values[i]);
+            members.push(publicKey.toBase58());
+        }
+        return {
+            actionType: Number(action.actionType.toBigInt()),
+            projectId: Number(action.projectId.toBigInt()),
+            members: members,
+            ipfsHash: action.ipfsHash.toString(),
+            treasuryAddress: action.treasuryAddress.toBase58(),
+        };
+    }
+}
 @Schema({ versionKey: false })
 export class ProjectAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
@@ -17,38 +39,23 @@ export class ProjectAction {
     @Prop({ required: true, unique: true })
     previousActionState: string;
 
-    @Prop()
+    @Prop([String])
     actions: string[];
+
+    @Prop()
+    actionData: ProjectActionData;
+
+    @Prop({ required: true, default: false })
+    active?: boolean;
 }
 
 export type ProjectActionDocument = HydratedDocument<ProjectAction>;
 export const ProjectActionSchema = SchemaFactory.createForClass(ProjectAction);
 
-export function getRawProject(projectAction: ProjectAction): RawProject {
+export function getProjectActionData(actions: string[]): ProjectActionData {
     const action = ZkApp.Project.ProjectAction.fromFields(
-        Utilities.stringArrayToFields(projectAction.actions),
+        Utilities.stringArrayToFields(actions),
     );
-    const members: string[] = [];
-    for (let i = 0; i < action.members.length.toBigInt(); i++) {
-        const publicKey = PublicKey.from(action.members.values[i]);
-        members.push(publicKey.toBase58());
-    }
-    if (action.projectId.equals(Field(-1))) {
-        return {
-            actionId: projectAction.actionId,
-            members: members,
-            ipfsHash: action.ipfsHash.toString(),
-            payeeAccount: action.payeeAccount.toBase58(),
-            actionEnum: ProjectActionEnum.CREATE_PROJECT,
-        };
-    } else {
-        return {
-            actionId: projectAction.actionId,
-            projectId: Number(action.projectId.toString()),
-            members: members,
-            ipfsHash: action.ipfsHash.toString(),
-            payeeAccount: action.payeeAccount.toBase58(),
-            actionEnum: ProjectActionEnum.UPDATE_PROJECT,
-        };
-    }
+
+    return ProjectActionData.fromAction(action);
 }
