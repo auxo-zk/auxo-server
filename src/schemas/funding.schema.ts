@@ -4,19 +4,19 @@ import { HydratedDocument } from 'mongoose';
 @Schema({ versionKey: false })
 export class Funding {
     @Prop({ index: true, required: true, unique: true })
-    actionId: number;
+    fundingId: number;
 
-    @Prop({ index: true, required: true })
+    @Prop({ index: true })
     campaignId: number;
 
-    @Prop()
-    R: { x: string; y: string }[];
+    @Prop({ index: true })
+    investor: string;
 
     @Prop()
-    M: { x: string; y: string }[];
+    amount: number;
 
-    @Prop({ required: true, default: false, index: true })
-    active?: boolean;
+    @Prop()
+    state: number;
 }
 
 export type FundingDocument = HydratedDocument<Funding>;
