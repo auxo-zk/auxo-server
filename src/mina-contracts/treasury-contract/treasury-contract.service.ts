@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import {
     TreasuryAction,
     getTreasury,
-} from 'src/schemas/actions/treasury-action.schema';
+} from 'src/schemas/actions/treasury-manager-action.schema';
 import { Model } from 'mongoose';
 import { Treasury } from 'src/schemas/treasury.schema';
 import { Action } from 'src/interfaces/action.interface';
