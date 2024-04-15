@@ -2,18 +2,37 @@ import { Prop, raw, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Utilities } from 'src/mina-contracts/utilities';
 import { Storage, ZkApp } from '@auxo-dev/platform';
+import { UInt64 } from 'o1js';
 
 export class Timeline {
     startParticipation: number;
     startFunding: number;
     startRequesting: number;
 
+    constructor(
+        startParticipation: number,
+        startFunding: number,
+        startRequesting: number,
+    ) {
+        this.startParticipation = startParticipation;
+        this.startFunding = startFunding;
+        this.startRequesting = startRequesting;
+    }
+
     static fromAction(action: Storage.CampaignStorage.Timeline): Timeline {
-        return {
-            startParticipation: Number(action.startParticipation.toBigInt()),
-            startFunding: Number(action.startFunding.toBigInt()),
-            startRequesting: Number(action.startRequesting.toBigInt()),
-        };
+        return new Timeline(
+            Number(action.startParticipation.toBigInt()),
+            Number(action.startFunding.toBigInt()),
+            Number(action.startRequesting.toBigInt()),
+        );
+    }
+
+    toAction() {
+        return new Storage.CampaignStorage.Timeline({
+            startParticipation: new UInt64(this.startParticipation),
+            startFunding: new UInt64(this.startFunding),
+            startRequesting: new UInt64(this.startRequesting),
+        });
     }
 }
 

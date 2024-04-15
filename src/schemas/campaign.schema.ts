@@ -23,6 +23,9 @@ export class Campaign {
 
     @Prop()
     keyId: number;
+
+    @Prop({ required: true, default: false })
+    active?: boolean;
 }
 
 export type CampaignDocument = HydratedDocument<Campaign>;
