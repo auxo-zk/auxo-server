@@ -41,12 +41,11 @@ export interface DkgResponseState {
 }
 
 export interface CampaignState {
-    owner: Field;
-    info: Field;
-    status: Field;
-    config: Field;
-    zkApp: Field;
     nextCampaignId: Field;
+    timelineRoot: Field;
+    ipfsHashRoot: Field;
+    keyIndexRoot: Field;
+    zkAppRoot: Field;
     actionState: Field;
 }
 
