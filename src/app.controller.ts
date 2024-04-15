@@ -28,7 +28,7 @@ import { Participation } from './schemas/participation.schema';
 import { FundingAction } from './schemas/actions/funding-action.schema';
 import { Funding } from './schemas/funding.schema';
 import { FundingResult } from './schemas/funding-result.schema';
-import { TreasuryAction } from './schemas/actions/treasury-action.schema';
+import { TreasuryAction } from './schemas/actions/treasury-manager-action.schema';
 import { Treasury } from './schemas/treasury.schema';
 
 @Controller()

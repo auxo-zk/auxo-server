@@ -62,10 +62,6 @@ import {
 } from 'src/schemas/actions/campaign-action.schema';
 import { Campaign, CampaignSchema } from 'src/schemas/campaign.schema';
 import {
-    RawCampaign,
-    RawCampaignSchema,
-} from 'src/schemas/raw-campaign.schema';
-import {
     ParticipationAction,
     ParticipationActionSchema,
 } from 'src/schemas/actions/participation-action.schema';
@@ -83,9 +79,9 @@ import {
     FundingResultSchema,
 } from 'src/schemas/funding-result.schema';
 import {
-    TreasuryAction,
-    TreasuryActionSchema,
-} from 'src/schemas/actions/treasury-action.schema';
+    TreasuryManagerAction,
+    TreasuryManagerActionSchema,
+} from 'src/schemas/actions/treasury-manager-action.schema';
 import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
 
 @Module({
@@ -110,7 +106,6 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
             { name: RawProject.name, schema: RawProjectSchema },
             { name: Project.name, schema: ProjectSchema },
             { name: CampaignAction.name, schema: CampaignActionSchema },
-            { name: RawCampaign.name, schema: RawCampaignSchema },
             { name: Campaign.name, schema: CampaignSchema },
             {
                 name: ParticipationAction.name,
@@ -123,7 +118,10 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
             { name: FundingAction.name, schema: FundingActionSchema },
             { name: Funding.name, schema: FundingSchema },
             { name: FundingResult.name, schema: FundingResultSchema },
-            { name: TreasuryAction.name, schema: TreasuryActionSchema },
+            {
+                name: TreasuryManagerAction.name,
+                schema: TreasuryManagerActionSchema,
+            },
             { name: Treasury.name, schema: TreasurySchema },
         ]),
         HttpModule,
