@@ -3,7 +3,7 @@ import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     ProjectAction,
-    getRawProject,
+    getProjectActionData,
 } from 'src/schemas/actions/project-action.schema';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
@@ -12,13 +12,8 @@ import { RawProject } from 'src/schemas/raw-project.schema';
 import { Project } from 'src/schemas/project.schema';
 import { MaxRetries, ProjectActionEnum, zkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
-import {
-    CreateProject,
-    ProjectContract,
-    Storage,
-    ZkApp,
-} from '@auxo-dev/platform';
-import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { Storage, ZkApp } from '@auxo-dev/platform';
+import { IpfsHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { Utilities } from '../utilities';
 import { ProjectState } from 'src/interfaces/zkapp-state.interface';
@@ -27,18 +22,23 @@ import * as _ from 'lodash';
 @Injectable()
 export class ProjectContractService implements ContractServiceInterface {
     private readonly logger = new Logger(ProjectContractService.name);
-    private readonly _info: Storage.ProjectStorage.InfoStorage;
-    private readonly _member: Storage.ProjectStorage.MemberStorage;
-    private readonly _payee: Storage.ProjectStorage.AddressStorage;
+    private _nextProjectId: number;
+    private readonly _member: Storage.ProjectStorage.ProjectMemberStorage;
+    private readonly _ipfsHash: Storage.ProjectStorage.IpfsHashStorage;
+    private readonly _treasuryAddress: Storage.ProjectStorage.TreasuryAddressStorage;
+    private _actionState: string;
 
-    public get info(): Storage.ProjectStorage.InfoStorage {
-        return this._info;
+    public get nextProjectId(): number {
+        return this._nextProjectId;
     }
-    public get member(): Storage.ProjectStorage.MemberStorage {
+    public get member(): Storage.ProjectStorage.ProjectMemberStorage {
         return this._member;
     }
-    public get payee(): Storage.ProjectStorage.AddressStorage {
-        return this._payee;
+    public get ipfsHash(): Storage.ProjectStorage.IpfsHashStorage {
+        return this._ipfsHash;
+    }
+    public get treasuryAddress(): Storage.ProjectStorage.TreasuryAddressStorage {
+        return this._treasuryAddress;
     }
 
     constructor(
@@ -51,9 +51,12 @@ export class ProjectContractService implements ContractServiceInterface {
         @InjectModel(Project.name)
         private readonly projectModel: Model<Project>,
     ) {
-        this._info = new Storage.ProjectStorage.InfoStorage();
-        this._member = new Storage.ProjectStorage.MemberStorage();
-        this._payee = new Storage.ProjectStorage.AddressStorage();
+        this._nextProjectId = 0;
+        this._actionState = '';
+        this._member = new Storage.ProjectStorage.ProjectMemberStorage();
+        this._ipfsHash = new Storage.ProjectStorage.IpfsHashStorage();
+        this._treasuryAddress =
+            new Storage.ProjectStorage.TreasuryAddressStorage();
     }
 
     async onModuleInit() {
@@ -74,7 +77,8 @@ export class ProjectContractService implements ContractServiceInterface {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await this.fetchProjectActions();
-                await this.updateRawProjects();
+                await this.fetchProjectState();
+                await this.updateProjectActions();
                 await this.updateProjects();
                 count = MaxRetries;
             } catch (err) {
@@ -85,8 +89,6 @@ export class ProjectContractService implements ContractServiceInterface {
 
     async compile() {
         const cache = zkAppCache;
-        await Utilities.compile(CreateProject, cache, this.logger);
-        await Utilities.compile(ProjectContract, cache, this.logger);
     }
 
     async fetchProjectState(): Promise<ProjectState> {
@@ -95,26 +97,27 @@ export class ProjectContractService implements ContractServiceInterface {
         );
         const result: ProjectState = {
             nextProjectId: Field(state[0]),
-            member: Field(state[1]),
-            info: Field(state[2]),
-            payee: Field(state[3]),
+            memberRoot: Field(state[1]),
+            ipfsHashRoot: Field(state[2]),
+            treasuryAddressRoot: Field(state[3]),
             actionState: Field(state[4]),
         };
+        this._nextProjectId = Number(result.nextProjectId.toBigInt());
+        this._actionState = result.actionState.toString();
         return result;
     }
 
     async rollup() {
         try {
-            const lastActiveProject = await this.projectModel.findOne(
+            const lastReducedAction = await this.projectActionModel.findOne(
                 { active: true },
                 {},
-                { sort: { projectId: -1 } },
+                {
+                    sort: {
+                        actionId: -1,
+                    },
+                },
             );
-            const lastReducedAction = lastActiveProject
-                ? await this.projectActionModel.findOne({
-                      actionId: lastActiveProject.projectId,
-                  })
-                : undefined;
             const notReducedActions = await this.projectActionModel.find(
                 {
                     actionId: {
@@ -127,85 +130,114 @@ export class ProjectContractService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             if (notReducedActions.length > 0) {
-                const notActiveProjects = await this.projectModel.find(
-                    {
-                        projectId: {
-                            $gt: lastActiveProject
-                                ? lastActiveProject.projectId
-                                : -1,
-                        },
-                    },
-                    {},
-                    { sort: { actionId: 1 } },
-                );
                 const state = await this.fetchProjectState();
-                let nextProjectId = lastActiveProject
-                    ? lastActiveProject.projectId + 1
-                    : 0;
-                let proof = await CreateProject.firstStep(
+                let nextProjectId = state.nextProjectId;
+                let proof = await ZkApp.Project.RollupProject.firstStep(
                     state.nextProjectId,
-                    state.member,
-                    state.info,
-                    state.payee,
+                    state.memberRoot,
+                    state.ipfsHashRoot,
+                    state.treasuryAddressRoot,
                     lastReducedAction
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
                 const member = _.cloneDeep(this._member);
-                const info = _.cloneDeep(this._info);
-                const payee = _.cloneDeep(this._payee);
+                const ipfsHash = _.cloneDeep(this._ipfsHash);
+                const treasuryAddress = _.cloneDeep(this._treasuryAddress);
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
-                    const notActiveProject = notActiveProjects[i];
-                    proof = await CreateProject.nextStep(
-                        proof,
-                        ZkApp.Project.ProjectAction.fromFields(
-                            Utilities.stringArrayToFields(
-                                notReducedAction.actions,
+                    if (
+                        notReducedAction.actionData.actionType ==
+                        Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT
+                    ) {
+                        proof =
+                            await ZkApp.Project.RollupProject.createProjectStep(
+                                proof,
+                                ZkApp.Project.ProjectAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notReducedAction.actions,
+                                    ),
+                                ),
+                                member.getLevel1Witness(nextProjectId),
+                                ipfsHash.getLevel1Witness(nextProjectId),
+                                treasuryAddress.getLevel1Witness(nextProjectId),
+                            );
+                        member.updateInternal(
+                            nextProjectId,
+                            Storage.ProjectStorage.EMPTY_LEVEL_2_PROJECT_MEMBER_TREE(),
+                        );
+                        for (
+                            let j = 0;
+                            j < notReducedAction.actionData.members.length;
+                            j++
+                        ) {
+                            member.updateLeaf(
+                                {
+                                    level1Index: nextProjectId,
+                                    level2Index: Field(j),
+                                },
+                                member.calculateLeaf(
+                                    PublicKey.fromBase58(
+                                        notReducedAction.actionData.members[j],
+                                    ),
+                                ),
+                            );
+                        }
+
+                        ipfsHash.updateLeaf(
+                            { level1Index: nextProjectId },
+                            ipfsHash.calculateLeaf(
+                                IpfsHash.fromString(
+                                    notReducedAction.actionData.ipfsHash,
+                                ),
                             ),
-                        ),
-                        member.getLevel1Witness(
-                            member.calculateLevel1Index(Field(nextProjectId)),
-                        ),
-                        info.getLevel1Witness(
-                            info.calculateLevel1Index(Field(nextProjectId)),
-                        ),
-                        payee.getLevel1Witness(
-                            payee.calculateLevel1Index(Field(nextProjectId)),
-                        ),
-                    );
-                    member.updateInternal(
-                        Field(nextProjectId),
-                        Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
-                    );
-                    for (let j = 0; j < notActiveProject.members.length; j++) {
-                        member.updateLeaf(
+                        );
+                        treasuryAddress.updateLeaf(
                             {
-                                level1Index: Field(nextProjectId),
-                                level2Index: Field(j),
+                                level1Index: nextProjectId,
                             },
-                            member.calculateLeaf(
+                            treasuryAddress.calculateLeaf(
                                 PublicKey.fromBase58(
-                                    notActiveProject.members[j],
+                                    notReducedAction.actionData.treasuryAddress,
+                                ),
+                            ),
+                        );
+                        nextProjectId = nextProjectId.add(1);
+                    } else {
+                        proof =
+                            await ZkApp.Project.RollupProject.updateProjectStep(
+                                proof,
+                                ZkApp.Project.ProjectAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notReducedAction.actions,
+                                    ),
+                                ),
+                                IpfsHash.fromString(
+                                    notReducedAction.actionData.ipfsHash,
+                                ),
+                                ipfsHash.getLevel1Witness(
+                                    Field(
+                                        notReducedAction.actionData.projectId,
+                                    ),
+                                ),
+                            );
+
+                        ipfsHash.updateLeaf(
+                            {
+                                level1Index: Field(
+                                    notReducedAction.actionData.projectId,
+                                ),
+                            },
+                            ipfsHash.calculateLeaf(
+                                IpfsHash.fromString(
+                                    notReducedAction.actionData.ipfsHash,
                                 ),
                             ),
                         );
                     }
-                    info.updateLeaf(
-                        { level1Index: Field(nextProjectId) },
-                        info.calculateLeaf(
-                            IPFSHash.fromString(notActiveProject.ipfsHash),
-                        ),
-                    );
-                    payee.updateLeaf(
-                        { level1Index: Field(nextProjectId) },
-                        payee.calculateLeaf(
-                            PublicKey.fromBase58(notActiveProject.payeeAccount),
-                        ),
-                    );
-                    nextProjectId += 1;
                 }
-                const projectContract = new ProjectContract(
+
+                const projectContract = new ZkApp.Project.ProjectContract(
                     PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
                 );
                 const feePayerPrivateKey = PrivateKey.fromBase58(
@@ -261,6 +293,7 @@ export class ProjectContractService implements ContractServiceInterface {
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
             const currentActionState = Field(action.hash);
+            const actionData = getProjectActionData(action.actions[0]);
             await this.projectActionModel.findOneAndUpdate(
                 {
                     currentActionState: currentActionState.toString(),
@@ -270,6 +303,7 @@ export class ProjectContractService implements ContractServiceInterface {
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
+                    actionData: actionData,
                 },
                 { new: true, upsert: true },
             );
@@ -278,107 +312,132 @@ export class ProjectContractService implements ContractServiceInterface {
         }
     }
 
-    private async updateRawProjects() {
-        const lastRawProject = await this.rawProjectModel.findOne(
-            {},
-            {},
-            { sort: { actionId: -1 } },
-        );
-        let projectActions: ProjectAction[];
-        if (lastRawProject != null) {
-            projectActions = await this.projectActionModel.find(
-                { actionId: { $gt: lastRawProject.actionId } },
+    private async updateProjectActions() {
+        const currentAction = await this.projectActionModel.findOne({
+            currentActionState: this._actionState,
+        });
+        if (currentAction != undefined) {
+            const notActiveActions = await this.projectActionModel.find(
+                {
+                    actionId: { $lte: currentAction.actionId },
+                    active: false,
+                },
                 {},
                 { sort: { actionId: 1 } },
             );
-        } else {
-            projectActions = await this.projectActionModel.find(
-                {},
-                {},
-                { sort: { actionId: 1 } },
-            );
-        }
-        for (let i = 0; i < projectActions.length; i++) {
-            const projectAction = projectActions[i];
-            await this.rawProjectModel.findOneAndUpdate(
-                { actionId: projectAction.actionId },
-                getRawProject(projectAction),
-                { new: true, upsert: true },
-            );
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                await notActiveAction.save();
+            }
         }
     }
+
     private async updateProjects() {
-        const rawProjects = await this.rawProjectModel.find(
-            { actionEnum: ProjectActionEnum.CREATE_PROJECT },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        const lastProject = await this.projectModel.findOne(
+        const lastCreatedProject = await this.projectModel.findOne(
             {},
             {},
             { sort: { projectId: -1 } },
         );
+        const createProjectActions = await this.projectActionModel.find({
+            'actionData.actionType':
+                Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT,
+            active: true,
+        });
         for (
-            let projectId = lastProject ? lastProject.projectId + 1 : 0;
-            projectId < rawProjects.length;
-            projectId++
+            let i = lastCreatedProject ? lastCreatedProject.projectId + 1 : 0;
+            i < createProjectActions.length;
+            i++
         ) {
-            const rawProject = rawProjects[projectId];
-            await this.projectModel.create({
-                projectId: projectId,
-                members: rawProject.members,
-                ipfsHash: rawProject.ipfsHash,
-                ipfsData: await this.ipfs.getData(rawProject.ipfsHash),
-                payeeAccount: rawProject.payeeAccount,
-            });
+            const createProjectAction = createProjectActions[i];
+            const ipfsData = await this.ipfs.getData(
+                createProjectAction.actionData.ipfsHash,
+            );
+            await this.projectModel.findOneAndUpdate(
+                {
+                    projectId: i,
+                },
+                {
+                    projectId: i,
+                    members: createProjectAction.actionData.members,
+                    ipfsHash: createProjectAction.actionData.ipfsHash,
+                    ipfsData: ipfsData,
+                    treasuryAddress:
+                        createProjectAction.actionData.treasuryAddress,
+                },
+                { new: true, upsert: true },
+            );
         }
 
-        const rawEvents = await this.queryService.fetchEvents(
-            process.env.PROJECT_ADDRESS,
-        );
-        if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActiveProjectId = Number(lastEvent[0].data[0]);
-            const notActiveProjects = await this.projectModel.find(
-                {
-                    projectId: { $lte: lastActiveProjectId },
-                    active: false,
+        const latestUpdateActions = await this.projectModel.aggregate([
+            {
+                $match: {
+                    active: true,
+                    'actionData.actionType':
+                        Storage.ProjectStorage.ProjectActionEnum.UPDATE_PROJECT,
                 },
-                {},
-                { sort: { projectId: 1 } },
+            },
+            {
+                $group: {
+                    _id: '$projectId',
+                    actionId: { $max: '$actionId' },
+                },
+            },
+        ]);
+
+        for (let i = 0; i < latestUpdateActions.length; i++) {
+            const latestUpdateAction = latestUpdateActions[i];
+            const projectId = latestUpdateAction._id;
+            const action = await this.projectActionModel.findOne({
+                actionId: latestUpdateAction.actionId,
+            });
+            const ipfsData = await this.ipfs.getData(
+                action.actionData.ipfsHash,
             );
-            for (let i = 0; i < notActiveProjects.length; i++) {
-                const notActiveProject = notActiveProjects[i];
-                notActiveProject.set('active', true);
-                await notActiveProject.save();
-            }
+            await this.projectModel.findOneAndUpdate(
+                {
+                    projectId: projectId,
+                },
+                {
+                    projectId: projectId,
+                    ipfsHash: action.actionData.ipfsHash,
+                    ipfsData: ipfsData,
+                },
+                { new: true, upsert: true },
+            );
         }
     }
 
     async updateMerkleTrees() {
         try {
             const projects = await this.projectModel.find(
-                { active: true },
+                {},
                 {},
                 { sort: { projectId: 1 } },
             );
 
             for (let i = 0; i < projects.length; i++) {
                 const project = projects[i];
-                const level1Index = this._info.calculateLevel1Index(
+                const level1Index = this._member.calculateLevel1Index(
                     Field(project.projectId),
                 );
-                const infoLeaf = this._info.calculateLeaf(
-                    IPFSHash.fromString(project.ipfsHash),
+                const ipfsHashLeaf = this._ipfsHash.calculateLeaf(
+                    IpfsHash.fromString(project.ipfsHash),
                 );
-                this._info.updateLeaf({ level1Index: level1Index }, infoLeaf);
-                const payeeLeaf = this._payee.calculateLeaf(
-                    PublicKey.fromBase58(project.payeeAccount),
+                this._ipfsHash.updateLeaf(
+                    { level1Index: level1Index },
+                    ipfsHashLeaf,
                 );
-                this._payee.updateLeaf({ level1Index: level1Index }, payeeLeaf);
+                const treasuryAddressLeaf = this._treasuryAddress.calculateLeaf(
+                    PublicKey.fromBase58(project.treasuryAddress),
+                );
+                this._treasuryAddress.updateLeaf(
+                    { level1Index: level1Index },
+                    treasuryAddressLeaf,
+                );
                 this._member.updateInternal(
                     level1Index,
-                    Storage.ProjectStorage.EMPTY_LEVEL_2_TREE(),
+                    Storage.ProjectStorage.EMPTY_LEVEL_2_PROJECT_MEMBER_TREE(),
                 );
                 for (let i = 0; i < project.members.length; i++) {
                     const level2IndexMember = this._member.calculateLevel2Index(
