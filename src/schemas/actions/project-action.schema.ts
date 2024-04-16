@@ -7,7 +7,7 @@ import { Field, PublicKey } from 'o1js';
 import { ProjectActionEnum } from 'src/constants';
 
 export class ProjectActionData {
-    actionType: Storage.CampaignStorage.CampaignActionEnum;
+    actionType: Storage.ProjectStorage.ProjectActionEnum;
     projectId: number;
     members: string[];
     ipfsHash: string;
