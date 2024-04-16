@@ -51,9 +51,9 @@ export interface CampaignState {
 
 export interface ProjectState {
     nextProjectId: Field;
-    member: Field;
-    info: Field;
-    payee: Field;
+    memberRoot: Field;
+    ipfsHashRoot: Field;
+    treasuryAddressRoot: Field;
     actionState: Field;
 }
 export interface ParticipationState {
