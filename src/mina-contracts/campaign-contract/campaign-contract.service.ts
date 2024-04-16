@@ -310,22 +310,6 @@ export class CampaignContractService implements ContractServiceInterface {
                 },
                 { new: true, upsert: true },
             );
-            const ipfsData = this.ipfs.getData(actionData.ipfsHash);
-            await this.campaignModel.findOneAndUpdate(
-                {
-                    campaignId: actionId,
-                },
-                {
-                    campaignId: actionId,
-                    ipfsHash: actionData.ipfsHash,
-                    ipfsData: ipfsData,
-                    owner: actionData.owner,
-                    timeline: actionData.timeline,
-                    committeeId: actionData.committeeId,
-                    keyId: actionData.keyId,
-                },
-                { new: true, upsert: true },
-            );
             previousActionState = currentActionState;
             actionId += 1;
         }
@@ -336,36 +320,37 @@ export class CampaignContractService implements ContractServiceInterface {
             currentActionState: this._actionState,
         });
         if (currentAction != undefined) {
-            const promiseResults = await Promise.all([
-                this.campaignActionModel.find(
-                    {
-                        actionId: { $lte: currentAction.actionId },
-                        active: false,
-                    },
-                    {},
-                    { sort: { actionId: 1 } },
-                ),
-                this.campaignModel.find(
-                    {
-                        campaignId: { $lte: currentAction.actionId },
-                        active: false,
-                    },
-                    {},
-                    { sort: { campaignId: 1 } },
-                ),
-            ]);
-            const notActiveActions = promiseResults[0];
-            const notActiveCampaigns = promiseResults[1];
+            const notActiveActions = await this.campaignActionModel.find(
+                {
+                    actionId: { $lte: currentAction.actionId },
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
 
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                const notActiveCampaign = notActiveCampaigns[i];
-                notActiveCampaign.set('active', true);
-                await Promise.all([
-                    notActiveAction.save(),
-                    notActiveCampaign.save(),
-                ]);
+                await notActiveAction.save();
+                const ipfsData = this.ipfs.getData(
+                    notActiveAction.actionData.ipfsHash,
+                );
+                await this.campaignModel.findOneAndUpdate(
+                    {
+                        campaignId: notActiveAction.actionId,
+                    },
+                    {
+                        campaignId: notActiveAction.actionId,
+                        ipfsHash: notActiveAction.actionData.ipfsHash,
+                        ipfsData: ipfsData,
+                        owner: notActiveAction.actionData.owner,
+                        timeline: notActiveAction.actionData.timeline,
+                        committeeId: notActiveAction.actionData.committeeId,
+                        keyId: notActiveAction.actionData.keyId,
+                    },
+                    { new: true, upsert: true },
+                );
             }
         }
     }
@@ -373,7 +358,7 @@ export class CampaignContractService implements ContractServiceInterface {
     async updateMerkleTrees() {
         try {
             const campaigns = await this.campaignModel.find(
-                { active: true },
+                {},
                 {},
                 { sort: { campaignId: 1 } },
             );
@@ -384,17 +369,7 @@ export class CampaignContractService implements ContractServiceInterface {
                     Field(campaign.campaignId),
                 );
                 const timelineLeaf = this._timeline.calculateLeaf(
-                    new Storage.CampaignStorage.Timeline({
-                        startParticipation: new UInt64(
-                            campaign.timeline.startParticipation,
-                        ),
-                        startFunding: new UInt64(
-                            campaign.timeline.startFunding,
-                        ),
-                        startRequesting: new UInt64(
-                            campaign.timeline.startRequesting,
-                        ),
-                    }),
+                    campaign.timeline.toAction(),
                 );
                 this._timeline.updateLeaf(level1Index, timelineLeaf);
                 const ipfsHashLeaf = this._ipfsHash.calculateLeaf(
