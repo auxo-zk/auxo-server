@@ -174,16 +174,15 @@ export class CampaignContractService implements ContractServiceInterface {
     }
 
     async rollup() {
-        const lastActiveCampaign = await this.campaignModel.findOne(
+        const lastReducedAction = await this.campaignActionModel.findOne(
             { active: true },
             {},
-            { sort: { campaignId: -1 } },
+            {
+                sort: {
+                    actionId: -1,
+                },
+            },
         );
-        const lastReducedAction = lastActiveCampaign
-            ? await this.campaignActionModel.findOne({
-                  actionId: lastActiveCampaign.campaignId,
-              })
-            : undefined;
         const notReducedActions = await this.campaignActionModel.find(
             {
                 actionId: {
