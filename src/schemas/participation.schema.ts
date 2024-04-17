@@ -17,6 +17,9 @@ export class Participation {
 
     @Prop()
     timestamp: number;
+
+    @Prop({ index: true })
+    projectIndex: number;
 }
 
 export type ParticipationDocument = HydratedDocument<Participation>;

@@ -339,26 +339,32 @@ export class ProjectContractService implements ContractServiceInterface {
             {},
             { sort: { projectId: -1 } },
         );
-        const createProjectActions = await this.projectActionModel.find({
-            'actionData.actionType':
-                Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT,
-            active: true,
-        });
+        const createProjectActions = await this.projectActionModel.find(
+            {
+                'actionData.actionType':
+                    Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT,
+                active: true,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
         for (
-            let i = lastCreatedProject ? lastCreatedProject.projectId + 1 : 0;
-            i < createProjectActions.length;
-            i++
+            let projectId = lastCreatedProject
+                ? lastCreatedProject.projectId + 1
+                : 0;
+            projectId < createProjectActions.length;
+            projectId++
         ) {
-            const createProjectAction = createProjectActions[i];
+            const createProjectAction = createProjectActions[projectId];
             const ipfsData = await this.ipfs.getData(
                 createProjectAction.actionData.ipfsHash,
             );
             await this.projectModel.findOneAndUpdate(
                 {
-                    projectId: i,
+                    projectId: projectId,
                 },
                 {
-                    projectId: i,
+                    projectId: projectId,
                     members: createProjectAction.actionData.members,
                     ipfsHash: createProjectAction.actionData.ipfsHash,
                     ipfsData: ipfsData,
@@ -369,7 +375,7 @@ export class ProjectContractService implements ContractServiceInterface {
             );
         }
 
-        const latestUpdateActions = await this.projectModel.aggregate([
+        const latestUpdateActions = await this.projectActionModel.aggregate([
             {
                 $match: {
                     active: true,

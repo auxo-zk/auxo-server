@@ -331,25 +331,28 @@ export class CampaignContractService implements ContractServiceInterface {
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                await notActiveAction.save();
-                const ipfsData = this.ipfs.getData(
+                const ipfsData = await this.ipfs.getData(
                     notActiveAction.actionData.ipfsHash,
                 );
-                await this.campaignModel.findOneAndUpdate(
-                    {
-                        campaignId: notActiveAction.actionId,
-                    },
-                    {
-                        campaignId: notActiveAction.actionId,
-                        ipfsHash: notActiveAction.actionData.ipfsHash,
-                        ipfsData: ipfsData,
-                        owner: notActiveAction.actionData.owner,
-                        timeline: notActiveAction.actionData.timeline,
-                        committeeId: notActiveAction.actionData.committeeId,
-                        keyId: notActiveAction.actionData.keyId,
-                    },
-                    { new: true, upsert: true },
-                );
+
+                await Promise.all([
+                    notActiveAction.save(),
+                    this.campaignModel.findOneAndUpdate(
+                        {
+                            campaignId: notActiveAction.actionId,
+                        },
+                        {
+                            campaignId: notActiveAction.actionId,
+                            ipfsHash: notActiveAction.actionData.ipfsHash,
+                            ipfsData: ipfsData,
+                            owner: notActiveAction.actionData.owner,
+                            timeline: notActiveAction.actionData.timeline,
+                            committeeId: notActiveAction.actionData.committeeId,
+                            keyId: notActiveAction.actionData.keyId,
+                        },
+                        { new: true, upsert: true },
+                    ),
+                ]);
             }
         }
     }

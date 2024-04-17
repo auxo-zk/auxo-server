@@ -26,6 +26,9 @@ export class Campaign {
     @Prop()
     keyId: number;
 
+    @Prop({ required: true, default: 0 })
+    projectCounter?: number;
+
     @Prop()
     result?: number[];
 
