@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { Field } from 'o1js';
+import { Field, PublicKey, UInt64 } from 'o1js';
 import { Storage, ZkApp } from '@auxo-dev/platform';
 import { Utilities } from 'src/mina-contracts/utilities';
 import { Funding } from '../funding.schema';
@@ -11,15 +11,40 @@ export class FundingActionData {
     campaignId: number;
     investor: string;
     amount: number;
+    constructor(
+        actionType: Storage.FundingStorage.FundingActionEnum,
+        fundingId: number,
+        campaignId: number,
+        investor: string,
+        amount: number,
+    ) {
+        this.actionType = actionType;
+        this.fundingId = fundingId;
+        this.campaignId = campaignId;
+        this.investor = investor;
+        this.amount = amount;
+    }
 
     static fromAction(action: ZkApp.Funding.FundingAction): FundingActionData {
-        return {
-            actionType: Number(action.actionType.toBigInt()),
-            fundingId: Number(action.fundingId.toBigInt()),
-            campaignId: Number(action.campaignId.toBigInt()),
-            investor: action.investor.toBase58(),
-            amount: Number(action.amount.toBigInt()),
-        };
+        return new FundingActionData(
+            Number(action.actionType.toBigInt()),
+            Number(action.fundingId.toBigInt()),
+            Number(action.campaignId.toBigInt()),
+            action.investor.toBase58(),
+            Number(action.amount.toBigInt()),
+        );
+    }
+
+    toFundingInformation(): Storage.FundingStorage.FundingInformation {
+        return new Storage.FundingStorage.FundingInformation({
+            campaignId: Field(this.campaignId),
+            investor: PublicKey.fromBase58(this.investor),
+            amount: new UInt64(
+                this.actionType == Storage.FundingStorage.FundingActionEnum.FUND
+                    ? this.amount
+                    : 0,
+            ),
+        });
     }
 }
 

@@ -56,6 +56,11 @@ export enum CampaignActionEnum {
     UPDATE_CAMPAIGN,
 }
 
+export enum FundingStateEnum {
+    FUNDED,
+    REFUNDED,
+}
+
 export enum KeyStatusEnum {
     EMPTY,
     ROUND_1_CONTRIBUTION,
