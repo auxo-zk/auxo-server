@@ -57,20 +57,18 @@ export interface ProjectState {
     actionState: Field;
 }
 export interface ParticipationState {
-    index: Field;
-    info: Field;
-    counter: Field;
-    zkApp: Field;
+    projectIndexRoot: Field;
+    projectCounterRoot: Field;
+    ipfsHashRoot: Field;
+    zkAppRoot: Field;
     actionState: Field;
 }
 
 export interface FundingState {
+    nextFundingId: Field;
+    fundingInformationRoot: Field;
+    zkAppRoot: Field;
     actionState: Field;
-    reduceState: Field;
-    R: Field;
-    M: Field;
-    requestId: Field;
-    zkApp: Field;
 }
 
 export interface TreasuryState {
