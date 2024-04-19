@@ -71,8 +71,9 @@ export interface FundingState {
     actionState: Field;
 }
 
-export interface TreasuryState {
-    claimed: Field;
+export interface TreasuryManagerState {
+    campaignStateRoot: Field;
+    claimedIndexRoot: Field;
     zkApp: Field;
     actionState: Field;
 }
