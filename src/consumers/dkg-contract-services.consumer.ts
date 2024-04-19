@@ -8,7 +8,7 @@ import { CampaignContractService } from '../mina-contracts/campaign-contract/cam
 import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
-import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
 
 @Processor('dkg-contract-services')
 export class DkgContractServicesConsumer {
@@ -21,7 +21,7 @@ export class DkgContractServicesConsumer {
         private readonly participationContractService: ParticipationContractService,
         private readonly projectContractService: ProjectContractService,
         private readonly fundingContractService: FundingContractService,
-        private readonly treasuryContractService: TreasuryContractService,
+        private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
     @Process('updateContractMerkleTrees')
@@ -35,7 +35,7 @@ export class DkgContractServicesConsumer {
                 this.participationContractService.updateMerkleTrees(),
                 this.projectContractService.updateMerkleTrees(),
                 this.fundingContractService.updateMerkleTrees(),
-                this.treasuryContractService.updateMerkleTrees(),
+                this.treasuryManagerContractService.updateMerkleTrees(),
             ]).then(async () => {
                 this.logger.log('All contract trees updated successfully');
                 await job.progress();
@@ -58,7 +58,7 @@ export class DkgContractServicesConsumer {
                 this.participationContractService.update(),
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
-                this.treasuryContractService.update(),
+                this.treasuryManagerContractService.update(),
             ]).then(async () => {
                 this.logger.log('All contracts updated successfully');
                 await job.progress();

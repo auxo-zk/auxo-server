@@ -13,7 +13,7 @@ import { ProjectContractService } from './project-contract/project-contract.serv
 import { CampaignContractService } from './campaign-contract/campaign-contract.service';
 import { ParticipationContractService } from './participation-contract/participation-contract.service';
 import { FundingContractService } from './funding-contract/funding-contract.service';
-import { TreasuryContractService } from './treasury-contract/treasury-contract.service';
+import { TreasuryManagerContractService } from './treasury-contract/treasury-contract.service';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import {
@@ -138,7 +138,7 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
         CampaignContractService,
         ParticipationContractService,
         FundingContractService,
-        TreasuryContractService,
+        TreasuryManagerContractService,
     ],
     exports: [
         CommitteeContractService,
@@ -148,7 +148,7 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
         ParticipationContractService,
         ProjectContractService,
         FundingContractService,
-        TreasuryContractService,
+        TreasuryManagerContractService,
     ],
     controllers: [],
 })

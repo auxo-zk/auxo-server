@@ -13,7 +13,7 @@ import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts
 import { FundingContractService } from 'src/mina-contracts/funding-contract/funding-contract.service';
 import { ParticipationContractService } from 'src/mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from 'src/mina-contracts/project-contract/project-contract.service';
-import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
 
 @Injectable()
 export class StoragesService {
@@ -27,7 +27,7 @@ export class StoragesService {
         private readonly participationContractService: ParticipationContractService,
         private readonly projectContractService: ProjectContractService,
         private readonly fundingContractService: FundingContractService,
-        private readonly treasuryContractService: TreasuryContractService,
+        private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
     getMemberTreeLevel1(): MerkleLeaf[] {
@@ -805,11 +805,12 @@ export class StoragesService {
     }
 
     getTreasuryClaimedTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.treasuryContractService.claimed.level1.leafCount;
+        const leafCount =
+            this.treasuryManagerContractService.claimed.level1.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.treasuryContractService.claimed
+                this.treasuryManagerContractService.claimed
                     .getLevel1Witness(Field(i))
                     .toJSON(),
             );
@@ -818,16 +819,16 @@ export class StoragesService {
     }
 
     getTreasuryClaimedTreeLeafs(): { [key: string]: any } {
-        return this.treasuryContractService.claimed.leafs;
+        return this.treasuryManagerContractService.claimed.leafs;
     }
 
     getTreasuryZkAppTree(): MerkleLeaf[] {
         const leafCount =
-            this.treasuryContractService.zkApp.addressMap.leafCount;
+            this.treasuryManagerContractService.zkApp.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.treasuryContractService.zkApp
+                this.treasuryManagerContractService.zkApp
                     .getWitness(Field(i))
                     .toJSON(),
             );
@@ -836,6 +837,6 @@ export class StoragesService {
     }
 
     getTreasuryZkAppTreeLeafs(): { [key: string]: any } {
-        return this.treasuryContractService.zkApp.addresses;
+        return this.treasuryManagerContractService.zkApp.addresses;
     }
 }
