@@ -133,8 +133,7 @@ export class CampaignContractService implements ContractServiceInterface {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await this.fetchCampaignActions();
-                await this.fetchCampaignState();
-                await this.updateCampaignActions();
+                await this.updateCampaigns();
                 count = MaxRetries;
             } catch (err) {
                 this.logger.error(err);
@@ -314,7 +313,8 @@ export class CampaignContractService implements ContractServiceInterface {
         }
     }
 
-    private async updateCampaignActions() {
+    private async updateCampaigns() {
+        await this.fetchCampaignState();
         const currentAction = await this.campaignActionModel.findOne({
             currentActionState: this._actionState,
         });
@@ -334,15 +334,14 @@ export class CampaignContractService implements ContractServiceInterface {
                 const ipfsData = await this.ipfs.getData(
                     notActiveAction.actionData.ipfsHash,
                 );
-
                 await Promise.all([
                     notActiveAction.save(),
                     this.campaignModel.findOneAndUpdate(
                         {
-                            campaignId: notActiveAction.actionId,
+                            campaignId: this._nextCampaignId,
                         },
                         {
-                            campaignId: notActiveAction.actionId,
+                            campaignId: this._nextCampaignId,
                             ipfsHash: notActiveAction.actionData.ipfsHash,
                             ipfsData: ipfsData,
                             owner: notActiveAction.actionData.owner,
@@ -353,6 +352,7 @@ export class CampaignContractService implements ContractServiceInterface {
                         { new: true, upsert: true },
                     ),
                 ]);
+                this._nextCampaignId += 1;
             }
         }
     }

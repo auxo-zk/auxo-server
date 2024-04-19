@@ -125,8 +125,7 @@ export class ParticipationContractService implements ContractServiceInterface {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await this.fetchParticipationActions();
-                await this.fetchParticipationState();
-                await this.updateParticipationActions();
+                await this.updateParticipations();
             } catch (err) {
                 this.logger.error(err);
             }
@@ -314,7 +313,8 @@ export class ParticipationContractService implements ContractServiceInterface {
         }
     }
 
-    private async updateParticipationActions() {
+    private async updateParticipations() {
+        await this.fetchParticipationState();
         const currentAction = await this.participationActionModel.findOne({
             currentActionState: this._actionState,
         });
@@ -330,11 +330,11 @@ export class ParticipationContractService implements ContractServiceInterface {
 
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
                 const campaign = await this.campaignModel.findOne({
                     campaignId: notActiveAction.actionData.campaignId,
                 });
                 const projectIndex = campaign.projectCounter + 1;
-                notActiveAction.set('active', true);
                 campaign.set('projectCounter', campaign.projectCounter + 1);
                 const ipfsData = await this.ipfs.getData(
                     notActiveAction.actionData.ipfsHash,

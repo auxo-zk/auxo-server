@@ -133,8 +133,6 @@ export class FundingContractService implements ContractServiceInterface {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await this.fetchFundingActions();
-                await this.fetchFundingState();
-                await this.updateFundingActions();
                 await this.updateFundings();
                 count = MaxRetries;
             } catch (err) {
@@ -313,7 +311,8 @@ export class FundingContractService implements ContractServiceInterface {
         }
     }
 
-    private async updateFundingActions() {
+    private async updateFundings() {
+        await this.fetchFundingState();
         const currentAction = await this.fundingActionModel.findOne({
             currentActionState: this._actionState,
         });
@@ -328,78 +327,45 @@ export class FundingContractService implements ContractServiceInterface {
             );
 
             for (let i = 0; i < notActiveActions.length; i++) {
+                const promises = [];
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                await notActiveAction.save();
+                promises.push(notActiveAction.save());
+                if (
+                    notActiveAction.actionData.actionType ==
+                    Storage.FundingStorage.FundingActionEnum.FUND
+                ) {
+                    promises.push(
+                        this.fundingModel.findOneAndUpdate(
+                            {
+                                fundingId: this._nextFundingId,
+                            },
+                            {
+                                fundingId: this._nextFundingId,
+                                campaignId:
+                                    notActiveAction.actionData.campaignId,
+                                investor: notActiveAction.actionData.investor,
+                                amount: notActiveAction.actionData.amount,
+                            },
+                            { new: true, upsert: true },
+                        ),
+                    );
+                    this._nextFundingId += 1;
+                } else {
+                    promises.push(
+                        this.fundingModel.findOneAndUpdate(
+                            {
+                                fundingId: notActiveAction.actionData.fundingId,
+                            },
+                            {
+                                state: FundingStateEnum.REFUNDED,
+                            },
+                            { new: true, upsert: true },
+                        ),
+                    );
+                }
+                await Promise.all(promises);
             }
-        }
-    }
-
-    private async updateFundings() {
-        const lastCreatedFunding = await this.fundingModel.findOne(
-            {},
-            {},
-            { sort: { fundingId: -1 } },
-        );
-        const fundActions = await this.fundingActionModel.find(
-            {
-                'actionData.actionType':
-                    Storage.FundingStorage.FundingActionEnum.FUND,
-                active: true,
-            },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        for (
-            let fundingId = lastCreatedFunding
-                ? lastCreatedFunding.fundingId + 1
-                : 0;
-            fundingId < fundActions.length;
-            fundingId++
-        ) {
-            const fundAction = fundActions[fundingId];
-            await this.fundingModel.findOneAndUpdate(
-                {
-                    fundingId: fundingId,
-                },
-                {
-                    fundingId: fundingId,
-                    campaignId: fundAction.actionData.campaignId,
-                    investor: fundAction.actionData.investor,
-                    amount: fundAction.actionData.amount,
-                },
-                { new: true, upsert: true },
-            );
-        }
-
-        const latestRefundActions = await this.fundingActionModel.aggregate([
-            {
-                $match: {
-                    active: true,
-                    'actionData.actionType':
-                        Storage.FundingStorage.FundingActionEnum.REFUND,
-                },
-            },
-            {
-                $group: {
-                    _id: '$fundingId',
-                    actionId: { $max: '$actionId' },
-                },
-            },
-        ]);
-        for (let i = 0; i < latestRefundActions.length; i++) {
-            const latestRefundAction = latestRefundActions[i];
-            const fundingId = latestRefundAction._id;
-            await this.fundingModel.findOneAndUpdate(
-                {
-                    fundingId: fundingId,
-                },
-                {
-                    fundingId: fundingId,
-                    state: FundingStateEnum.REFUNDED,
-                },
-                { new: true, upsert: true },
-            );
         }
     }
 

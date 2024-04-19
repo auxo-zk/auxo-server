@@ -77,8 +77,6 @@ export class ProjectContractService implements ContractServiceInterface {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await this.fetchProjectActions();
-                await this.fetchProjectState();
-                await this.updateProjectActions();
                 await this.updateProjects();
                 count = MaxRetries;
             } catch (err) {
@@ -312,7 +310,8 @@ export class ProjectContractService implements ContractServiceInterface {
         }
     }
 
-    private async updateProjectActions() {
+    private async updateProjects() {
+        await this.fetchProjectState();
         const currentAction = await this.projectActionModel.findOne({
             currentActionState: this._actionState,
         });
@@ -326,91 +325,54 @@ export class ProjectContractService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             for (let i = 0; i < notActiveActions.length; i++) {
+                const promises = [];
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                await notActiveAction.save();
+                promises.push(notActiveAction.save());
+                if (
+                    notActiveAction.actionData.actionType ==
+                    Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT
+                ) {
+                    const ipfsData = await this.ipfs.getData(
+                        notActiveAction.actionData.ipfsHash,
+                    );
+                    promises.push(
+                        this.projectModel.findOneAndUpdate(
+                            {
+                                projectId: this._nextProjectId,
+                            },
+                            {
+                                projectId: this._nextProjectId,
+                                members: notActiveAction.actionData.members,
+                                ipfsHash: notActiveAction.actionData.ipfsHash,
+                                ipfsData: ipfsData,
+                                treasuryAddress:
+                                    notActiveAction.actionData.treasuryAddress,
+                            },
+                            { new: true, upsert: true },
+                        ),
+                    );
+                    this._nextProjectId += 1;
+                } else {
+                    const ipfsData = await this.ipfs.getData(
+                        notActiveAction.actionData.ipfsHash,
+                    );
+                    promises.push(
+                        this.projectModel.findOneAndUpdate(
+                            {
+                                projectId: notActiveAction.actionData.projectId,
+                            },
+                            {
+                                ipfsHash: notActiveAction.actionData.ipfsHash,
+                                ipfsData: ipfsData,
+                            },
+                            { new: true, upsert: true },
+                        ),
+                    );
+                }
+
+                await Promise.all(promises);
             }
-        }
-    }
-
-    private async updateProjects() {
-        const lastCreatedProject = await this.projectModel.findOne(
-            {},
-            {},
-            { sort: { projectId: -1 } },
-        );
-        const createProjectActions = await this.projectActionModel.find(
-            {
-                'actionData.actionType':
-                    Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT,
-                active: true,
-            },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        for (
-            let projectId = lastCreatedProject
-                ? lastCreatedProject.projectId + 1
-                : 0;
-            projectId < createProjectActions.length;
-            projectId++
-        ) {
-            const createProjectAction = createProjectActions[projectId];
-            const ipfsData = await this.ipfs.getData(
-                createProjectAction.actionData.ipfsHash,
-            );
-            await this.projectModel.findOneAndUpdate(
-                {
-                    projectId: projectId,
-                },
-                {
-                    projectId: projectId,
-                    members: createProjectAction.actionData.members,
-                    ipfsHash: createProjectAction.actionData.ipfsHash,
-                    ipfsData: ipfsData,
-                    treasuryAddress:
-                        createProjectAction.actionData.treasuryAddress,
-                },
-                { new: true, upsert: true },
-            );
-        }
-
-        const latestUpdateActions = await this.projectActionModel.aggregate([
-            {
-                $match: {
-                    active: true,
-                    'actionData.actionType':
-                        Storage.ProjectStorage.ProjectActionEnum.UPDATE_PROJECT,
-                },
-            },
-            {
-                $group: {
-                    _id: '$projectId',
-                    actionId: { $max: '$actionId' },
-                },
-            },
-        ]);
-
-        for (let i = 0; i < latestUpdateActions.length; i++) {
-            const latestUpdateAction = latestUpdateActions[i];
-            const projectId = latestUpdateAction._id;
-            const action = await this.projectActionModel.findOne({
-                actionId: latestUpdateAction.actionId,
-            });
-            const ipfsData = await this.ipfs.getData(
-                action.actionData.ipfsHash,
-            );
-            await this.projectModel.findOneAndUpdate(
-                {
-                    projectId: projectId,
-                },
-                {
-                    projectId: projectId,
-                    ipfsHash: action.actionData.ipfsHash,
-                    ipfsData: ipfsData,
-                },
-                { new: true, upsert: true },
-            );
         }
     }
 
