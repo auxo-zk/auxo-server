@@ -20,6 +20,9 @@ export class Participation {
 
     @Prop({ index: true })
     projectIndex: number;
+
+    @Prop({ required: true, default: false })
+    claimed?: boolean;
 }
 
 export type ParticipationDocument = HydratedDocument<Participation>;
