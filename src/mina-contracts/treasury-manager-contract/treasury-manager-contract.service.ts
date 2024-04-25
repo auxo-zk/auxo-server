@@ -33,15 +33,15 @@ export class TreasuryManagerContractService
 {
     private readonly logger = new Logger(TreasuryManagerContractService.name);
     private readonly _campaignState: Storage.TreasuryManagerStorage.CampaignStateStorage;
-    private readonly _claimedIndex: Storage.TreasuryManagerStorage.ClaimedIndexStorage;
+    private readonly _claimedAmount: Storage.TreasuryManagerStorage.ClaimedAmountStorage;
     private readonly _zkApp: Storage.SharedStorage.ZkAppStorage;
     private _actionState: string;
 
     public get campaignState(): Storage.TreasuryManagerStorage.CampaignStateStorage {
         return this._campaignState;
     }
-    public get claimedIndex(): Storage.TreasuryManagerStorage.ClaimedIndexStorage {
-        return this._claimedIndex;
+    public get claimedAmount(): Storage.TreasuryManagerStorage.ClaimedAmountStorage {
+        return this._claimedAmount;
     }
 
     public get zkApp(): Storage.SharedStorage.ZkAppStorage {
@@ -60,8 +60,8 @@ export class TreasuryManagerContractService
         this._actionState = '';
         this._campaignState =
             new Storage.TreasuryManagerStorage.CampaignStateStorage();
-        this._claimedIndex =
-            new Storage.TreasuryManagerStorage.ClaimedIndexStorage();
+        this._claimedAmount =
+            new Storage.TreasuryManagerStorage.ClaimedAmountStorage();
         this._zkApp = new Storage.SharedStorage.ZkAppStorage([
             {
                 index: Constants.ZkAppEnum.COMMITTEE,
@@ -190,7 +190,7 @@ export class TreasuryManagerContractService
                         state.actionState,
                     );
                 const campaignState = _.cloneDeep(this._campaignState);
-                const claimedIndex = _.cloneDeep(this._claimedIndex);
+                const claimedAmount = _.cloneDeep(this._claimedAmount);
 
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
@@ -242,7 +242,7 @@ export class TreasuryManagerContractService
                             ),
                         );
                     } else {
-                        const level1Index = claimedIndex.calculateLevel1Index({
+                        const level1Index = claimedAmount.calculateLevel1Index({
                             campaignId: campaignId,
                             dimensionIndex: new UInt8(
                                 notReducedAction.actionData.projectIndex - 1,
@@ -256,11 +256,11 @@ export class TreasuryManagerContractService
                                         notReducedAction.actions,
                                     ),
                                 ),
-                                claimedIndex.getLevel1Witness(level1Index),
+                                claimedAmount.getLevel1Witness(level1Index),
                             );
-                        claimedIndex.updateLeaf(
+                        claimedAmount.updateLeaf(
                             level1Index,
-                            Bool(true).toField(),
+                            Field(notReducedAction.actionData.amount),
                         );
                     }
                 }
@@ -279,8 +279,8 @@ export class TreasuryManagerContractService
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    () => {
-                        treasuryContract.rollup(proof);
+                    async () => {
+                        await treasuryContract.rollup(proof);
                     },
                 );
                 await Utilities.proveAndSend(
@@ -406,7 +406,10 @@ export class TreasuryManagerContractService
                                 notActiveAction.actionData.projectIndex,
                         },
                     );
-                    participation.set('claimed', true);
+                    participation.set(
+                        'claimedAmount',
+                        notActiveAction.actionData.amount,
+                    );
                     promises.push(participation.save());
                 }
                 await Promise.all(promises);
@@ -429,23 +432,25 @@ export class TreasuryManagerContractService
                     this._campaignState.calculateLeaf(campaign.state),
                 );
                 const participations = await this.participationModel.find(
-                    { campaignId: campaign.campaignId, claimed: true },
+                    {
+                        campaignId: campaign.campaignId,
+                        claimedAmount: { $gt: 0 },
+                    },
                     {},
                     { sort: { projectIndex: 1 } },
                 );
                 for (let j = 0; j < participations.length; j++) {
                     const participation = participations[j];
-                    const level1Index = this._claimedIndex.calculateLevel1Index(
-                        {
+                    const level1Index =
+                        this._claimedAmount.calculateLevel1Index({
                             campaignId: Field(campaign.campaignId),
                             dimensionIndex: new UInt8(
                                 participation.projectIndex - 1,
                             ),
-                        },
-                    );
-                    this._claimedIndex.updateLeaf(
+                        });
+                    this.claimedAmount.updateLeaf(
                         level1Index,
-                        Bool(true).toField(),
+                        Field(participation.claimedAmount),
                     );
                 }
             }

@@ -236,6 +236,7 @@ export class ParticipationContractService implements ContractServiceInterface {
                         ),
                     );
                 }
+
                 const participationContract =
                     new ZkApp.Participation.ParticipationContract(
                         PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
@@ -251,8 +252,8 @@ export class ParticipationContractService implements ContractServiceInterface {
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    () => {
-                        participationContract.rollup(proof);
+                    async () => {
+                        await participationContract.rollup(proof);
                     },
                 );
                 await Utilities.proveAndSend(

@@ -249,8 +249,8 @@ export class FundingContractService implements ContractServiceInterface {
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    () => {
-                        fundingContract.rollup(proof);
+                    async () => {
+                        await fundingContract.rollup(proof);
                     },
                 );
                 await Utilities.proveAndSend(
