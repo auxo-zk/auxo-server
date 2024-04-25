@@ -6,6 +6,41 @@ import { Utilities } from 'src/mina-contracts/utilities';
 import { RawDkgRequest } from '../raw-request.schema';
 import { RequestActionEnum } from 'src/constants';
 
+export class RequestActionData {
+    requestId: number;
+    keyIndex: number;
+    taskId: number;
+    expirationTimestamp: number;
+    accumulationRoot: string;
+    resultRoot: string;
+
+    constructor(
+        requestId: number,
+        keyIndex: number,
+        taskId: number,
+        expirationTimestamp: number,
+        accumulationRoot: string,
+        resultRoot: string,
+    ) {
+        this.requestId = requestId;
+        this.keyIndex = keyIndex;
+        this.taskId = taskId;
+        this.expirationTimestamp = expirationTimestamp;
+        this.accumulationRoot = accumulationRoot;
+        this.resultRoot = resultRoot;
+    }
+
+    static fromAction(action: ZkApp.Request.RequestAction): RequestActionData {
+        return new RequestActionData(
+            Number(action.requestId.toBigInt()),
+            Number(action.keyIndex.toBigInt()),
+            Number(action.taskId.toBigInt()),
+            Number(action.expirationTimestamp.toBigInt()),
+            action.accumulationRoot.toString(),
+            action.resultRoot.toString(),
+        );
+    }
+}
 @Schema({ versionKey: false })
 export class RequestAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
@@ -19,48 +54,20 @@ export class RequestAction {
 
     @Prop()
     actions: string[];
+
+    @Prop({ type: RequestActionData })
+    actionData: RequestActionData;
+
+    @Prop({ required: true, default: false })
+    active?: boolean;
 }
 
 export type RequestActionDocument = HydratedDocument<RequestAction>;
 export const RequestActionSchema = SchemaFactory.createForClass(RequestAction);
 
-export function getRawDkgRequest(requestAction: RequestAction): RawDkgRequest {
+export function getRequestActionData(actions: string[]): RequestActionData {
     const action = ZkApp.Request.RequestAction.fromFields(
-        Utilities.stringArrayToFields(requestAction.actions),
+        Utilities.stringArrayToFields(actions),
     );
-    const requestId = action.requestId.toString();
-    const requester = action.newRequester.toBase58();
-    const R: { x: string; y: string }[] = [];
-    for (let i = 0; i < action.R.length.toBigInt(); i++) {
-        const x = action.R.values[i].x.toString();
-        const y = action.R.values[i].y.toString();
-        R.push({ x: x, y: y });
-    }
-    const D: { x: string; y: string }[] = [];
-    for (let i = 0; i < action.D.length.toBigInt(); i++) {
-        const x = action.D.values[i].x.toString();
-        const y = action.D.values[i].y.toString();
-        D.push({ x: x, y: y });
-    }
-    const dkgRequest: RawDkgRequest = {
-        actionId: requestAction.actionId,
-        requestId: requestId,
-        requester: requester,
-        R: R,
-        D: D,
-        actionEnum: maskToRequestActionEnum(action.actionType),
-    };
-    return dkgRequest;
-}
-
-function maskToRequestActionEnum(
-    mask: ZkApp.DKG.ActionMask,
-): RequestActionEnum {
-    if (mask.values[RequestActionEnum.REQUEST].toBoolean()) {
-        return RequestActionEnum.REQUEST;
-    } else if (mask.values[RequestActionEnum.RESOLVE].toBoolean()) {
-        return RequestActionEnum.RESOLVE;
-    } else if (mask.values[RequestActionEnum.UNREQUEST].toBoolean()) {
-        return RequestActionEnum.UNREQUEST;
-    }
+    return RequestActionData.fromAction(action);
 }
