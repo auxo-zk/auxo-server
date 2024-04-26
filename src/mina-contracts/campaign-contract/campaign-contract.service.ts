@@ -256,8 +256,8 @@ export class CampaignContractService implements ContractServiceInterface {
                         feePayerPrivateKey.toPublicKey().toBase58(),
                     ),
                 },
-                () => {
-                    campaignContract.rollup(proof);
+                async () => {
+                    await campaignContract.rollup(proof);
                 },
             );
             await Utilities.proveAndSend(

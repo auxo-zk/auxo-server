@@ -21,9 +21,6 @@ export class Committee {
 
     @Prop({ type: Object })
     ipfsData?: object;
-
-    @Prop({ required: true, default: false, index: true })
-    active?: boolean;
 }
 
 export type CommitteeDocument = HydratedDocument<Committee>;

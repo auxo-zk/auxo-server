@@ -16,10 +16,7 @@ import {
     Round1Action,
     getRound1,
 } from 'src/schemas/actions/round-1-action.schema';
-import {
-    Round2Action,
-    getRound2,
-} from 'src/schemas/actions/round-2-action.schema';
+import { Round2Action } from 'src/schemas/actions/round-2-action.schema';
 import { Dkg } from 'src/schemas/dkg.schema';
 import { Round1 } from 'src/schemas/round-1.schema';
 import { Round2 } from 'src/schemas/round-2.schema';

@@ -23,14 +23,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, set } from 'mongoose';
 import {
     CommitteeAction,
-    getCommittee,
+    getCommitteeActionData,
 } from 'src/schemas/actions/committee-action.schema';
-import {
-    CommitteeContract,
-    CreateCommittee,
-    Storage,
-    ZkApp,
-} from '@auxo-dev/dkg';
+import { Storage, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { MaxRetries, zkAppCache } from 'src/constants';
@@ -39,19 +34,27 @@ import { CommitteeState } from 'src/interfaces/zkapp-state.interface';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { error } from 'console';
 import * as _ from 'lodash';
+import { Constants } from '@auxo-dev/platform';
 
 @Injectable()
 export class CommitteeContractService implements ContractServiceInterface {
     private readonly logger = new Logger(CommitteeContractService.name);
-    private _memberTree: Storage.CommitteeStorage.MemberStorage;
-    private _settingTree: Storage.CommitteeStorage.SettingStorage;
+    private _nextCommitteeId: number;
+    private _member: Storage.CommitteeStorage.MemberStorage;
+    private _setting: Storage.CommitteeStorage.SettingStorage;
+    private _zkApp: Storage.AddressStorage.AddressStorage;
+    private _actionState: string;
 
-    public get memberTree(): Storage.CommitteeStorage.MemberStorage {
-        return this._memberTree;
+    public get member(): Storage.CommitteeStorage.MemberStorage {
+        return this._member;
     }
 
-    public get settingTree(): Storage.CommitteeStorage.SettingStorage {
-        return this._settingTree;
+    public get setting(): Storage.CommitteeStorage.SettingStorage {
+        return this._setting;
+    }
+
+    public get zkApp(): Storage.AddressStorage.AddressStorage {
+        return this._zkApp;
     }
 
     constructor(
@@ -62,8 +65,10 @@ export class CommitteeContractService implements ContractServiceInterface {
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
     ) {
-        this._memberTree = new Storage.CommitteeStorage.MemberStorage();
-        this._settingTree = new Storage.CommitteeStorage.SettingStorage();
+        this._nextCommitteeId = 0;
+        this._actionState = '';
+        this._member = new Storage.CommitteeStorage.MemberStorage();
+        this._setting = new Storage.CommitteeStorage.SettingStorage();
     }
 
     async onModuleInit() {
@@ -98,144 +103,22 @@ export class CommitteeContractService implements ContractServiceInterface {
 
     async compile() {
         const cache = zkAppCache;
-        await Utilities.compile(CreateCommittee, cache, this.logger);
-        await Utilities.compile(CommitteeContract, cache, this.logger);
-    }
-
-    async rollup(): Promise<boolean> {
-        try {
-            const lastActiveCommittee = await this.committeeModel.findOne(
-                { active: true },
-                {},
-                { sort: { committeeId: -1 } },
-            );
-            const lastReducedAction = lastActiveCommittee
-                ? await this.committeeActionModel.findOne({
-                      actionId: lastActiveCommittee.committeeId,
-                  })
-                : undefined;
-            const notReducedActions = await this.committeeActionModel.find(
-                {
-                    actionId: {
-                        $gt: lastReducedAction
-                            ? lastReducedAction.actionId
-                            : -1,
-                    },
-                },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            if (notReducedActions.length > 0) {
-                const state = await this.fetchCommitteeState();
-                let proof = await ZkApp.Committee.CreateCommittee.firstStep(
-                    state.actionState,
-                    state.committeeTreeRoot,
-                    state.settingTreeRoot,
-                    state.nextCommitteeId,
-                );
-                const memberTree = _.cloneDeep(this._memberTree);
-                const settingTree = _.cloneDeep(this._settingTree);
-                let nextCommitteeId = lastActiveCommittee
-                    ? lastActiveCommittee.committeeId + 1
-                    : 0;
-                for (let i = 0; i < notReducedActions.length; i++) {
-                    const notReducedAction = notReducedActions[i];
-                    proof = await CreateCommittee.nextStep(
-                        proof,
-                        ZkApp.Committee.CommitteeAction.fromFields(
-                            Utilities.stringArrayToFields(
-                                notReducedAction.actions,
-                            ),
-                        ),
-                        memberTree.getLevel1Witness(
-                            Storage.CommitteeStorage.MemberStorage.calculateLevel1Index(
-                                Field(nextCommitteeId),
-                            ),
-                        ),
-                        settingTree.getWitness(
-                            Storage.CommitteeStorage.SettingStorage.calculateLevel1Index(
-                                Field(nextCommitteeId),
-                            ),
-                        ),
-                    );
-                    const committee = await this.committeeModel.findOne({
-                        committeeId: nextCommitteeId,
-                    });
-                    const memberTreeLevel2 =
-                        Storage.CommitteeStorage.EMPTY_LEVEL_2_TREE();
-                    for (let j = 0; j < committee.numberOfMembers; j++) {
-                        const publicKey = PublicKey.fromBase58(
-                            committee.publicKeys[j],
-                        );
-                        memberTreeLevel2.setLeaf(
-                            BigInt(j),
-                            Poseidon.hash(publicKey.toFields()),
-                        );
-                    }
-                    memberTree.updateInternal(
-                        Storage.CommitteeStorage.MemberStorage.calculateLevel1Index(
-                            Field(nextCommitteeId),
-                        ),
-                        memberTreeLevel2,
-                    );
-                    settingTree.updateLeaf(
-                        {
-                            level1Index:
-                                Storage.CommitteeStorage.SettingStorage.calculateLevel1Index(
-                                    Field(nextCommitteeId),
-                                ),
-                        },
-                        Storage.CommitteeStorage.SettingStorage.calculateLeaf({
-                            T: Field(committee.threshold),
-                            N: Field(committee.numberOfMembers),
-                        }),
-                    );
-                    nextCommitteeId += 1;
-                }
-                const committeeContract = new CommitteeContract(
-                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                const tx = await Mina.transaction(
-                    {
-                        sender: feePayerPrivateKey.toPublicKey(),
-                        fee: process.env.FEE,
-                        nonce: await this.queryService.fetchAccountNonce(
-                            feePayerPrivateKey.toPublicKey().toBase58(),
-                        ),
-                    },
-                    () => {
-                        committeeContract.rollupIncrements(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
-                );
-                return true;
-            }
-        } catch (err) {
-            this.logger.error(err);
-        } finally {
-            return false;
-        }
     }
 
     async fetchCommitteeState(): Promise<CommitteeState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.COMMITTEE_ADDRESS,
         );
-        const committeeState: CommitteeState = {
+        const result: CommitteeState = {
             nextCommitteeId: Field(state[0]),
-            committeeTreeRoot: Field(state[1]),
-            settingTreeRoot: Field(state[2]),
-            actionState: Field(state[3]),
+            memberRoot: Field(state[1]),
+            settingRoot: Field(state[2]),
+            zkAppRoot: Field(state[3]),
+            actionState: Field(state[4]),
         };
-        return committeeState;
+        this._nextCommitteeId = Number(result.nextCommitteeId.toBigInt());
+        this._actionState = result.actionState.toString();
+        return result;
     }
 
     // ============ PRIVATE FUNCTIONS ============
@@ -263,6 +146,7 @@ export class CommitteeContractService implements ContractServiceInterface {
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
             const currentActionState = Field(action.hash);
+            const actionData = getCommitteeActionData(action.actions[0]);
             await this.committeeActionModel.findOneAndUpdate(
                 {
                     currentActionState: currentActionState.toString(),
@@ -272,6 +156,7 @@ export class CommitteeContractService implements ContractServiceInterface {
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
+                    actionData: actionData,
                 },
                 { new: true, upsert: true },
             );
@@ -281,94 +166,79 @@ export class CommitteeContractService implements ContractServiceInterface {
     }
 
     private async updateCommittees() {
-        const lastCommittee = await this.committeeModel.findOne(
-            {},
-            {},
-            { sort: { committeeId: -1 } },
-        );
-
-        let committeeActions: CommitteeAction[];
-        if (lastCommittee != null) {
-            committeeActions = await this.committeeActionModel.find(
-                { actionId: { $gt: lastCommittee.committeeId } },
-                {},
-                { sort: { actionId: 1 } },
-            );
-        } else {
-            committeeActions = await this.committeeActionModel.find(
-                {},
-                {},
-                { sort: { actionId: 1 } },
-            );
-        }
-
-        for (let i = 0; i < committeeActions.length; i++) {
-            const committeeAction = committeeActions[i];
-            const committeeId = committeeAction.actionId;
-            const committee = getCommittee(committeeAction);
-            committee.ipfsData = await this.ipfs.getData(committee.ipfsHash);
-            await this.committeeModel.findOneAndUpdate(
-                { committeeId: committeeId },
-                committee,
-                { new: true, upsert: true },
-            );
-        }
-        const rawEvents = await this.queryService.fetchEvents(
-            process.env.COMMITTEE_ADDRESS,
-        );
-        if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActiveCommitteeId = Number(lastEvent[0].data[0]);
-            const notActiveCommittees = await this.committeeModel.find(
+        this.fetchCommitteeState();
+        const currentAction = await this.committeeActionModel.findOne({
+            currentActionState: this._actionState,
+        });
+        if (currentAction != undefined) {
+            const notActiveActions = await this.committeeActionModel.find(
                 {
-                    committeeId: { $lte: lastActiveCommitteeId },
+                    actionId: { $lte: currentAction.actionId },
                     active: false,
                 },
                 {},
-                { sort: { committeeId: 1 } },
+                { sort: { actionId: 1 } },
             );
-            for (let i = 0; i < notActiveCommittees.length; i++) {
-                const notActiveCommittee = notActiveCommittees[i];
-                notActiveCommittee.set('active', true);
-                await notActiveCommittee.save();
+
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                const ipfsData = await this.ipfs.getData(
+                    notActiveAction.actionData.ipfsHash,
+                );
+                await Promise.all([
+                    notActiveAction.save(),
+                    this.committeeModel.findOneAndUpdate(
+                        {
+                            committeeId: this._nextCommitteeId,
+                        },
+                        {
+                            committeeId: this._nextCommitteeId,
+                            threshold: notActiveAction.actionData.threshold,
+                            numberOfMembers:
+                                notActiveAction.actionData.addresses.length,
+                            publicKeys: notActiveAction.actionData.addresses,
+                            ipfsData: ipfsData,
+                        },
+                        { new: true, upsert: true },
+                    ),
+                ]);
+                this._nextCommitteeId += 1;
             }
         }
     }
 
     async updateMerkleTrees() {
         try {
-            const committees = await this.committeeModel.find({ active: true });
+            const committees = await this.committeeModel.find();
             for (let i = 0; i < committees.length; i++) {
                 const committee = committees[i];
-                const level1IndexMember = this._memberTree.calculateLevel1Index(
+                const level1Index = this._member.calculateLevel1Index(
                     Field(committee.committeeId),
                 );
-                this._memberTree.updateInternal(
-                    level1IndexMember,
-                    Storage.CommitteeStorage.EMPTY_LEVEL_2_TREE(),
+                this._member.updateInternal(
+                    level1Index,
+                    Storage.CommitteeStorage.COMMITTEE_LEVEL_2_TREE(),
                 );
-                const level1IndexSetting =
-                    this._settingTree.calculateLevel1Index(
-                        Field(committee.committeeId),
-                    );
-                const settingLeaf = this._settingTree.calculateLeaf({
+                const settingLeaf = this._setting.calculateLeaf({
                     T: Field(committee.threshold),
                     N: Field(committee.numberOfMembers),
                 });
-                this._settingTree.updateLeaf(
-                    { level1Index: level1IndexSetting },
+                this._setting.updateLeaf(
+                    { level1Index: level1Index },
                     settingLeaf,
                 );
                 for (let j = 0; j < committee.publicKeys.length; j++) {
-                    const level2IndexMember =
-                        this._memberTree.calculateLevel2Index(Field(j));
-                    const memberLeaf = this._memberTree.calculateLeaf(
+                    const level2Index = this._member.calculateLevel2Index(
+                        Field(j),
+                    );
+                    const memberLeaf = this._member.calculateLeaf(
                         PublicKey.fromBase58(committee.publicKeys[j]),
                     );
-                    this._memberTree.updateLeaf(
+                    this._member.updateLeaf(
                         {
-                            level1Index: level1IndexMember,
-                            level2Index: level2IndexMember,
+                            level1Index: level1Index,
+                            level2Index: level2Index,
                         },
                         memberLeaf,
                     );
