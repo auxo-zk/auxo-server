@@ -13,7 +13,7 @@ import { ProjectContractService } from './project-contract/project-contract.serv
 import { CampaignContractService } from './campaign-contract/campaign-contract.service';
 import { ParticipationContractService } from './participation-contract/participation-contract.service';
 import { FundingContractService } from './funding-contract/funding-contract.service';
-import { TreasuryManagerContractService } from './treasury-contract/treasury-contract.service';
+import { TreasuryManagerContractService } from './treasury-manager-contract/treasury-manager-contract.service';
 
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import {
@@ -83,6 +83,16 @@ import {
     TreasuryManagerActionSchema,
 } from 'src/schemas/actions/treasury-manager-action.schema';
 import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
+import { RollupContractService } from './rollup-contract/rollup-contract.service';
+import {
+    RollupAction,
+    RollupActionSchema,
+} from 'src/schemas/actions/rollup-action.schema';
+import { RequesterContractService } from './requester-contract/requester-contract.service';
+import {
+    RequesterAction,
+    RequesterActionSchema,
+} from 'src/schemas/actions/requester-action.schema';
 
 @Module({
     imports: [
@@ -122,7 +132,8 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
                 name: TreasuryManagerAction.name,
                 schema: TreasuryManagerActionSchema,
             },
-            { name: Treasury.name, schema: TreasurySchema },
+            { name: RollupAction.name, schema: RollupActionSchema },
+            { name: RequesterAction.name, schema: RequesterActionSchema },
         ]),
         HttpModule,
     ],
@@ -139,6 +150,8 @@ import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
         ParticipationContractService,
         FundingContractService,
         TreasuryManagerContractService,
+        RollupContractService,
+        RequesterContractService,
     ],
     exports: [
         CommitteeContractService,
