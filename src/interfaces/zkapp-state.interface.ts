@@ -9,36 +9,61 @@ export interface CommitteeState {
 }
 
 export interface DkgState {
-    zkApp: Field;
-    keyCounter: Field;
-    keyStatus: Field;
+    zkAppRoot: Field;
+    keyCounterRoot: Field;
+    keyStatusRoot: Field;
+    keyRoot: Field;
+    processRoot: Field;
 }
 
 export interface Round1State {
-    zkApp: Field;
-    reduceState: Field;
-    contribution: Field;
-    publicKey: Field;
+    zkAppRoot: Field;
+    contributionRoot: Field;
+    publicKeyRoot: Field;
+    processRoot: Field;
 }
 
 export interface Round2State {
-    zkApp: Field;
-    reduceState: Field;
-    contribution: Field;
-    encryption: Field;
+    zkAppRoot: Field;
+    contributionRoot: Field;
+    encryptionRoot: Field;
+    processRoot: Field;
 }
 
 export interface DkgRequestState {
-    requestStatus: Field;
-    requester: Field;
+    zkAppRoot: Field;
+    requestCounter: Field;
+    keyIndexRoot: Field;
+    taskIdRoot: Field;
+    accumulationRoot: Field;
+    expirationRoot: Field;
+    resultRoot: Field;
     actionState: Field;
-    responseContractAddress: Field;
 }
 
 export interface DkgResponseState {
-    zkApp: Field;
-    reduceState: Field;
-    contribution: Field;
+    zkAppRoot: Field;
+    contributionRoot: Field;
+    responseRoot: Field;
+    processRoot: Field;
+}
+
+export interface RequesterState {
+    zkAppRoot: Field;
+    counters: Field;
+    keyIndexRoot: Field;
+    timestampRoot: Field;
+    accumulationRoot: Field;
+    commitmentRoot: Field;
+    lastTimestamp: Field;
+    actionState: Field;
+}
+
+export interface RollupState {
+    zkAppRoot: Field;
+    counterRoot: Field;
+    rollupRoot: Field;
+    actionState: Field;
 }
 
 export interface CampaignState {
