@@ -6,17 +6,17 @@ import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 
 export class RollupActionData {
-    zkAppIndex: string;
+    zkAppIndex: number;
     actionHash: string;
 
-    constructor(zkAppIndex: string, actionHash: string) {
+    constructor(zkAppIndex: number, actionHash: string) {
         this.zkAppIndex = zkAppIndex;
         this.actionHash = actionHash;
     }
 
     static fromAction(action: ZkApp.Rollup.RollupAction): RollupActionData {
         return new RollupActionData(
-            action.zkAppIndex.toString(),
+            Number(action.zkAppIndex.toBigInt()),
             action.actionHash.toString(),
         );
     }
@@ -25,6 +25,9 @@ export class RollupActionData {
 export class RollupAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
     actionId: number;
+
+    @Prop({ index: true })
+    actionHash: string;
 
     @Prop({ required: true, unique: true })
     currentActionState: string;

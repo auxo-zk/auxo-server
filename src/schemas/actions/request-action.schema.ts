@@ -9,7 +9,7 @@ import { RequestActionEnum } from 'src/constants';
 export class RequestActionData {
     requestId: number;
     keyIndex: number;
-    taskId: number;
+    taskId: string;
     expirationTimestamp: number;
     accumulationRoot: string;
     resultRoot: string;
@@ -17,7 +17,7 @@ export class RequestActionData {
     constructor(
         requestId: number,
         keyIndex: number,
-        taskId: number,
+        taskId: string,
         expirationTimestamp: number,
         accumulationRoot: string,
         resultRoot: string,
@@ -34,7 +34,7 @@ export class RequestActionData {
         return new RequestActionData(
             Number(action.requestId.toBigInt()),
             Number(action.keyIndex.toBigInt()),
-            Number(action.taskId.toBigInt()),
+            action.taskId.toString(),
             Number(action.expirationTimestamp.toBigInt()),
             action.accumulationRoot.toString(),
             action.resultRoot.toString(),
@@ -45,6 +45,9 @@ export class RequestActionData {
 export class RequestAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
     actionId: number;
+
+    @Prop({ index: true })
+    actionHash: string;
 
     @Prop({ required: true, unique: true })
     currentActionState: string;

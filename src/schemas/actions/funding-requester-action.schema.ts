@@ -63,9 +63,12 @@ export class RequesterActionData {
     }
 }
 @Schema({ versionKey: false })
-export class RequesterAction {
+export class FundingRequesterAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
     actionId: number;
+
+    @Prop({ index: true })
+    actionHash: string;
 
     @Prop({ required: true, unique: true })
     currentActionState: string;
@@ -83,9 +86,11 @@ export class RequesterAction {
     active?: boolean;
 }
 
-export type RequesterActionDocument = HydratedDocument<RequesterAction>;
-export const RequesterActionSchema =
-    SchemaFactory.createForClass(RequesterAction);
+export type FundingRequesterActionDocument =
+    HydratedDocument<FundingRequesterAction>;
+export const FundingRequesterActionSchema = SchemaFactory.createForClass(
+    FundingRequesterAction,
+);
 
 export function getRequesterActionData(actions: string[]): RequesterActionData {
     const action = ZkApp.Requester.RequesterAction.fromFields(

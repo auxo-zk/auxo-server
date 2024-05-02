@@ -53,6 +53,9 @@ export class FundingAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
     actionId: number;
 
+    @Prop({ index: true })
+    actionHash: string;
+
     @Prop({ required: true, unique: true })
     currentActionState: string;
 
