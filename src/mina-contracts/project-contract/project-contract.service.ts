@@ -8,7 +8,6 @@ import {
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
 import { Field, Mina, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
-import { RawProject } from 'src/schemas/raw-project.schema';
 import { Project } from 'src/schemas/project.schema';
 import { MaxRetries, ProjectActionEnum, zkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
@@ -46,8 +45,6 @@ export class ProjectContractService implements ContractServiceInterface {
         private readonly ipfs: Ipfs,
         @InjectModel(ProjectAction.name)
         private readonly projectActionModel: Model<ProjectAction>,
-        @InjectModel(RawProject.name)
-        private readonly rawProjectModel: Model<RawProject>,
         @InjectModel(Project.name)
         private readonly projectModel: Model<Project>,
     ) {

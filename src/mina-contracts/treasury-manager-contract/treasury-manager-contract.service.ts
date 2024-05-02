@@ -6,7 +6,6 @@ import {
     TreasuryManagerAction,
 } from 'src/schemas/actions/treasury-manager-action.schema';
 import { Model } from 'mongoose';
-import { Treasury } from 'src/schemas/treasury.schema';
 import { Action } from 'src/interfaces/action.interface';
 import {
     Bool,

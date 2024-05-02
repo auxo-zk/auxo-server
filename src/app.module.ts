@@ -32,9 +32,6 @@ import {
     Round2ActionSchema,
 } from 'src/schemas/actions/round-2-action.schema';
 import { Key, KeySchema } from 'src/schemas/key.schema';
-import { Dkg, DkgSchema } from 'src/schemas/dkg.schema';
-import { Round1, Round1Schema } from 'src/schemas/round-1.schema';
-import { Round2, Round2Schema } from 'src/schemas/round-2.schema';
 import {
     RequestAction,
     RequestActionSchema,
@@ -44,16 +41,10 @@ import {
     ResponseActionSchema,
 } from 'src/schemas/actions/response-action.schema';
 import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
-import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
-import {
-    RawDkgRequest,
-    RawDkgRequestSchema,
-} from 'src/schemas/raw-request.schema';
 import {
     ProjectAction,
     ProjectActionSchema,
 } from 'src/schemas/actions/project-action.schema';
-import { RawProject, RawProjectSchema } from 'src/schemas/raw-project.schema';
 import { Project, ProjectSchema } from 'src/schemas/project.schema';
 import {
     CampaignAction,
@@ -81,7 +72,6 @@ import {
     TreasuryManagerAction,
     TreasuryManagerActionSchema,
 } from 'src/schemas/actions/treasury-manager-action.schema';
-import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
 import { MainContractServicesConsumer } from './consumers/main-contract-services.consumer';
 
 @Module({
@@ -94,19 +84,13 @@ import { MainContractServicesConsumer } from './consumers/main-contract-services
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
             { name: Committee.name, schema: CommitteeSchema },
             { name: DkgAction.name, schema: DkgActionSchema },
-            { name: Dkg.name, schema: DkgSchema },
             { name: Round1Action.name, schema: Round1ActionSchema },
-            { name: Round1.name, schema: Round1Schema },
             { name: Round2Action.name, schema: Round2ActionSchema },
-            { name: Round2.name, schema: Round2Schema },
             { name: Key.name, schema: KeySchema },
             { name: RequestAction.name, schema: RequestActionSchema },
-            { name: RawDkgRequest.name, schema: RawDkgRequestSchema },
             { name: DkgRequest.name, schema: DkgRequestSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
-            { name: DkgResponse.name, schema: DkgResponseSchema },
             { name: ProjectAction.name, schema: ProjectActionSchema },
-            { name: RawProject.name, schema: RawProjectSchema },
             { name: Project.name, schema: ProjectSchema },
             { name: CampaignAction.name, schema: CampaignActionSchema },
             { name: Campaign.name, schema: CampaignSchema },
@@ -125,7 +109,6 @@ import { MainContractServicesConsumer } from './consumers/main-contract-services
                 name: TreasuryManagerAction.name,
                 schema: TreasuryManagerActionSchema,
             },
-            { name: Treasury.name, schema: TreasurySchema },
         ]),
         MongooseModule.forFeature([]),
         MinaContractsModule,

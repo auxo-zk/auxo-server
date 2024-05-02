@@ -23,9 +23,6 @@ import {
     getRound2ActionData,
     Round2Action,
 } from 'src/schemas/actions/round-2-action.schema';
-import { Dkg } from 'src/schemas/dkg.schema';
-import { Round1 } from 'src/schemas/round-1.schema';
-import { Round2 } from 'src/schemas/round-2.schema';
 import { Key } from 'src/schemas/key.schema';
 import {
     calculatePublicKey,
@@ -114,16 +111,10 @@ export class DkgContractsService implements ContractServiceInterface {
         private readonly committeeContractService: CommitteeContractService,
         @InjectModel(DkgAction.name)
         private readonly dkgActionModel: Model<DkgAction>,
-        @InjectModel(Dkg.name)
-        private readonly dkgModel: Model<Dkg>,
         @InjectModel(Round1Action.name)
         private readonly round1ActionModel: Model<Round1Action>,
-        @InjectModel(Round1.name)
-        private readonly round1Model: Model<Round1>,
         @InjectModel(Round2Action.name)
         private readonly round2ActionModel: Model<Round2Action>,
-        @InjectModel(Round2.name)
-        private readonly round2Model: Model<Round2>,
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
         @InjectModel(Committee.name)

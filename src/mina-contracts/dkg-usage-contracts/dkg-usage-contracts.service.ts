@@ -17,12 +17,10 @@ import {
     PublicKey,
     Reducer,
 } from 'o1js';
-import { RawDkgRequest } from 'src/schemas/raw-request.schema';
 import {
     getResponseActionData,
     ResponseAction,
 } from 'src/schemas/actions/response-action.schema';
-import { DkgResponse } from 'src/schemas/response.schema';
 import {
     ActionReduceStatusEnum,
     DkgZkAppIndex,
@@ -99,14 +97,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly committeeContractService: CommitteeContractService,
         @InjectModel(RequestAction.name)
         private readonly requestActionModel: Model<RequestAction>,
-        @InjectModel(RawDkgRequest.name)
-        private readonly rawDkgRequestModel: Model<RawDkgRequest>,
         @InjectModel(DkgRequest.name)
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(ResponseAction.name)
         private readonly responseActionModel: Model<ResponseAction>,
-        @InjectModel(DkgResponse.name)
-        private readonly dkgResponseModel: Model<DkgResponse>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
         @InjectModel(RollupAction.name)
