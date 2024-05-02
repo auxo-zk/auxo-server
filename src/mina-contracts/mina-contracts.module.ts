@@ -88,11 +88,15 @@ import {
     RollupAction,
     RollupActionSchema,
 } from 'src/schemas/actions/rollup-action.schema';
-import { RequesterContractService } from './requester-contract/requester-contract.service';
+import { FundingRequesterContractService } from './requester-contract/funding-requester-contract.service';
 import {
-    RequesterAction,
-    RequesterActionSchema,
-} from 'src/schemas/actions/requester-action.schema';
+    FundingRequesterAction,
+    FundingRequesterActionSchema,
+} from 'src/schemas/actions/funding-requester-action.schema';
+import {
+    FundingTask,
+    FundingTaskSchema,
+} from 'src/schemas/funding-task.schema';
 
 @Module({
     imports: [
@@ -133,7 +137,14 @@ import {
                 schema: TreasuryManagerActionSchema,
             },
             { name: RollupAction.name, schema: RollupActionSchema },
-            { name: RequesterAction.name, schema: RequesterActionSchema },
+            {
+                name: FundingRequesterAction.name,
+                schema: FundingRequesterActionSchema,
+            },
+            {
+                name: FundingTask.name,
+                schema: FundingTaskSchema,
+            },
         ]),
         HttpModule,
     ],
@@ -151,7 +162,7 @@ import {
         FundingContractService,
         TreasuryManagerContractService,
         RollupContractService,
-        RequesterContractService,
+        FundingRequesterContractService,
     ],
     exports: [
         CommitteeContractService,
