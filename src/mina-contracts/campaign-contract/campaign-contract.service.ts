@@ -133,7 +133,7 @@ export class CampaignContractService implements ContractServiceInterface {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await this.fetchCampaignActions();
-                await this.updateCampaigns();
+                await this.updateCampaignActions();
                 count = MaxRetries;
             } catch (err) {
                 this.logger.error(err);
@@ -301,6 +301,7 @@ export class CampaignContractService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
@@ -313,7 +314,7 @@ export class CampaignContractService implements ContractServiceInterface {
         }
     }
 
-    private async updateCampaigns() {
+    private async updateCampaignActions() {
         await this.fetchCampaignState();
         const currentAction = await this.campaignActionModel.findOne({
             currentActionState: this._actionState,

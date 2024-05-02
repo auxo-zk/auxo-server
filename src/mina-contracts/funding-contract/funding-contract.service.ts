@@ -299,6 +299,7 @@ export class FundingContractService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],

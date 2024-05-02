@@ -7,6 +7,7 @@ import {
 } from 'src/schemas/actions/request-action.schema';
 import { QueryService } from '../query/query.service';
 import {
+    fetchLastBlock,
     Field,
     Group,
     Mina,
@@ -24,6 +25,7 @@ import {
 import { DkgResponse } from 'src/schemas/response.schema';
 import {
     ActionReduceStatusEnum,
+    DkgZkAppIndex,
     MaxRetries,
     RequestActionEnum,
     RequestEventEnum,
@@ -45,6 +47,7 @@ import { Committee } from 'src/schemas/committee.schema';
 import { DkgContractsService } from '../dkg-contracts/dkg-contracts.service';
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
 import * as _ from 'lodash';
+import { RollupAction } from 'src/schemas/actions/rollup-action.schema';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
@@ -65,7 +68,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         zkApp: Storage.AddressStorage.AddressStorage;
         contribution: Storage.DKGStorage.ResponseContributionStorage;
         response: Storage.DKGStorage.ResponseStorage;
-        processRoot: string;
+        process: Storage.ProcessStorage.ProcessStorage;
     };
 
     public get dkgRequest(): {
@@ -85,7 +88,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         zkApp: Storage.AddressStorage.AddressStorage;
         contribution: Storage.DKGStorage.ResponseContributionStorage;
         response: Storage.DKGStorage.ResponseStorage;
-        processRoot: string;
+        process: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._dkgResponse;
     }
@@ -106,6 +109,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly dkgResponseModel: Model<DkgResponse>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
+        @InjectModel(RollupAction.name)
+        private readonly rollupActionModel: Model<RollupAction>,
     ) {
         this._dkgRequest = {
             zkApp: new Storage.AddressStorage.AddressStorage(),
@@ -123,7 +128,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             zkApp: new Storage.AddressStorage.AddressStorage(),
             contribution: new Storage.DKGStorage.ResponseContributionStorage(),
             response: new Storage.DKGStorage.ResponseStorage(),
-            processRoot: '',
+            process: new Storage.ProcessStorage.ProcessStorage(),
         };
     }
 
@@ -147,7 +152,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await this.fetchRequestActions();
-                count = MaxRetries;
+                await this.fetchResponseActions();
+                await this.updateRequestActions();
+                await this.updateResponseActions();
             } catch (err) {
                 this.logger.error(err);
             }
@@ -189,7 +196,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             responseRoot: Field(state[2]),
             processRoot: Field(state[2]),
         };
-        this._dkgResponse.processRoot = result.processRoot.toString();
         return result;
     }
 
@@ -225,6 +231,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
@@ -234,31 +241,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             );
             previousActionState = currentActionState;
             actionId += 1;
-        }
-    }
-
-    private async updateRequestActions() {
-        await this.fetchDkgRequestState();
-        const currentAction = await this.requestActionModel.findOne({
-            currentActionState: this._dkgRequest.actionState,
-        });
-        if (currentAction != undefined) {
-            const notActiveActions = await this.requestActionModel.find(
-                {
-                    actionId: { $lte: currentAction.actionId },
-                    active: false,
-                },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            for (let i = 0; i < notActiveActions.length; i++) {
-                const promises = [];
-                const notActiveAction = notActiveActions[i];
-                notActiveAction.set('active', true);
-                promises.push(notActiveAction.save());
-
-                await Promise.all(promises);
-            }
         }
     }
 
@@ -292,6 +274,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
@@ -301,6 +284,110 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             );
             previousActionState = currentActionState;
             actionId += 1;
+        }
+    }
+
+    private async updateRequestActions() {
+        await this.fetchDkgRequestState();
+        const currentAction = await this.requestActionModel.findOne({
+            currentActionState: this._dkgRequest.actionState,
+        });
+        if (currentAction != undefined) {
+            const notActiveActions = await this.requestActionModel.find(
+                {
+                    actionId: { $lte: currentAction.actionId },
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            let nextRequestId = _.cloneDeep(this._dkgRequest.requesterCounter);
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const promises = [];
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                promises.push(notActiveAction.save());
+                if (
+                    notActiveAction.actionData.requestId ==
+                    Number(Field(-1).toBigInt())
+                ) {
+                    promises.push(
+                        this.dkgRequestModel.create({
+                            requestId: nextRequestId,
+                            keyIndex: notActiveAction.actionData.keyIndex,
+                            taskId: notActiveAction.actionData.taskId,
+                            expirationTimestamp:
+                                notActiveAction.actionData.expirationTimestamp,
+                            accumulationRoot:
+                                notActiveAction.actionData.accumulationRoot,
+                            resultRoot: notActiveAction.actionData.resultRoot,
+                        }),
+                    );
+                    nextRequestId += 1;
+                } else {
+                    const request = await this.dkgRequestModel.findOne({
+                        requestId: notActiveAction.actionData.requestId,
+                    });
+                    request.set(
+                        'resultRoot',
+                        notActiveAction.actionData.resultRoot,
+                    );
+                    request.set('status', RequestStatusEnum.RESOLVED);
+                    promises.push(request.save());
+                }
+                await Promise.all(promises);
+            }
+        }
+
+        await fetchLastBlock();
+        const currentTimestamp = Number(
+            Mina.getNetworkConstants().genesisTimestamp.toBigInt(),
+        );
+        const expiredRequests = await this.dkgRequestModel.find({
+            status: RequestStatusEnum.INITIALIZED,
+            expirationTimestamp: {
+                $lt: currentTimestamp,
+            },
+        });
+        for (let i = 0; i < expiredRequests.length; i++) {
+            const expiredRequest = expiredRequests[i];
+            expiredRequest.set('status', RequestStatusEnum.EXPIRED);
+            await expiredRequest.save();
+        }
+    }
+
+    private async updateResponseActions() {
+        await this.fetchDkgResponseState();
+
+        const latestRollupedActionId =
+            (await this.rollupActionModel.count({
+                active: true,
+                'actionData.zkAppIndex': DkgZkAppIndex.DKG,
+            })) - 1;
+        const notActiveActions = await this.responseActionModel.find(
+            {
+                actionId: { $lte: latestRollupedActionId },
+                active: false,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notActiveActions.length > 0) {
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                const request = await this.dkgRequestModel.findOne({
+                    requestId: notActiveAction.actionData.requestId,
+                });
+                request.responses.push({
+                    committeeId: notActiveAction.actionData.committeeId,
+                    keyId: notActiveAction.actionData.keyId,
+                    memberId: notActiveAction.actionData.memberId,
+                    dimension: notActiveAction.actionData.dimension,
+                    rootD: notActiveAction.actionData.responseRootD,
+                });
+                await Promise.all([notActiveAction.save(), request.save()]);
+            }
         }
     }
 

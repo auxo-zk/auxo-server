@@ -4,18 +4,24 @@ import { Ipfs } from 'src/ipfs/ipfs';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     getRequesterActionData,
-    RequesterAction,
-} from 'src/schemas/actions/requester-action.schema';
+    FundingRequesterAction,
+} from 'src/schemas/actions/funding-requester-action.schema';
 import { Model } from 'mongoose';
 import { Storage } from '@auxo-dev/dkg';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { RequesterState } from 'src/interfaces/zkapp-state.interface';
-import { Field, Reducer } from 'o1js';
+import { Field, Reducer, UInt32 } from 'o1js';
 import { Action } from 'src/interfaces/action.interface';
+import _, { last } from 'lodash';
+import { FundingTask } from 'src/schemas/funding-task.schema';
+import { MaxRetries } from 'src/constants';
 
 @Injectable()
-export class RequesterContractService implements ContractServiceInterface {
-    private readonly logger = new Logger(RequesterContractService.name);
+export class FundingRequesterContractService
+    implements ContractServiceInterface
+{
+    private readonly requesterAddress: string;
+    private readonly logger = new Logger(FundingRequesterContractService.name);
     private readonly zkApp: Storage.AddressStorage.AddressStorage;
     private counters: number;
     private readonly keyIndex: Storage.RequesterStorage.RequesterKeyIndexStorage;
@@ -28,9 +34,12 @@ export class RequesterContractService implements ContractServiceInterface {
     constructor(
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,
-        @InjectModel(RequesterAction.name)
-        private readonly requesterActionModel: Model<RequesterAction>,
+        @InjectModel(FundingRequesterAction.name)
+        private readonly requesterActionModel: Model<FundingRequesterAction>,
+        @InjectModel(FundingTask.name)
+        private readonly fundingTaskModel: Model<FundingTask>,
     ) {
+        this.requesterAddress = '';
         this.counters = 0;
         this.lastTimestamp = 0;
         this.actionState = '';
@@ -43,22 +52,39 @@ export class RequesterContractService implements ContractServiceInterface {
         this.commitment = new Storage.RequesterStorage.CommitmentStorage();
     }
 
-    fetch() {
+    async fetch() {
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                await this.fetchRequesterActions();
+                await this.updateRequesterActions();
+            } catch (err) {
+                this.logger.error(err);
+            }
+        }
+    }
+    async updateMerkleTrees() {
         throw new Error('Method not implemented.');
     }
-    updateMerkleTrees() {
-        throw new Error('Method not implemented.');
+
+    async update() {
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
-    update() {
-        throw new Error('Method not implemented.');
-    }
-    onModuleInit() {
-        throw new Error('Method not implemented.');
+
+    async onModuleInit() {
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     private async fetchRequesterState(): Promise<RequesterState> {
         const state = await this.queryService.fetchZkAppState(
-            process.env.REQUESTER_ADDRESS,
+            this.requesterAddress,
         );
         const result: RequesterState = {
             zkAppRoot: Field(state[0]),
@@ -83,7 +109,7 @@ export class RequesterContractService implements ContractServiceInterface {
             { sort: { actionId: -1 } },
         );
         let actions: Action[] = await this.queryService.fetchActions(
-            process.env.REQUESTER_ADDRESS,
+            this.requesterAddress,
         );
         let previousActionState: Field;
         let actionId: number;
@@ -105,6 +131,7 @@ export class RequesterContractService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
@@ -131,11 +158,49 @@ export class RequesterContractService implements ContractServiceInterface {
                 {},
                 { sort: { actionId: 1 } },
             );
+            const lastTask = await this.fundingTaskModel.findOne(
+                {},
+                {},
+                { sort: { taskId: -1 } },
+            );
+            let nextTaskId = 0;
+            if (lastTask != undefined) {
+                nextTaskId = lastTask.taskId + 1;
+            }
             for (let i = 0; i < notActiveActions.length; i++) {
                 const promises = [];
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
                 promises.push(notActiveAction.save());
+                if (
+                    notActiveAction.actionData.taskId ==
+                    Number(UInt32.MAXINT().toBigint())
+                ) {
+                    promises.push(
+                        this.fundingTaskModel.create({
+                            taskId: nextTaskId,
+                            timestamp: notActiveAction.actionData.timestamp,
+                            keyIndex: notActiveAction.actionData.keyIndex,
+                            indices: notActiveAction.actionData.indices,
+                            R: notActiveAction.actionData.R,
+                            M: notActiveAction.actionData.M,
+                            commitments: notActiveAction.actionData.commitments,
+                        }),
+                    );
+                    nextTaskId += 1;
+                } else {
+                    const task = await this.fundingTaskModel.findOne({
+                        taskId: notActiveAction.actionData.taskId,
+                    });
+                    task.set('indices', notActiveAction.actionData.indices);
+                    task.set('R', notActiveAction.actionData.R);
+                    task.set('M', notActiveAction.actionData.M);
+                    task.set(
+                        'commitments',
+                        notActiveAction.actionData.commitments,
+                    );
+                    promises.push(notActiveAction.save());
+                }
 
                 await Promise.all(promises);
             }

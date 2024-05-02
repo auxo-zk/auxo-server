@@ -12,6 +12,7 @@ import { Model } from 'mongoose';
 import { RollupState } from 'src/interfaces/zkapp-state.interface';
 import { Field, Reducer } from 'o1js';
 import { Action } from 'src/interfaces/action.interface';
+import { MaxRetries } from 'src/constants';
 
 @Injectable()
 export class RollupContractService implements ContractServiceInterface {
@@ -45,18 +46,33 @@ export class RollupContractService implements ContractServiceInterface {
         this._zkApp = new Storage.AddressStorage.AddressStorage();
     }
 
-    fetch() {
+    async fetch() {
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                await this.fetchRollupActions();
+                await this.updateRollupActions();
+            } catch (err) {
+                this.logger.error(err);
+            }
+        }
+    }
+
+    async updateMerkleTrees() {
         throw new Error('Method not implemented.');
     }
 
-    updateMerkleTrees() {
-        throw new Error('Method not implemented.');
+    async update() {
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
-    update() {
-        throw new Error('Method not implemented.');
-    }
-    onModuleInit() {
-        throw new Error('Method not implemented.');
+
+    async onModuleInit() {
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+        } catch (err) {}
     }
 
     private async fetchRollupState(): Promise<RollupState> {
@@ -102,6 +118,7 @@ export class RollupContractService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],

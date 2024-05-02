@@ -41,6 +41,7 @@ import { Committee } from 'src/schemas/committee.schema';
 import {
     ActionReduceStatusEnum,
     DkgActionEnum,
+    DkgZkAppIndex,
     KeyStatusEnum,
     MaxRetries,
     ZkAppEnum,
@@ -55,6 +56,7 @@ import {
 } from 'src/interfaces/zkapp-state.interface';
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
 import * as _ from 'lodash';
+import { RollupAction } from 'src/schemas/actions/rollup-action.schema';
 
 @Injectable()
 export class DkgContractsService implements ContractServiceInterface {
@@ -64,19 +66,19 @@ export class DkgContractsService implements ContractServiceInterface {
         keyCounter: Storage.CommitteeStorage.KeyCounterStorage;
         keyStatus: Storage.DKGStorage.KeyStatusStorage;
         key: Storage.DKGStorage.KeyStorage;
-        processRoot: string;
+        process: Storage.ProcessStorage.ProcessStorage;
     };
     private _round1: {
         zkApp: Storage.AddressStorage.AddressStorage;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
-        processRoot: string;
+        process: Storage.ProcessStorage.ProcessStorage;
     };
     private _round2: {
         zkApp: Storage.AddressStorage.AddressStorage;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
         encryption: Storage.DKGStorage.EncryptionStorage;
-        processRoot: string;
+        process: Storage.ProcessStorage.ProcessStorage;
     };
 
     public get dkg(): {
@@ -84,7 +86,7 @@ export class DkgContractsService implements ContractServiceInterface {
         keyCounter: Storage.CommitteeStorage.KeyCounterStorage;
         keyStatus: Storage.DKGStorage.KeyStatusStorage;
         key: Storage.DKGStorage.KeyStorage;
-        processRoot: string;
+        process: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._dkg;
     }
@@ -93,7 +95,7 @@ export class DkgContractsService implements ContractServiceInterface {
         zkApp: Storage.AddressStorage.AddressStorage;
         contribution: Storage.DKGStorage.Round1ContributionStorage;
         publicKey: Storage.DKGStorage.PublicKeyStorage;
-        processRoot: string;
+        process: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._round1;
     }
@@ -102,7 +104,7 @@ export class DkgContractsService implements ContractServiceInterface {
         zkApp: Storage.AddressStorage.AddressStorage;
         contribution: Storage.DKGStorage.Round2ContributionStorage;
         encryption: Storage.DKGStorage.EncryptionStorage;
-        processRoot: string;
+        process: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._round2;
     }
@@ -126,25 +128,27 @@ export class DkgContractsService implements ContractServiceInterface {
         private readonly keyModel: Model<Key>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
+        @InjectModel(RollupAction.name)
+        private readonly rollupActionModel: Model<RollupAction>,
     ) {
         this._dkg = {
             zkApp: new Storage.AddressStorage.AddressStorage(),
             keyCounter: new Storage.CommitteeStorage.KeyCounterStorage(),
             keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
             key: new Storage.DKGStorage.KeyStorage(),
-            processRoot: '',
+            process: new Storage.ProcessStorage.ProcessStorage(),
         };
         this._round1 = {
             zkApp: new Storage.AddressStorage.AddressStorage(),
             contribution: new Storage.DKGStorage.Round1ContributionStorage(),
             publicKey: new Storage.DKGStorage.PublicKeyStorage(),
-            processRoot: '',
+            process: new Storage.ProcessStorage.ProcessStorage(),
         };
         this._round2 = {
             zkApp: new Storage.AddressStorage.AddressStorage(),
             contribution: new Storage.DKGStorage.Round2ContributionStorage(),
             encryption: new Storage.DKGStorage.EncryptionStorage(),
-            processRoot: '',
+            process: new Storage.ProcessStorage.ProcessStorage(),
         };
     }
 
@@ -170,7 +174,9 @@ export class DkgContractsService implements ContractServiceInterface {
                 await this.fetchDkgActions();
                 await this.fetchRound1Actions();
                 await this.fetchRound2Actions();
-                await this.updateKeys();
+                await this.updateDkgActions();
+                await this.updateRound1Actions();
+                await this.updateRound2Actions();
             } catch (err) {
                 this.logger.error(err);
             }
@@ -192,7 +198,6 @@ export class DkgContractsService implements ContractServiceInterface {
             keyRoot: Field(state[3]),
             processRoot: Field(state[4]),
         };
-        this._dkg.processRoot = result.processRoot.toString();
         return result;
     }
 
@@ -206,7 +211,6 @@ export class DkgContractsService implements ContractServiceInterface {
             publicKeyRoot: Field(state[2]),
             processRoot: Field(state[3]),
         };
-        this._round1.processRoot = result.processRoot.toString();
         return result;
     }
 
@@ -220,7 +224,6 @@ export class DkgContractsService implements ContractServiceInterface {
             encryptionRoot: Field(state[2]),
             processRoot: Field(state[3]),
         };
-        this._round2.processRoot = result.processRoot.toString();
         return result;
     }
 
@@ -256,6 +259,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
@@ -297,6 +301,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
@@ -339,6 +344,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
@@ -351,108 +357,176 @@ export class DkgContractsService implements ContractServiceInterface {
         }
     }
 
-    private async updateKeys() {
-        const keyCounters: { _id: number; count: number }[] =
-            await this.dkgModel.aggregate([
-                {
-                    $match: {
-                        active: true,
-                        actionEnum: DkgActionEnum.GENERATE_KEY,
-                    },
-                },
-                {
-                    $group: {
-                        _id: '$committeeId',
-                        count: { $count: {} },
-                    },
-                },
-            ]);
-        for (let i = 0; i < keyCounters.length; i++) {
-            const keyCounter = keyCounters[i];
-            const committeeId = keyCounter._id;
-            await this.dkgModel.find(
-                { active: true },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
-                const keyObjectId = Utilities.getKeyObjectId(
-                    committeeId,
-                    keyId,
-                );
-                const existed = await this.keyModel.exists({
-                    _id: keyObjectId,
-                });
-                if (!existed) {
-                    await this.keyModel.create({
-                        _id: keyObjectId,
-                        committeeId: committeeId,
-                        keyId: keyId,
-                        status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
-                    });
+    private async updateDkgActions() {
+        await this.fetchDkgState();
+
+        const latestRollupedActionId =
+            (await this.rollupActionModel.count({
+                active: true,
+                'actionData.zkAppIndex': DkgZkAppIndex.DKG,
+            })) - 1;
+        const notActiveActions = await this.dkgActionModel.find(
+            {
+                actionId: { $lte: latestRollupedActionId },
+                active: false,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notActiveActions.length > 0) {
+            const nextKeyIdMapping: {
+                [committeeId: number]: number;
+            } = {};
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const promises = [];
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                promises.push(notActiveAction.save());
+                const committeeId = notActiveAction.actionData.committeeId;
+                if (nextKeyIdMapping[committeeId] == undefined) {
+                    const lastKeyByCommitteeId = await this.keyModel.findOne(
+                        {
+                            committeeId: committeeId,
+                        },
+                        {},
+                        { sort: { keyId: -1 } },
+                    );
+                    if (lastKeyByCommitteeId != undefined) {
+                        nextKeyIdMapping[committeeId] =
+                            lastKeyByCommitteeId.keyId + 1;
+                    } else {
+                        nextKeyIdMapping[committeeId] = 0;
+                    }
                 }
-                const deprecated = await this.dkgModel.exists({
-                    committeeId: committeeId,
-                    keyId: keyId,
-                    actionEnum: DkgActionEnum.DEPRECATE_KEY,
-                    active: true,
-                });
+                switch (notActiveAction.actionData.actionEnum) {
+                    case DkgActionEnum.GENERATE_KEY: {
+                        const keyObjectId = Utilities.getKeyObjectId(
+                            committeeId,
+                            nextKeyIdMapping[committeeId],
+                        );
+                        promises.push(
+                            this.keyModel.create({
+                                _id: keyObjectId,
+                                committeeId: committeeId,
+                                keyId: nextKeyIdMapping,
+                                status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
+                            }),
+                        );
+                        nextKeyIdMapping[committeeId] += 1;
+                        break;
+                    }
+                    case DkgActionEnum.FINALIZE_ROUND_1: {
+                        const keyObjectId = Utilities.getKeyObjectId(
+                            committeeId,
+                            notActiveAction.actionData.keyId,
+                        );
+                        const key = await this.keyModel.findOne({
+                            _id: keyObjectId,
+                        });
+                        key.set('status', KeyStatusEnum.ROUND_2_CONTRIBUTION);
+                        key.set('key', notActiveAction.actionData.key);
+                        promises.push(key.save());
+                        break;
+                    }
+                    case DkgActionEnum.FINALIZE_ROUND_2: {
+                        const keyObjectId = Utilities.getKeyObjectId(
+                            committeeId,
+                            notActiveAction.actionData.keyId,
+                        );
+                        const key = await this.keyModel.findOne({
+                            _id: keyObjectId,
+                        });
+                        key.set('status', KeyStatusEnum.ACTIVE);
+                        promises.push(key.save());
+                        break;
+                    }
+                    case DkgActionEnum.DEPRECATE_KEY: {
+                        const keyObjectId = Utilities.getKeyObjectId(
+                            committeeId,
+                            notActiveAction.actionData.keyId,
+                        );
+                        const key = await this.keyModel.findOne({
+                            _id: keyObjectId,
+                        });
+                        key.set('status', KeyStatusEnum.DEPRECATED);
+                        promises.push(key.save());
+                        break;
+                    }
+                }
+
+                await Promise.all(promises);
+            }
+        }
+    }
+
+    private async updateRound1Actions() {
+        await this.fetchRound1State();
+
+        const latestRollupedActionId =
+            (await this.rollupActionModel.count({
+                active: true,
+                'actionData.zkAppIndex': DkgZkAppIndex.ROUND1,
+            })) - 1;
+        const notActiveActions = await this.round1ActionModel.find(
+            {
+                actionId: { $lte: latestRollupedActionId },
+                active: false,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notActiveActions.length > 0) {
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                const keyObjectId = Utilities.getKeyObjectId(
+                    notActiveAction.actionData.committeeId,
+                    notActiveAction.actionData.keyId,
+                );
                 const key = await this.keyModel.findOne({
                     _id: keyObjectId,
                 });
-                if (deprecated) {
-                    key.set('status', KeyStatusEnum.DEPRECATED);
-                } else {
-                    const finalizedRound2 = await this.dkgModel.exists({
-                        committeeId: committeeId,
-                        keyId: keyId,
-                        actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
-                        active: true,
-                    });
-                    if (finalizedRound2) {
-                        key.set('status', KeyStatusEnum.ACTIVE);
-                    } else {
-                        const finalizedRound1 = await this.dkgModel.exists({
-                            committeeId: committeeId,
-                            keyId: keyId,
-                            actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
-                            active: true,
-                        });
-                        if (finalizedRound1) {
-                            key.set(
-                                'status',
-                                KeyStatusEnum.ROUND_2_CONTRIBUTION,
-                            );
-                        }
-                    }
-                    if (
-                        key.status >= KeyStatusEnum.ROUND_2_CONTRIBUTION &&
-                        !key.publicKey
-                    ) {
-                        const round1s = await this.round1Model.find({
-                            committeeId: committeeId,
-                            keyId: keyId,
-                            active: true,
-                        });
+                key.round1s.push({
+                    memberId: notActiveAction.actionData.memberId,
+                    contribution: notActiveAction.actionData.contribution,
+                });
+                await Promise.all([notActiveAction.save(), key.save()]);
+            }
+        }
+    }
 
-                        const round1Contributions = round1s.map(
-                            (e) =>
-                                new Round1Contribution({
-                                    C: new Libs.Committee.CArray(
-                                        e.contribution.map((g) =>
-                                            Group.from(g.x, g.y),
-                                        ),
-                                    ),
-                                }),
-                        );
+    private async updateRound2Actions() {
+        await this.fetchRound2State();
 
-                        const publicKey = PublicKey.fromGroup(
-                            calculatePublicKey(round1Contributions),
-                        );
-                        key.set('publicKey', publicKey.toBase58());
-                    }
-                }
-                await key.save();
+        const latestRollupedActionId =
+            (await this.rollupActionModel.count({
+                active: true,
+                'actionData.zkAppIndex': DkgZkAppIndex.ROUND1,
+            })) - 1;
+        const notActiveActions = await this.round2ActionModel.find(
+            {
+                actionId: { $lte: latestRollupedActionId },
+                active: false,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notActiveActions.length > 0) {
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                const keyObjectId = Utilities.getKeyObjectId(
+                    notActiveAction.actionData.committeeId,
+                    notActiveAction.actionData.keyId,
+                );
+                const key = await this.keyModel.findOne({
+                    _id: keyObjectId,
+                });
+                key.round2s.push({
+                    memberId: notActiveAction.actionData.memberId,
+                    contribution: notActiveAction.actionData.contribution,
+                });
+                await Promise.all([notActiveAction.save(), key.save()]);
             }
         }
     }

@@ -77,8 +77,7 @@ export class ProjectContractService implements ContractServiceInterface {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 await this.fetchProjectActions();
-                await this.updateProjects();
-                count = MaxRetries;
+                await this.updateProjectActions();
             } catch (err) {
                 this.logger.error(err);
             }
@@ -298,6 +297,7 @@ export class ProjectContractService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
@@ -310,7 +310,7 @@ export class ProjectContractService implements ContractServiceInterface {
         }
     }
 
-    private async updateProjects() {
+    private async updateProjectActions() {
         await this.fetchProjectState();
         const currentAction = await this.projectActionModel.findOne({
             currentActionState: this._actionState,
