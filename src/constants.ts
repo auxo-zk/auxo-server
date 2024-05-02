@@ -36,9 +36,9 @@ export enum RequestActionEnum {
 }
 
 export enum RequestStatusEnum {
-    NOT_YET_REQUESTED,
-    REQUESTING,
+    INITIALIZED,
     RESOLVED,
+    EXPIRED,
 }
 
 export enum RequestEventEnum {
@@ -100,13 +100,26 @@ export enum ZkAppEnum {
     DKG,
     ROUND1,
     ROUND2,
-    RESPONSE,
     REQUEST,
+    REQUESTER,
+    RESPONSE,
+    ROLLUP,
     PROJECT,
     CAMPAIGN,
     PARTICIPATION,
     FUNDING,
     TREASURY,
+}
+
+export enum DkgZkAppIndex {
+    ROLLUP,
+    COMMITTEE,
+    DKG,
+    ROUND1,
+    ROUND2,
+    RESPONSE,
+    REQUEST,
+    __LENGTH,
 }
 
 export const MaxRetries = 5;
