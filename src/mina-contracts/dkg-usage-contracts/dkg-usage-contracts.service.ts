@@ -392,4 +392,59 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             //
         } catch (err) {}
     }
+
+    private async updateMerkleTreesForRequest() {
+        const requests = await this.dkgRequestModel.find(
+            {},
+            {},
+            { sort: { requestId: 1 } },
+        );
+        for (let i = 0; i < requests.length; i++) {
+            const request = requests[i];
+            const level1Index =
+                this._dkgRequest.keyIndexStorage.calculateLevel1Index(
+                    Field(request.requestId),
+                );
+            this._dkgRequest.keyIndexStorage.updateLeaf(
+                { level1Index },
+                Field(request.keyIndex),
+            );
+            this._dkgRequest.taskIdStorage.updateLeaf(
+                { level1Index },
+                Field(request.taskId),
+            );
+            this._dkgRequest.accumulationStorage.updateLeaf(
+                { level1Index },
+                Field(request.accumulationRoot),
+            );
+            this._dkgRequest.expirationStorage.updateLeaf(
+                { level1Index },
+                Field(request.expirationTimestamp),
+            );
+            this._dkgRequest.resultStorage.updateLeaf(
+                { level1Index },
+                Field(request.resultRoot),
+            );
+
+            const responses = request.responses.sort(
+                (a, b) => a.memberId - b.memberId,
+            );
+            for (let j = 0; j < responses.length; j++) {
+                const response = responses[j];
+                const level2Index =
+                    this._dkgResponse.contributionStorage.calculateLevel2Index(
+                        Field(response.memberId),
+                    );
+
+                // this._dkgResponse.contributionStorage.updateLeaf(
+                //     { level1Index, level2Index },
+                //     Field(response.rootD),
+                // );
+                this._dkgResponse.responseStorage.updateLeaf(
+                    { level1Index, level2Index },
+                    Field(response.rootD),
+                );
+            }
+        }
+    }
 }
