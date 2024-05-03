@@ -7,14 +7,21 @@ import {
     FundingRequesterAction,
 } from 'src/schemas/actions/funding-requester-action.schema';
 import { Model } from 'mongoose';
-import { Storage } from '@auxo-dev/dkg';
+import {
+    calculateKeyIndex,
+    Constants,
+    GroupVectorStorage,
+    Libs,
+    Storage,
+} from '@auxo-dev/dkg';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { RequesterState } from 'src/interfaces/zkapp-state.interface';
-import { Field, Reducer, UInt32 } from 'o1js';
+import { Field, Group, Reducer, UInt32, UInt64 } from 'o1js';
 import { Action } from 'src/interfaces/action.interface';
 import _, { last } from 'lodash';
-import { FundingTask } from 'src/schemas/funding-task.schema';
+import { Encryption, FundingTask } from 'src/schemas/funding-task.schema';
 import { MaxRetries } from 'src/constants';
+import { Funding } from 'src/schemas/funding.schema';
 
 @Injectable()
 export class FundingRequesterContractService
@@ -23,16 +30,21 @@ export class FundingRequesterContractService
     private readonly requesterAddress: string;
     private readonly logger = new Logger(FundingRequesterContractService.name);
     private readonly _zkAppStorage: Storage.AddressStorage.AddressStorage;
-    private counters: number;
+    private _counters: Storage.RequesterStorage.RequesterCounters;
     private readonly _keyIndexStorage: Storage.RequesterStorage.RequesterKeyIndexStorage;
     private readonly _timestampStorage: Storage.RequesterStorage.TimestampStorage;
     private readonly _accumulationStorage: Storage.RequesterStorage.RequesterAccumulationStorage;
     private readonly _commitmentStorage: Storage.RequesterStorage.CommitmentStorage;
-    private lastTimestamp: number;
-    private actionState: string;
+    private _lastTimestamp: number;
+    private _actionState: string;
+    private _nextCommitmentIndex: number;
 
     public get zkAppStorage(): Storage.AddressStorage.AddressStorage {
         return this._zkAppStorage;
+    }
+
+    public get counters(): Storage.RequesterStorage.RequesterCounters {
+        return this._counters;
     }
 
     public get keyIndexStorage(): Storage.RequesterStorage.RequesterKeyIndexStorage {
@@ -58,11 +70,14 @@ export class FundingRequesterContractService
         private readonly requesterActionModel: Model<FundingRequesterAction>,
         @InjectModel(FundingTask.name)
         private readonly fundingTaskModel: Model<FundingTask>,
+        @InjectModel(Funding.name)
+        private readonly fundingModel: Model<Funding>,
     ) {
         this.requesterAddress = '';
-        this.counters = 0;
-        this.lastTimestamp = 0;
-        this.actionState = '';
+        this._counters = Storage.RequesterStorage.RequesterCounters.empty();
+        this._lastTimestamp = 0;
+        this._actionState = '';
+        this._nextCommitmentIndex = 0;
 
         this._zkAppStorage = new Storage.AddressStorage.AddressStorage();
         this._keyIndexStorage =
@@ -84,9 +99,6 @@ export class FundingRequesterContractService
                 this.logger.error(err);
             }
         }
-    }
-    async updateMerkleTrees() {
-        throw new Error('Method not implemented.');
     }
 
     async update() {
@@ -119,9 +131,11 @@ export class FundingRequesterContractService
             lastTimestamp: Field(state[6]),
             actionState: Field(state[7]),
         };
-        this.counters = Number(result.counters.toBigInt());
-        this.lastTimestamp = Number(result.lastTimestamp.toBigInt());
-        this.actionState = result.actionState.toString();
+        this._counters = Storage.RequesterStorage.RequesterCounters.fromFields(
+            result.counters.toFields(),
+        );
+        this._lastTimestamp = Number(result.lastTimestamp.toBigInt());
+        this._actionState = result.actionState.toString();
         return result;
     }
 
@@ -170,7 +184,7 @@ export class FundingRequesterContractService
     private async updateRequesterActions() {
         await this.fetchRequesterState();
         const currentAction = await this.requesterActionModel.findOne({
-            currentActionState: this.actionState,
+            currentActionState: this._actionState,
         });
         if (currentAction != undefined) {
             const notActiveActions = await this.requesterActionModel.find(
@@ -190,6 +204,13 @@ export class FundingRequesterContractService
             if (lastTask != undefined) {
                 nextTaskId = lastTask.taskId + 1;
             }
+            const emptyGroupVector: { x: string; y: string }[] = [];
+            for (let i = 0; i < Constants.ENCRYPTION_LIMITS.DIMENSION; i++) {
+                emptyGroupVector.push({
+                    x: Group.zero.x.toString(),
+                    y: Group.zero.y.toString(),
+                });
+            }
             for (let i = 0; i < notActiveActions.length; i++) {
                 const promises = [];
                 const notActiveAction = notActiveActions[i];
@@ -204,10 +225,8 @@ export class FundingRequesterContractService
                             taskId: nextTaskId,
                             timestamp: notActiveAction.actionData.timestamp,
                             keyIndex: notActiveAction.actionData.keyIndex,
-                            indices: notActiveAction.actionData.indices,
-                            R: notActiveAction.actionData.R,
-                            M: notActiveAction.actionData.M,
-                            commitments: notActiveAction.actionData.commitments,
+                            totalR: emptyGroupVector,
+                            totalM: emptyGroupVector,
                         }),
                     );
                     nextTaskId += 1;
@@ -215,18 +234,130 @@ export class FundingRequesterContractService
                     const task = await this.fundingTaskModel.findOne({
                         taskId: notActiveAction.actionData.taskId,
                     });
-                    task.set('indices', notActiveAction.actionData.indices);
-                    task.set('R', notActiveAction.actionData.R);
-                    task.set('M', notActiveAction.actionData.M);
-                    task.set(
-                        'commitments',
+                    const encryption = new Encryption(
+                        notActiveAction.actionData.timestamp,
+                        notActiveAction.actionData.indices,
+                        notActiveAction.actionData.R,
+                        notActiveAction.actionData.M,
                         notActiveAction.actionData.commitments,
                     );
+                    task.encryptions.push(encryption);
+                    task.commitmentCounter += encryption.commitments.length;
+                    const newTotalR: { x: string; y: string }[] = [];
+                    const newTotalM: { x: string; y: string }[] = [];
+                    for (
+                        let j = 0;
+                        j < Constants.ENCRYPTION_LIMITS.DIMENSION;
+                        j++
+                    ) {
+                        const oldR = task.totalR[j];
+                        const newR = Group.from(oldR.x, oldR.y).add(
+                            Group.from(
+                                notActiveAction.actionData.R[j].x,
+                                notActiveAction.actionData.R[j].y,
+                            ),
+                        );
+                        newTotalR.push({
+                            x: newR.x.toString(),
+                            y: newR.y.toString(),
+                        });
+
+                        const oldM = task.totalM[j];
+                        const newM = Group.from(oldM.x, oldM.y).add(
+                            Group.from(
+                                notActiveAction.actionData.M[j].x,
+                                notActiveAction.actionData.M[j].y,
+                            ),
+                        );
+                        newTotalM.push({
+                            x: newM.x.toString(),
+                            y: newM.y.toString(),
+                        });
+                    }
+                    task.set('totalR', newTotalR);
+                    task.set('totalM', newTotalM);
                     promises.push(notActiveAction.save());
                 }
 
                 await Promise.all(promises);
             }
         }
+    }
+
+    async updateMerkleTrees() {
+        const tasks = await this.fundingTaskModel.find(
+            {},
+            {},
+            { sort: { taskId: 1 } },
+        );
+        let nextCommitmentIndex = 0;
+        for (let i = 0; i < tasks.length; i++) {
+            const task = tasks[i];
+            const level1Index = this._keyIndexStorage.calculateLevel1Index(
+                Field(task.taskId),
+            );
+            this._keyIndexStorage.updateLeaf(
+                { level1Index },
+                Field(task.keyIndex),
+            );
+            this._timestampStorage.updateLeaf(
+                { level1Index },
+                Field(task.timestamp),
+            );
+            const groupVectorStorageR = new GroupVectorStorage();
+            const groupVectorStorageM = new GroupVectorStorage();
+            for (let j = 0; j < Constants.ENCRYPTION_LIMITS.DIMENSION; j++) {
+                groupVectorStorageR.updateLeaf(
+                    { level1Index: Field(j) },
+                    groupVectorStorageR.calculateLeaf(
+                        Group.from(task.totalR[j].x, task.totalR[j].y),
+                    ),
+                );
+                groupVectorStorageM.updateLeaf(
+                    { level1Index: Field(j) },
+                    groupVectorStorageM.calculateLeaf(
+                        Group.from(task.totalM[j].x, task.totalM[j].y),
+                    ),
+                );
+            }
+            this._accumulationStorage.updateLeaf(
+                { level1Index },
+                this._accumulationStorage.calculateLeaf({
+                    accumulationRootR: groupVectorStorageR.root,
+                    accumulationRootM: groupVectorStorageM.root,
+                }),
+            );
+        }
+
+        const activeActions = await this.requesterActionModel.find(
+            { active: true },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        for (let i = 0; i < activeActions.length; i++) {
+            const activeAction = activeActions[i];
+            if (
+                activeAction.actionData.taskId !=
+                Number(UInt32.MAXINT().toBigint())
+            ) {
+                for (
+                    let j = 0;
+                    j < activeAction.actionData.commitments.length;
+                    j++
+                ) {
+                    this._commitmentStorage.updateLeaf(
+                        { level1Index: Field(nextCommitmentIndex) },
+                        Field(activeAction.actionData.commitments[j]),
+                    );
+                    nextCommitmentIndex += 1;
+                }
+            }
+        }
+        const requesterCounters =
+            new Storage.RequesterStorage.RequesterCounters({
+                taskCounter: new UInt32(tasks.length),
+                commitmentCounter: new UInt64(nextCommitmentIndex),
+            });
+        this._counters = requesterCounters;
     }
 }
