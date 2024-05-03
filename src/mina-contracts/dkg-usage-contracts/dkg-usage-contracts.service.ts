@@ -52,41 +52,41 @@ export class DkgUsageContractsService implements ContractServiceInterface {
     private logger = new Logger(DkgUsageContractsService.name);
 
     private _dkgRequest: {
-        zkApp: Storage.AddressStorage.AddressStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
         requesterCounter: number;
-        keyIndex: Storage.RequestStorage.RequestKeyIndexStorage;
-        taskId: Storage.RequestStorage.TaskIdStorage;
-        accumulation: Storage.RequestStorage.RequestAccumulationStorage;
-        expiration: Storage.RequestStorage.ExpirationStorage;
-        result: Storage.RequestStorage.ResultStorage;
+        keyIndexStorage: Storage.RequestStorage.RequestKeyIndexStorage;
+        taskIdStorage: Storage.RequestStorage.TaskIdStorage;
+        accumulationStorage: Storage.RequestStorage.RequestAccumulationStorage;
+        expirationStorage: Storage.RequestStorage.ExpirationStorage;
+        resultStorage: Storage.RequestStorage.ResultStorage;
         actionState: string;
     };
 
     private _dkgResponse: {
-        zkApp: Storage.AddressStorage.AddressStorage;
-        contribution: Storage.DKGStorage.ResponseContributionStorage;
-        response: Storage.DKGStorage.ResponseStorage;
-        process: Storage.ProcessStorage.ProcessStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.ResponseContributionStorage;
+        responseStorage: Storage.DKGStorage.ResponseStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     };
 
     public get dkgRequest(): {
-        zkApp: Storage.AddressStorage.AddressStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
         requesterCounter: number;
-        keyIndex: Storage.RequestStorage.RequestKeyIndexStorage;
-        taskId: Storage.RequestStorage.TaskIdStorage;
-        accumulation: Storage.RequestStorage.RequestAccumulationStorage;
-        expiration: Storage.RequestStorage.ExpirationStorage;
-        result: Storage.RequestStorage.ResultStorage;
+        keyIndexStorage: Storage.RequestStorage.RequestKeyIndexStorage;
+        taskIdStorage: Storage.RequestStorage.TaskIdStorage;
+        accumulationStorage: Storage.RequestStorage.RequestAccumulationStorage;
+        expirationStorage: Storage.RequestStorage.ExpirationStorage;
+        resultStorage: Storage.RequestStorage.ResultStorage;
         actionState: string;
     } {
         return this._dkgRequest;
     }
 
     public get dkgResponse(): {
-        zkApp: Storage.AddressStorage.AddressStorage;
-        contribution: Storage.DKGStorage.ResponseContributionStorage;
-        response: Storage.DKGStorage.ResponseStorage;
-        process: Storage.ProcessStorage.ProcessStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.ResponseContributionStorage;
+        responseStorage: Storage.DKGStorage.ResponseStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._dkgResponse;
     }
@@ -107,22 +107,24 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly rollupActionModel: Model<RollupAction>,
     ) {
         this._dkgRequest = {
-            zkApp: new Storage.AddressStorage.AddressStorage(),
+            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
             requesterCounter: 0,
-            keyIndex: new Storage.RequestStorage.RequestKeyIndexStorage(),
-            taskId: new Storage.RequestStorage.TaskIdStorage(),
-            accumulation:
+            keyIndexStorage:
+                new Storage.RequestStorage.RequestKeyIndexStorage(),
+            taskIdStorage: new Storage.RequestStorage.TaskIdStorage(),
+            accumulationStorage:
                 new Storage.RequestStorage.RequestAccumulationStorage(),
-            expiration: new Storage.RequestStorage.ExpirationStorage(),
-            result: new Storage.RequestStorage.ResultStorage(),
+            expirationStorage: new Storage.RequestStorage.ExpirationStorage(),
+            resultStorage: new Storage.RequestStorage.ResultStorage(),
             actionState: '',
         };
 
         this._dkgResponse = {
-            zkApp: new Storage.AddressStorage.AddressStorage(),
-            contribution: new Storage.DKGStorage.ResponseContributionStorage(),
-            response: new Storage.DKGStorage.ResponseStorage(),
-            process: new Storage.ProcessStorage.ProcessStorage(),
+            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            contributionStorage:
+                new Storage.DKGStorage.ResponseContributionStorage(),
+            responseStorage: new Storage.DKGStorage.ResponseStorage(),
+            processStorage: new Storage.ProcessStorage.ProcessStorage(),
         };
     }
 

@@ -30,26 +30,26 @@ import * as _ from 'lodash';
 export class CampaignContractService implements ContractServiceInterface {
     private readonly logger = new Logger(CampaignContractService.name);
     private _nextCampaignId: number;
-    private readonly _timeline: Storage.CampaignStorage.TimelineStorage;
-    private readonly _ipfsHash: Storage.CampaignStorage.IpfsHashStorage;
-    private readonly _keyIndex: Storage.CampaignStorage.KeyIndexStorage;
-    private readonly _zkApp: Storage.SharedStorage.ZkAppStorage;
+    private readonly _timelineStorage: Storage.CampaignStorage.TimelineStorage;
+    private readonly _ipfsHashStorage: Storage.CampaignStorage.IpfsHashStorage;
+    private readonly _keyIndexStorage: Storage.CampaignStorage.KeyIndexStorage;
+    private readonly _zkAppStorage: Storage.SharedStorage.ZkAppStorage;
     private _actionState: string;
 
     public get nextCampaignId(): number {
         return this._nextCampaignId;
     }
-    public get timeline(): Storage.CampaignStorage.TimelineStorage {
-        return this._timeline;
+    public get timelineStorage(): Storage.CampaignStorage.TimelineStorage {
+        return this._timelineStorage;
     }
-    public get ipfsHash(): Storage.CampaignStorage.IpfsHashStorage {
-        return this._ipfsHash;
+    public get ipfsHashStorage(): Storage.CampaignStorage.IpfsHashStorage {
+        return this._ipfsHashStorage;
     }
-    public get keyIndex(): Storage.CampaignStorage.KeyIndexStorage {
-        return this.keyIndex;
+    public get keyIndexStorage(): Storage.CampaignStorage.KeyIndexStorage {
+        return this._keyIndexStorage;
     }
-    public get zkApp(): Storage.SharedStorage.ZkAppStorage {
-        return this._zkApp;
+    public get zkAppStorage(): Storage.SharedStorage.ZkAppStorage {
+        return this._zkAppStorage;
     }
 
     constructor(
@@ -62,10 +62,10 @@ export class CampaignContractService implements ContractServiceInterface {
     ) {
         this._nextCampaignId = 0;
         this._actionState = '';
-        this._timeline = new Storage.CampaignStorage.TimelineStorage();
-        this._ipfsHash = new Storage.CampaignStorage.IpfsHashStorage();
-        this._keyIndex = new Storage.CampaignStorage.KeyIndexStorage();
-        this._zkApp = new Storage.SharedStorage.ZkAppStorage([
+        this._timelineStorage = new Storage.CampaignStorage.TimelineStorage();
+        this._ipfsHashStorage = new Storage.CampaignStorage.IpfsHashStorage();
+        this._keyIndexStorage = new Storage.CampaignStorage.KeyIndexStorage();
+        this._zkAppStorage = new Storage.SharedStorage.ZkAppStorage([
             {
                 index: Constants.ZkAppEnum.COMMITTEE,
                 address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
@@ -193,9 +193,9 @@ export class CampaignContractService implements ContractServiceInterface {
         );
         if (notReducedActions.length > 0) {
             const state = await this.fetchCampaignState();
-            const timeline = _.cloneDeep(this._timeline);
-            const ipfsHash = _.cloneDeep(this._ipfsHash);
-            const keyIndex = _.cloneDeep(this._keyIndex);
+            const timelineStorage = _.cloneDeep(this._timelineStorage);
+            const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
+            const keyIndexStorage = _.cloneDeep(this._keyIndexStorage);
             let nextCampaignId = state.nextCampaignId;
             const proof = await ZkApp.Campaign.RollupCampaign.firstStep(
                 nextCampaignId,
@@ -212,28 +212,28 @@ export class CampaignContractService implements ContractServiceInterface {
                     ZkApp.Campaign.CampaignAction.fromFields(
                         Utilities.stringArrayToFields(notReducedAction.actions),
                     ),
-                    timeline.getLevel1Witness(nextCampaignId),
-                    ipfsHash.getLevel1Witness(nextCampaignId),
-                    keyIndex.getLevel1Witness(nextCampaignId),
+                    timelineStorage.getLevel1Witness(nextCampaignId),
+                    ipfsHashStorage.getLevel1Witness(nextCampaignId),
+                    keyIndexStorage.getLevel1Witness(nextCampaignId),
                 );
 
-                timeline.updateLeaf(
+                timelineStorage.updateLeaf(
                     nextCampaignId,
-                    timeline.calculateLeaf(
+                    timelineStorage.calculateLeaf(
                         notReducedAction.actionData.timeline.toAction(),
                     ),
                 );
-                ipfsHash.updateLeaf(
+                ipfsHashStorage.updateLeaf(
                     nextCampaignId,
-                    ipfsHash.calculateLeaf(
+                    ipfsHashStorage.calculateLeaf(
                         IpfsHash.fromString(
                             notReducedAction.actionData.ipfsHash,
                         ),
                     ),
                 );
-                keyIndex.updateLeaf(
+                keyIndexStorage.updateLeaf(
                     nextCampaignId,
-                    keyIndex.calculateLeaf({
+                    keyIndexStorage.calculateLeaf({
                         committeeId: Field(
                             notReducedAction.actionData.committeeId,
                         ),
@@ -368,22 +368,22 @@ export class CampaignContractService implements ContractServiceInterface {
 
             for (let i = 0; i < campaigns.length; i++) {
                 const campaign = campaigns[i];
-                const level1Index = this._timeline.calculateLevel1Index(
+                const level1Index = this._timelineStorage.calculateLevel1Index(
                     Field(campaign.campaignId),
                 );
-                const timelineLeaf = this._timeline.calculateLeaf(
+                const timelineLeaf = this._timelineStorage.calculateLeaf(
                     campaign.timeline.toAction(),
                 );
-                this._timeline.updateLeaf(level1Index, timelineLeaf);
-                const ipfsHashLeaf = this._ipfsHash.calculateLeaf(
+                this._timelineStorage.updateLeaf(level1Index, timelineLeaf);
+                const ipfsHashLeaf = this._ipfsHashStorage.calculateLeaf(
                     IpfsHash.fromString(campaign.ipfsHash),
                 );
-                this._ipfsHash.updateLeaf(level1Index, ipfsHashLeaf);
-                const keyIndexLeaf = this._keyIndex.calculateLeaf({
+                this._ipfsHashStorage.updateLeaf(level1Index, ipfsHashLeaf);
+                const keyIndexLeaf = this._keyIndexStorage.calculateLeaf({
                     committeeId: Field(campaign.committeeId),
                     keyId: Field(campaign.keyId),
                 });
-                this._keyIndex.updateLeaf(level1Index, keyIndexLeaf);
+                this._keyIndexStorage.updateLeaf(level1Index, keyIndexLeaf);
             }
         } catch (err) {}
     }

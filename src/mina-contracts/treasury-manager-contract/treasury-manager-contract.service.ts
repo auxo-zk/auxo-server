@@ -31,20 +31,20 @@ export class TreasuryManagerContractService
     implements ContractServiceInterface
 {
     private readonly logger = new Logger(TreasuryManagerContractService.name);
-    private readonly _campaignState: Storage.TreasuryManagerStorage.CampaignStateStorage;
-    private readonly _claimedAmount: Storage.TreasuryManagerStorage.ClaimedAmountStorage;
-    private readonly _zkApp: Storage.SharedStorage.ZkAppStorage;
+    private readonly _campaignStateStorage: Storage.TreasuryManagerStorage.CampaignStateStorage;
+    private readonly _claimedAmountStorage: Storage.TreasuryManagerStorage.ClaimedAmountStorage;
+    private readonly _zkAppStorage: Storage.SharedStorage.ZkAppStorage;
     private _actionState: string;
 
-    public get campaignState(): Storage.TreasuryManagerStorage.CampaignStateStorage {
-        return this._campaignState;
+    public get campaignStateStorage(): Storage.TreasuryManagerStorage.CampaignStateStorage {
+        return this._campaignStateStorage;
     }
-    public get claimedAmount(): Storage.TreasuryManagerStorage.ClaimedAmountStorage {
-        return this._claimedAmount;
+    public get claimedAmountStorage(): Storage.TreasuryManagerStorage.ClaimedAmountStorage {
+        return this._claimedAmountStorage;
     }
 
-    public get zkApp(): Storage.SharedStorage.ZkAppStorage {
-        return this._zkApp;
+    public get zkAppStorage(): Storage.SharedStorage.ZkAppStorage {
+        return this._zkAppStorage;
     }
 
     constructor(
@@ -57,11 +57,11 @@ export class TreasuryManagerContractService
         private readonly participationModel: Model<Participation>,
     ) {
         this._actionState = '';
-        this._campaignState =
+        this._campaignStateStorage =
             new Storage.TreasuryManagerStorage.CampaignStateStorage();
-        this._claimedAmount =
+        this._claimedAmountStorage =
             new Storage.TreasuryManagerStorage.ClaimedAmountStorage();
-        this._zkApp = new Storage.SharedStorage.ZkAppStorage([
+        this._zkAppStorage = new Storage.SharedStorage.ZkAppStorage([
             {
                 index: Constants.ZkAppEnum.COMMITTEE,
                 address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
@@ -188,8 +188,12 @@ export class TreasuryManagerContractService
                         state.claimedIndexRoot,
                         state.actionState,
                     );
-                const campaignState = _.cloneDeep(this._campaignState);
-                const claimedAmount = _.cloneDeep(this._claimedAmount);
+                const campaignStateStorage = _.cloneDeep(
+                    this._campaignStateStorage,
+                );
+                const claimedAmountStorage = _.cloneDeep(
+                    this._claimedAmountStorage,
+                );
 
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
@@ -209,11 +213,13 @@ export class TreasuryManagerContractService
                                         notReducedAction.actions,
                                     ),
                                 ),
-                                campaignState.getLevel1Witness(campaignId),
+                                campaignStateStorage.getLevel1Witness(
+                                    campaignId,
+                                ),
                             );
-                        campaignState.updateLeaf(
+                        campaignStateStorage.updateLeaf(
                             campaignId,
-                            campaignState.calculateLeaf(
+                            campaignStateStorage.calculateLeaf(
                                 Storage.TreasuryManagerStorage.CampaignStateEnum
                                     .COMPLETED,
                             ),
@@ -231,22 +237,26 @@ export class TreasuryManagerContractService
                                         notReducedAction.actions,
                                     ),
                                 ),
-                                campaignState.getLevel1Witness(campaignId),
+                                campaignStateStorage.getLevel1Witness(
+                                    campaignId,
+                                ),
                             );
-                        campaignState.updateLeaf(
+                        campaignStateStorage.updateLeaf(
                             campaignId,
-                            campaignState.calculateLeaf(
+                            campaignStateStorage.calculateLeaf(
                                 Storage.TreasuryManagerStorage.CampaignStateEnum
                                     .ABORTED,
                             ),
                         );
                     } else {
-                        const level1Index = claimedAmount.calculateLevel1Index({
-                            campaignId: campaignId,
-                            dimensionIndex: new UInt8(
-                                notReducedAction.actionData.projectIndex - 1,
-                            ),
-                        });
+                        const level1Index =
+                            claimedAmountStorage.calculateLevel1Index({
+                                campaignId: campaignId,
+                                dimensionIndex: new UInt8(
+                                    notReducedAction.actionData.projectIndex -
+                                        1,
+                                ),
+                            });
                         proof =
                             await ZkApp.TreasuryManager.RollupTreasuryManager.claimFundStep(
                                 proof,
@@ -255,9 +265,11 @@ export class TreasuryManagerContractService
                                         notReducedAction.actions,
                                     ),
                                 ),
-                                claimedAmount.getLevel1Witness(level1Index),
+                                claimedAmountStorage.getLevel1Witness(
+                                    level1Index,
+                                ),
                             );
-                        claimedAmount.updateLeaf(
+                        claimedAmountStorage.updateLeaf(
                             level1Index,
                             Field(notReducedAction.actionData.amount),
                         );
@@ -427,9 +439,9 @@ export class TreasuryManagerContractService
             });
             for (let i = 0; i < campaigns.length; i++) {
                 const campaign = campaigns[i];
-                this._campaignState.updateLeaf(
+                this._campaignStateStorage.updateLeaf(
                     Field(campaign.campaignId),
-                    this._campaignState.calculateLeaf(campaign.state),
+                    this._campaignStateStorage.calculateLeaf(campaign.state),
                 );
                 const participations = await this.participationModel.find(
                     {
@@ -442,13 +454,13 @@ export class TreasuryManagerContractService
                 for (let j = 0; j < participations.length; j++) {
                     const participation = participations[j];
                     const level1Index =
-                        this._claimedAmount.calculateLevel1Index({
+                        this._claimedAmountStorage.calculateLevel1Index({
                             campaignId: Field(campaign.campaignId),
                             dimensionIndex: new UInt8(
                                 participation.projectIndex - 1,
                             ),
                         });
-                    this.claimedAmount.updateLeaf(
+                    this._claimedAmountStorage.updateLeaf(
                         level1Index,
                         Field(participation.claimedAmount),
                     );

@@ -40,21 +40,21 @@ import { Constants } from '@auxo-dev/platform';
 export class CommitteeContractService implements ContractServiceInterface {
     private readonly logger = new Logger(CommitteeContractService.name);
     private _nextCommitteeId: number;
-    private _member: Storage.CommitteeStorage.MemberStorage;
-    private _setting: Storage.CommitteeStorage.SettingStorage;
-    private _zkApp: Storage.AddressStorage.AddressStorage;
+    private _memberStorage: Storage.CommitteeStorage.MemberStorage;
+    private _settingStorage: Storage.CommitteeStorage.SettingStorage;
+    private _zkAppStorage: Storage.AddressStorage.AddressStorage;
     private _actionState: string;
 
-    public get member(): Storage.CommitteeStorage.MemberStorage {
-        return this._member;
+    public get memberStorage(): Storage.CommitteeStorage.MemberStorage {
+        return this._memberStorage;
     }
 
-    public get setting(): Storage.CommitteeStorage.SettingStorage {
-        return this._setting;
+    public get settingStorage(): Storage.CommitteeStorage.SettingStorage {
+        return this._settingStorage;
     }
 
-    public get zkApp(): Storage.AddressStorage.AddressStorage {
-        return this._zkApp;
+    public get zkAppStorage(): Storage.AddressStorage.AddressStorage {
+        return this._zkAppStorage;
     }
 
     constructor(
@@ -67,8 +67,8 @@ export class CommitteeContractService implements ContractServiceInterface {
     ) {
         this._nextCommitteeId = 0;
         this._actionState = '';
-        this._member = new Storage.CommitteeStorage.MemberStorage();
-        this._setting = new Storage.CommitteeStorage.SettingStorage();
+        this._memberStorage = new Storage.CommitteeStorage.MemberStorage();
+        this._settingStorage = new Storage.CommitteeStorage.SettingStorage();
     }
 
     async onModuleInit() {
@@ -214,29 +214,28 @@ export class CommitteeContractService implements ContractServiceInterface {
             const committees = await this.committeeModel.find();
             for (let i = 0; i < committees.length; i++) {
                 const committee = committees[i];
-                const level1Index = this._member.calculateLevel1Index(
+                const level1Index = this._memberStorage.calculateLevel1Index(
                     Field(committee.committeeId),
                 );
-                this._member.updateInternal(
+                this._memberStorage.updateInternal(
                     level1Index,
                     Storage.CommitteeStorage.COMMITTEE_LEVEL_2_TREE(),
                 );
-                const settingLeaf = this._setting.calculateLeaf({
+                const settingLeaf = this._settingStorage.calculateLeaf({
                     T: Field(committee.threshold),
                     N: Field(committee.numberOfMembers),
                 });
-                this._setting.updateLeaf(
+                this._settingStorage.updateLeaf(
                     { level1Index: level1Index },
                     settingLeaf,
                 );
                 for (let j = 0; j < committee.publicKeys.length; j++) {
-                    const level2Index = this._member.calculateLevel2Index(
-                        Field(j),
-                    );
-                    const memberLeaf = this._member.calculateLeaf(
+                    const level2Index =
+                        this._memberStorage.calculateLevel2Index(Field(j));
+                    const memberLeaf = this._memberStorage.calculateLeaf(
                         PublicKey.fromBase58(committee.publicKeys[j]),
                     );
-                    this._member.updateLeaf(
+                    this._memberStorage.updateLeaf(
                         {
                             level1Index: level1Index,
                             level2Index: level2Index,

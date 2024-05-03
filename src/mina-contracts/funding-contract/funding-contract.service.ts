@@ -36,20 +36,20 @@ import _ from 'lodash';
 export class FundingContractService implements ContractServiceInterface {
     private readonly logger = new Logger(FundingContractService.name);
     private _nextFundingId: number;
-    private readonly _fundingInformation: Storage.FundingStorage.FundingInformationStorage;
-    private readonly _zkApp: Storage.SharedStorage.ZkAppStorage;
+    private readonly _fundingInformationStorage: Storage.FundingStorage.FundingInformationStorage;
+    private readonly _zkAppStorage: Storage.SharedStorage.ZkAppStorage;
     private _actionState: string;
 
     public get nextFundingId(): number {
         return this._nextFundingId;
     }
 
-    public get fundingInformation(): Storage.FundingStorage.FundingInformationStorage {
-        return this.fundingInformation;
+    public get fundingInformationStorage(): Storage.FundingStorage.FundingInformationStorage {
+        return this._fundingInformationStorage;
     }
 
-    public get zkApp(): Storage.SharedStorage.ZkAppStorage {
-        return this._zkApp;
+    public get zkAppStorage(): Storage.SharedStorage.ZkAppStorage {
+        return this._zkAppStorage;
     }
 
     constructor(
@@ -63,9 +63,9 @@ export class FundingContractService implements ContractServiceInterface {
     ) {
         this._nextFundingId = 0;
         this._actionState = '';
-        this._fundingInformation =
+        this._fundingInformationStorage =
             new Storage.FundingStorage.FundingInformationStorage();
-        this._zkApp = new Storage.SharedStorage.ZkAppStorage([
+        this._zkAppStorage = new Storage.SharedStorage.ZkAppStorage([
             {
                 index: Constants.ZkAppEnum.COMMITTEE,
                 address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
@@ -190,8 +190,8 @@ export class FundingContractService implements ContractServiceInterface {
                     state.fundingInformationRoot,
                     state.actionState,
                 );
-                const fundingInformation = _.cloneDeep(
-                    this._fundingInformation,
+                const fundingInformationStorage = _.cloneDeep(
+                    this._fundingInformationStorage,
                 );
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
@@ -206,11 +206,13 @@ export class FundingContractService implements ContractServiceInterface {
                                     notReducedAction.actions,
                                 ),
                             ),
-                            fundingInformation.getLevel1Witness(nextFundingId),
+                            fundingInformationStorage.getLevel1Witness(
+                                nextFundingId,
+                            ),
                         );
-                        fundingInformation.updateLeaf(
+                        fundingInformationStorage.updateLeaf(
                             nextFundingId,
-                            fundingInformation.calculateLeaf(
+                            fundingInformationStorage.calculateLeaf(
                                 notReducedAction.actionData.toFundingInformation(),
                             ),
                         );
@@ -223,13 +225,13 @@ export class FundingContractService implements ContractServiceInterface {
                                     notReducedAction.actions,
                                 ),
                             ),
-                            fundingInformation.getLevel1Witness(
+                            fundingInformationStorage.getLevel1Witness(
                                 Field(notReducedAction.actionData.fundingId),
                             ),
                         );
-                        fundingInformation.updateLeaf(
+                        fundingInformationStorage.updateLeaf(
                             Field(notReducedAction.actionData.fundingId),
-                            fundingInformation.calculateLeaf(
+                            fundingInformationStorage.calculateLeaf(
                                 notReducedAction.actionData.toFundingInformation(),
                             ),
                         );
@@ -376,14 +378,14 @@ export class FundingContractService implements ContractServiceInterface {
             for (let i = 0; i < fundings.length; i++) {
                 const funding = fundings[i];
                 const level1Index =
-                    this._fundingInformation.calculateLevel1Index(
+                    this._fundingInformationStorage.calculateLevel1Index(
                         Field(funding.fundingId),
                     );
                 const fundingInformationLeaf =
-                    this._fundingInformation.calculateLeaf(
+                    this._fundingInformationStorage.calculateLeaf(
                         funding.toFundingInformation(),
                     );
-                this._fundingInformation.updateLeaf(
+                this._fundingInformationStorage.updateLeaf(
                     level1Index,
                     fundingInformationLeaf,
                 );

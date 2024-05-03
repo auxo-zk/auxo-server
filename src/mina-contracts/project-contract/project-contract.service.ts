@@ -22,22 +22,22 @@ import * as _ from 'lodash';
 export class ProjectContractService implements ContractServiceInterface {
     private readonly logger = new Logger(ProjectContractService.name);
     private _nextProjectId: number;
-    private readonly _member: Storage.ProjectStorage.ProjectMemberStorage;
-    private readonly _ipfsHash: Storage.ProjectStorage.IpfsHashStorage;
-    private readonly _treasuryAddress: Storage.ProjectStorage.TreasuryAddressStorage;
+    private readonly _memberStorage: Storage.ProjectStorage.ProjectMemberStorage;
+    private readonly _ipfsHashStorage: Storage.ProjectStorage.IpfsHashStorage;
+    private readonly _treasuryAddressStorage: Storage.ProjectStorage.TreasuryAddressStorage;
     private _actionState: string;
 
     public get nextProjectId(): number {
         return this._nextProjectId;
     }
-    public get member(): Storage.ProjectStorage.ProjectMemberStorage {
-        return this._member;
+    public get memberStorage(): Storage.ProjectStorage.ProjectMemberStorage {
+        return this._memberStorage;
     }
-    public get ipfsHash(): Storage.ProjectStorage.IpfsHashStorage {
-        return this._ipfsHash;
+    public get ipfsHashStorage(): Storage.ProjectStorage.IpfsHashStorage {
+        return this._ipfsHashStorage;
     }
-    public get treasuryAddress(): Storage.ProjectStorage.TreasuryAddressStorage {
-        return this._treasuryAddress;
+    public get treasuryAddressStorage(): Storage.ProjectStorage.TreasuryAddressStorage {
+        return this._treasuryAddressStorage;
     }
 
     constructor(
@@ -50,9 +50,9 @@ export class ProjectContractService implements ContractServiceInterface {
     ) {
         this._nextProjectId = 0;
         this._actionState = '';
-        this._member = new Storage.ProjectStorage.ProjectMemberStorage();
-        this._ipfsHash = new Storage.ProjectStorage.IpfsHashStorage();
-        this._treasuryAddress =
+        this._memberStorage = new Storage.ProjectStorage.ProjectMemberStorage();
+        this._ipfsHashStorage = new Storage.ProjectStorage.IpfsHashStorage();
+        this._treasuryAddressStorage =
             new Storage.ProjectStorage.TreasuryAddressStorage();
     }
 
@@ -135,9 +135,11 @@ export class ProjectContractService implements ContractServiceInterface {
                         ? Field(lastReducedAction.currentActionState)
                         : Reducer.initialActionState,
                 );
-                const member = _.cloneDeep(this._member);
-                const ipfsHash = _.cloneDeep(this._ipfsHash);
-                const treasuryAddress = _.cloneDeep(this._treasuryAddress);
+                const memberStorage = _.cloneDeep(this._memberStorage);
+                const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
+                const treasuryAddressStorage = _.cloneDeep(
+                    this._treasuryAddressStorage,
+                );
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
                     if (
@@ -152,11 +154,13 @@ export class ProjectContractService implements ContractServiceInterface {
                                         notReducedAction.actions,
                                     ),
                                 ),
-                                member.getLevel1Witness(nextProjectId),
-                                ipfsHash.getLevel1Witness(nextProjectId),
-                                treasuryAddress.getLevel1Witness(nextProjectId),
+                                memberStorage.getLevel1Witness(nextProjectId),
+                                ipfsHashStorage.getLevel1Witness(nextProjectId),
+                                treasuryAddressStorage.getLevel1Witness(
+                                    nextProjectId,
+                                ),
                             );
-                        member.updateInternal(
+                        memberStorage.updateInternal(
                             nextProjectId,
                             Storage.ProjectStorage.EMPTY_LEVEL_2_PROJECT_MEMBER_TREE(),
                         );
@@ -165,12 +169,12 @@ export class ProjectContractService implements ContractServiceInterface {
                             j < notReducedAction.actionData.members.length;
                             j++
                         ) {
-                            member.updateLeaf(
+                            memberStorage.updateLeaf(
                                 {
                                     level1Index: nextProjectId,
                                     level2Index: Field(j),
                                 },
-                                member.calculateLeaf(
+                                memberStorage.calculateLeaf(
                                     PublicKey.fromBase58(
                                         notReducedAction.actionData.members[j],
                                     ),
@@ -178,19 +182,19 @@ export class ProjectContractService implements ContractServiceInterface {
                             );
                         }
 
-                        ipfsHash.updateLeaf(
+                        ipfsHashStorage.updateLeaf(
                             { level1Index: nextProjectId },
-                            ipfsHash.calculateLeaf(
+                            ipfsHashStorage.calculateLeaf(
                                 IpfsHash.fromString(
                                     notReducedAction.actionData.ipfsHash,
                                 ),
                             ),
                         );
-                        treasuryAddress.updateLeaf(
+                        treasuryAddressStorage.updateLeaf(
                             {
                                 level1Index: nextProjectId,
                             },
-                            treasuryAddress.calculateLeaf(
+                            treasuryAddressStorage.calculateLeaf(
                                 PublicKey.fromBase58(
                                     notReducedAction.actionData.treasuryAddress,
                                 ),
@@ -209,20 +213,20 @@ export class ProjectContractService implements ContractServiceInterface {
                                 IpfsHash.fromString(
                                     notReducedAction.actionData.ipfsHash,
                                 ),
-                                ipfsHash.getLevel1Witness(
+                                ipfsHashStorage.getLevel1Witness(
                                     Field(
                                         notReducedAction.actionData.projectId,
                                     ),
                                 ),
                             );
 
-                        ipfsHash.updateLeaf(
+                        ipfsHashStorage.updateLeaf(
                             {
                                 level1Index: Field(
                                     notReducedAction.actionData.projectId,
                                 ),
                             },
-                            ipfsHash.calculateLeaf(
+                            ipfsHashStorage.calculateLeaf(
                                 IpfsHash.fromString(
                                     notReducedAction.actionData.ipfsHash,
                                 ),
@@ -383,35 +387,35 @@ export class ProjectContractService implements ContractServiceInterface {
 
             for (let i = 0; i < projects.length; i++) {
                 const project = projects[i];
-                const level1Index = this._member.calculateLevel1Index(
+                const level1Index = this._memberStorage.calculateLevel1Index(
                     Field(project.projectId),
                 );
-                const ipfsHashLeaf = this._ipfsHash.calculateLeaf(
+                const ipfsHashLeaf = this._ipfsHashStorage.calculateLeaf(
                     IpfsHash.fromString(project.ipfsHash),
                 );
-                this._ipfsHash.updateLeaf(
+                this._ipfsHashStorage.updateLeaf(
                     { level1Index: level1Index },
                     ipfsHashLeaf,
                 );
-                const treasuryAddressLeaf = this._treasuryAddress.calculateLeaf(
-                    PublicKey.fromBase58(project.treasuryAddress),
-                );
-                this._treasuryAddress.updateLeaf(
+                const treasuryAddressLeaf =
+                    this._treasuryAddressStorage.calculateLeaf(
+                        PublicKey.fromBase58(project.treasuryAddress),
+                    );
+                this._treasuryAddressStorage.updateLeaf(
                     { level1Index: level1Index },
                     treasuryAddressLeaf,
                 );
-                this._member.updateInternal(
+                this._memberStorage.updateInternal(
                     level1Index,
                     Storage.ProjectStorage.EMPTY_LEVEL_2_PROJECT_MEMBER_TREE(),
                 );
                 for (let i = 0; i < project.members.length; i++) {
-                    const level2IndexMember = this._member.calculateLevel2Index(
-                        Field(i),
-                    );
-                    const memberLeaf = this._member.calculateLeaf(
+                    const level2IndexMember =
+                        this._memberStorage.calculateLevel2Index(Field(i));
+                    const memberLeaf = this._memberStorage.calculateLeaf(
                         PublicKey.fromBase58(project.members[i]),
                     );
-                    this._member.updateLeaf(
+                    this._memberStorage.updateLeaf(
                         {
                             level1Index: level1Index,
                             level2Index: level2IndexMember,

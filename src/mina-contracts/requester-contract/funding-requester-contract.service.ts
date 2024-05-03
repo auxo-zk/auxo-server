@@ -22,14 +22,34 @@ export class FundingRequesterContractService
 {
     private readonly requesterAddress: string;
     private readonly logger = new Logger(FundingRequesterContractService.name);
-    private readonly zkApp: Storage.AddressStorage.AddressStorage;
+    private readonly _zkAppStorage: Storage.AddressStorage.AddressStorage;
     private counters: number;
-    private readonly keyIndex: Storage.RequesterStorage.RequesterKeyIndexStorage;
-    private readonly timestamp: Storage.RequesterStorage.TimestampStorage;
-    private readonly accumulation: Storage.RequesterStorage.RequesterAccumulationStorage;
-    private readonly commitment: Storage.RequesterStorage.CommitmentStorage;
+    private readonly _keyIndexStorage: Storage.RequesterStorage.RequesterKeyIndexStorage;
+    private readonly _timestampStorage: Storage.RequesterStorage.TimestampStorage;
+    private readonly _accumulationStorage: Storage.RequesterStorage.RequesterAccumulationStorage;
+    private readonly _commitmentStorage: Storage.RequesterStorage.CommitmentStorage;
     private lastTimestamp: number;
     private actionState: string;
+
+    public get zkAppStorage(): Storage.AddressStorage.AddressStorage {
+        return this._zkAppStorage;
+    }
+
+    public get keyIndexStorage(): Storage.RequesterStorage.RequesterKeyIndexStorage {
+        return this._keyIndexStorage;
+    }
+
+    public get timestampStorage(): Storage.RequesterStorage.TimestampStorage {
+        return this._timestampStorage;
+    }
+
+    public get accumulationStorage(): Storage.RequesterStorage.RequesterAccumulationStorage {
+        return this._accumulationStorage;
+    }
+
+    public get commitmentStorage(): Storage.RequesterStorage.CommitmentStorage {
+        return this._commitmentStorage;
+    }
 
     constructor(
         private readonly queryService: QueryService,
@@ -44,12 +64,15 @@ export class FundingRequesterContractService
         this.lastTimestamp = 0;
         this.actionState = '';
 
-        this.zkApp = new Storage.AddressStorage.AddressStorage();
-        this.keyIndex = new Storage.RequesterStorage.RequesterKeyIndexStorage();
-        this.timestamp = new Storage.RequesterStorage.TimestampStorage();
-        this.accumulation =
+        this._zkAppStorage = new Storage.AddressStorage.AddressStorage();
+        this._keyIndexStorage =
+            new Storage.RequesterStorage.RequesterKeyIndexStorage();
+        this._timestampStorage =
+            new Storage.RequesterStorage.TimestampStorage();
+        this._accumulationStorage =
             new Storage.RequesterStorage.RequesterAccumulationStorage();
-        this.commitment = new Storage.RequesterStorage.CommitmentStorage();
+        this._commitmentStorage =
+            new Storage.RequesterStorage.CommitmentStorage();
     }
 
     async fetch() {

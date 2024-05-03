@@ -59,49 +59,49 @@ import { RollupAction } from 'src/schemas/actions/rollup-action.schema';
 export class DkgContractsService implements ContractServiceInterface {
     private readonly logger = new Logger(DkgContractsService.name);
     private _dkg: {
-        zkApp: Storage.AddressStorage.AddressStorage;
-        keyCounter: Storage.CommitteeStorage.KeyCounterStorage;
-        keyStatus: Storage.DKGStorage.KeyStatusStorage;
-        key: Storage.DKGStorage.KeyStorage;
-        process: Storage.ProcessStorage.ProcessStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        keyCounterStorage: Storage.CommitteeStorage.KeyCounterStorage;
+        keyStatusStorage: Storage.DKGStorage.KeyStatusStorage;
+        keyStorage: Storage.DKGStorage.KeyStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     };
     private _round1: {
-        zkApp: Storage.AddressStorage.AddressStorage;
-        contribution: Storage.DKGStorage.Round1ContributionStorage;
-        publicKey: Storage.DKGStorage.PublicKeyStorage;
-        process: Storage.ProcessStorage.ProcessStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.Round1ContributionStorage;
+        publicKeyStorage: Storage.DKGStorage.PublicKeyStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     };
     private _round2: {
-        zkApp: Storage.AddressStorage.AddressStorage;
-        contribution: Storage.DKGStorage.Round2ContributionStorage;
-        encryption: Storage.DKGStorage.EncryptionStorage;
-        process: Storage.ProcessStorage.ProcessStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.Round2ContributionStorage;
+        encryptionStorage: Storage.DKGStorage.EncryptionStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     };
 
     public get dkg(): {
-        zkApp: Storage.AddressStorage.AddressStorage;
-        keyCounter: Storage.CommitteeStorage.KeyCounterStorage;
-        keyStatus: Storage.DKGStorage.KeyStatusStorage;
-        key: Storage.DKGStorage.KeyStorage;
-        process: Storage.ProcessStorage.ProcessStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        keyCounterStorage: Storage.CommitteeStorage.KeyCounterStorage;
+        keyStatusStorage: Storage.DKGStorage.KeyStatusStorage;
+        keyStorage: Storage.DKGStorage.KeyStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._dkg;
     }
 
     public get round1(): {
-        zkApp: Storage.AddressStorage.AddressStorage;
-        contribution: Storage.DKGStorage.Round1ContributionStorage;
-        publicKey: Storage.DKGStorage.PublicKeyStorage;
-        process: Storage.ProcessStorage.ProcessStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.Round1ContributionStorage;
+        publicKeyStorage: Storage.DKGStorage.PublicKeyStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._round1;
     }
 
     public get round2(): {
-        zkApp: Storage.AddressStorage.AddressStorage;
-        contribution: Storage.DKGStorage.Round2ContributionStorage;
-        encryption: Storage.DKGStorage.EncryptionStorage;
-        process: Storage.ProcessStorage.ProcessStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.Round2ContributionStorage;
+        encryptionStorage: Storage.DKGStorage.EncryptionStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._round2;
     }
@@ -123,23 +123,25 @@ export class DkgContractsService implements ContractServiceInterface {
         private readonly rollupActionModel: Model<RollupAction>,
     ) {
         this._dkg = {
-            zkApp: new Storage.AddressStorage.AddressStorage(),
-            keyCounter: new Storage.CommitteeStorage.KeyCounterStorage(),
-            keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
-            key: new Storage.DKGStorage.KeyStorage(),
-            process: new Storage.ProcessStorage.ProcessStorage(),
+            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            keyCounterStorage: new Storage.CommitteeStorage.KeyCounterStorage(),
+            keyStatusStorage: new Storage.DKGStorage.KeyStatusStorage(),
+            keyStorage: new Storage.DKGStorage.KeyStorage(),
+            processStorage: new Storage.ProcessStorage.ProcessStorage(),
         };
         this._round1 = {
-            zkApp: new Storage.AddressStorage.AddressStorage(),
-            contribution: new Storage.DKGStorage.Round1ContributionStorage(),
-            publicKey: new Storage.DKGStorage.PublicKeyStorage(),
-            process: new Storage.ProcessStorage.ProcessStorage(),
+            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            contributionStorage:
+                new Storage.DKGStorage.Round1ContributionStorage(),
+            publicKeyStorage: new Storage.DKGStorage.PublicKeyStorage(),
+            processStorage: new Storage.ProcessStorage.ProcessStorage(),
         };
         this._round2 = {
-            zkApp: new Storage.AddressStorage.AddressStorage(),
-            contribution: new Storage.DKGStorage.Round2ContributionStorage(),
-            encryption: new Storage.DKGStorage.EncryptionStorage(),
-            process: new Storage.ProcessStorage.ProcessStorage(),
+            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            contributionStorage:
+                new Storage.DKGStorage.Round2ContributionStorage(),
+            encryptionStorage: new Storage.DKGStorage.EncryptionStorage(),
+            processStorage: new Storage.ProcessStorage.ProcessStorage(),
         };
     }
 

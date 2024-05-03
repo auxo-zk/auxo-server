@@ -22,23 +22,23 @@ import { Campaign } from 'src/schemas/campaign.schema';
 @Injectable()
 export class ParticipationContractService implements ContractServiceInterface {
     private readonly logger = new Logger(ParticipationContractService.name);
-    private readonly _projectIndex: Storage.ParticipationStorage.ProjectIndexStorage;
-    private readonly _projectCounter: Storage.ParticipationStorage.ProjectCounterStorage;
-    private readonly _ipfsHash: Storage.ParticipationStorage.IpfsHashStorage;
-    private readonly _zkApp: Storage.SharedStorage.ZkAppStorage;
+    private readonly _projectIndexStorage: Storage.ParticipationStorage.ProjectIndexStorage;
+    private readonly _projectCounterStorage: Storage.ParticipationStorage.ProjectCounterStorage;
+    private readonly _ipfsHashStorage: Storage.ParticipationStorage.IpfsHashStorage;
+    private readonly _zkAppStorage: Storage.SharedStorage.ZkAppStorage;
     private _actionState: string;
 
-    public get projectIndex(): Storage.ParticipationStorage.ProjectIndexStorage {
-        return this._projectIndex;
+    public get projectIndexStorage(): Storage.ParticipationStorage.ProjectIndexStorage {
+        return this._projectIndexStorage;
     }
-    public get projectCounter(): Storage.ParticipationStorage.ProjectCounterStorage {
-        return this._projectCounter;
+    public get projectCounterStorage(): Storage.ParticipationStorage.ProjectCounterStorage {
+        return this._projectCounterStorage;
     }
-    public get ipfsHash(): Storage.ParticipationStorage.IpfsHashStorage {
-        return this._ipfsHash;
+    public get ipfsHashStorage(): Storage.ParticipationStorage.IpfsHashStorage {
+        return this._ipfsHashStorage;
     }
-    public get zkApp(): Storage.SharedStorage.ZkAppStorage {
-        return this._zkApp;
+    public get zkAppStorage(): Storage.SharedStorage.ZkAppStorage {
+        return this._zkAppStorage;
     }
 
     constructor(
@@ -52,12 +52,13 @@ export class ParticipationContractService implements ContractServiceInterface {
         private readonly campaignModel: Model<Campaign>,
     ) {
         this._actionState = '';
-        this._projectIndex =
+        this._projectIndexStorage =
             new Storage.ParticipationStorage.ProjectIndexStorage();
-        this._projectCounter =
+        this._projectCounterStorage =
             new Storage.ParticipationStorage.ProjectCounterStorage();
-        this._ipfsHash = new Storage.ParticipationStorage.IpfsHashStorage();
-        this._zkApp = new Storage.SharedStorage.ZkAppStorage([
+        this._ipfsHashStorage =
+            new Storage.ParticipationStorage.IpfsHashStorage();
+        this._zkAppStorage = new Storage.SharedStorage.ZkAppStorage([
             {
                 index: Constants.ZkAppEnum.COMMITTEE,
                 address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
@@ -185,9 +186,13 @@ export class ParticipationContractService implements ContractServiceInterface {
                             ? Field(lastReducedAction.currentActionState)
                             : Reducer.initialActionState,
                     );
-                const projectIndex = _.cloneDeep(this._projectIndex);
-                const projectCounter = _.cloneDeep(this._projectCounter);
-                const ipfsHash = _.cloneDeep(this._ipfsHash);
+                const projectIndexStorage = _.cloneDeep(
+                    this._projectIndexStorage,
+                );
+                const projectCounterStorage = _.cloneDeep(
+                    this._projectCounterStorage,
+                );
+                const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
                 const projectCounterMapping: {
                     [key: number]: number;
                 } = {};
@@ -201,10 +206,13 @@ export class ParticipationContractService implements ContractServiceInterface {
                         projectCounterMapping[campaignId] =
                             campaign.projectCounter;
                     }
-                    const level1Index = projectIndex.calculateLevel1Index({
-                        campaignId: Field(campaignId),
-                        projectId: Field(notReducedAction.actionData.projectId),
-                    });
+                    const level1Index =
+                        projectIndexStorage.calculateLevel1Index({
+                            campaignId: Field(campaignId),
+                            projectId: Field(
+                                notReducedAction.actionData.projectId,
+                            ),
+                        });
                     proof =
                         await ZkApp.Participation.RollupParticipation.participateCampaignStep(
                             proof,
@@ -214,22 +222,24 @@ export class ParticipationContractService implements ContractServiceInterface {
                                 ),
                             ),
                             Field(projectCounterMapping[campaignId]),
-                            projectIndex.getLevel1Witness(level1Index),
-                            projectCounter.getLevel1Witness(Field(campaignId)),
-                            ipfsHash.getLevel1Witness(level1Index),
+                            projectIndexStorage.getLevel1Witness(level1Index),
+                            projectCounterStorage.getLevel1Witness(
+                                Field(campaignId),
+                            ),
+                            ipfsHashStorage.getLevel1Witness(level1Index),
                         );
                     projectCounterMapping[campaignId] += 1;
-                    projectIndex.updateLeaf(
+                    projectIndexStorage.updateLeaf(
                         level1Index,
                         Field(projectCounterMapping[campaignId]),
                     );
-                    projectCounter.updateLeaf(
+                    projectCounterStorage.updateLeaf(
                         Field(campaignId),
                         Field(projectCounterMapping[campaignId]),
                     );
-                    ipfsHash.updateLeaf(
+                    ipfsHashStorage.updateLeaf(
                         level1Index,
-                        ipfsHash.calculateLeaf(
+                        ipfsHashStorage.calculateLeaf(
                             IpfsHash.fromString(
                                 notReducedAction.actionData.ipfsHash,
                             ),
@@ -382,22 +392,21 @@ export class ParticipationContractService implements ContractServiceInterface {
                 for (let j = 0; j < projects.length; j++) {
                     const project = projects[j];
                     const projectId = Field(project.projectId);
-                    const level1Index = this._projectIndex.calculateLevel1Index(
-                        {
+                    const level1Index =
+                        this._projectIndexStorage.calculateLevel1Index({
                             campaignId: campaignId,
                             projectId: projectId,
-                        },
-                    );
+                        });
                     const projectIndexLeaf = Field(project.projectIndex);
-                    this._projectIndex.updateLeaf(
+                    this._projectIndexStorage.updateLeaf(
                         level1Index,
                         projectIndexLeaf,
                     );
-                    const ipfsHashLeaf = this._ipfsHash.calculateLeaf(
+                    const ipfsHashLeaf = this._ipfsHashStorage.calculateLeaf(
                         IpfsHash.fromString(project.ipfsHash),
                     );
-                    this._ipfsHash.updateLeaf(level1Index, ipfsHashLeaf);
-                    this._projectCounter.updateLeaf(
+                    this._ipfsHashStorage.updateLeaf(level1Index, ipfsHashLeaf);
+                    this._projectCounterStorage.updateLeaf(
                         campaignId,
                         Field(projects.length),
                     );

@@ -17,21 +17,21 @@ import { MaxRetries } from 'src/constants';
 @Injectable()
 export class RollupContractService implements ContractServiceInterface {
     private readonly logger = new Logger(RollupContractService.name);
-    private readonly _zkApp: Storage.AddressStorage.AddressStorage;
-    private readonly _counter: Storage.RollupStorage.RollupCounterStorage;
-    private readonly _rollup: Storage.RollupStorage.RollupStorage;
+    private readonly _zkAppStorage: Storage.AddressStorage.AddressStorage;
+    private readonly _counterStorage: Storage.RollupStorage.RollupCounterStorage;
+    private readonly _rollupStorage: Storage.RollupStorage.RollupStorage;
     private _actionState: string;
 
-    public get zkApp(): Storage.AddressStorage.AddressStorage {
-        return this._zkApp;
+    public get zkAppStorage(): Storage.AddressStorage.AddressStorage {
+        return this._zkAppStorage;
     }
 
-    public get counter(): Storage.RollupStorage.RollupCounterStorage {
-        return this._counter;
+    public get counterStorage(): Storage.RollupStorage.RollupCounterStorage {
+        return this._counterStorage;
     }
 
-    public get rollup(): Storage.RollupStorage.RollupStorage {
-        return this._rollup;
+    public get rollupStorage(): Storage.RollupStorage.RollupStorage {
+        return this._rollupStorage;
     }
 
     constructor(
@@ -41,9 +41,9 @@ export class RollupContractService implements ContractServiceInterface {
         private readonly rollupActionModel: Model<RollupAction>,
     ) {
         this._actionState = '';
-        this._counter = new Storage.RollupStorage.RollupCounterStorage();
-        this._rollup = new Storage.RollupStorage.RollupStorage();
-        this._zkApp = new Storage.AddressStorage.AddressStorage();
+        this._counterStorage = new Storage.RollupStorage.RollupCounterStorage();
+        this._rollupStorage = new Storage.RollupStorage.RollupStorage();
+        this._zkAppStorage = new Storage.AddressStorage.AddressStorage();
     }
 
     async fetch() {
