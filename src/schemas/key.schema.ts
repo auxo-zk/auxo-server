@@ -27,10 +27,10 @@ export class Key {
     key?: string;
 
     @Prop({ type: [Round1], default: [] })
-    round1s?: Round1[];
+    round1s: Round1[];
 
     @Prop({ type: [Round2], default: [] })
-    round2s?: Round2[];
+    round2s: Round2[];
 
     @Prop({ index: true })
     status: KeyStatusEnum;

@@ -30,7 +30,7 @@ export class DkgRequest {
     resultRoot: string;
 
     @Prop({ type: [DkgResponse], default: [], required: true })
-    responses?: DkgResponse[];
+    responses: DkgResponse[];
 
     @Prop({ default: RequestStatusEnum.INITIALIZED, required: true })
     status?: RequestStatusEnum;

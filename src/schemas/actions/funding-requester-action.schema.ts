@@ -3,7 +3,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
 import { Utilities } from 'src/mina-contracts/utilities';
-import { RawDkgRequest } from '../raw-request.schema';
 import { RequestActionEnum } from 'src/constants';
 
 export class RequesterActionData {
