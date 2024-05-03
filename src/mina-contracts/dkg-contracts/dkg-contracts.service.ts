@@ -526,15 +526,141 @@ export class DkgContractsService implements ContractServiceInterface {
 
     async updateMerkleTrees() {
         try {
-            await this.updateMerkleTreesForDkg();
-            await this.updateMerkleTreesForRound1();
-            await this.updateMerkleTreesForRound2();
+            const committees = await this.committeeModel.find(
+                {},
+                {},
+                { sort: { committeeId: 1 } },
+            );
+            for (let i = 0; i < committees.length; i++) {
+                const committee = committees[i];
+                const keys = await this.keyModel.find(
+                    {
+                        committeeId: committee.committeeId,
+                    },
+                    {},
+                    { sort: { keyId: 1 } },
+                );
+                this._dkg.keyCounterStorage.updateLeaf(
+                    {
+                        level1Index:
+                            this._dkg.keyCounterStorage.calculateLevel1Index(
+                                Field(committee.committeeId),
+                            ),
+                    },
+                    this._dkg.keyCounterStorage.calculateLeaf(
+                        Field(keys.length),
+                    ),
+                );
+                for (let j = 0; j < keys.length; j++) {
+                    const key = keys[j];
+                    const level1Index =
+                        this._dkg.keyStatusStorage.calculateLevel1Index({
+                            committeeId: Field(committee.committeeId),
+                            keyId: Field(key.keyId),
+                        });
+                    this._dkg.keyStatusStorage.updateLeaf(
+                        { level1Index },
+                        Field(key.status),
+                    );
+                    if (
+                        key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION ||
+                        key.status == KeyStatusEnum.ACTIVE
+                    ) {
+                        this._dkg.keyStorage.updateLeaf(
+                            { level1Index },
+                            this._dkg.keyStorage.calculateLeaf(
+                                PublicKey.fromBase58(key.key).toGroup(),
+                            ),
+                        );
+
+                        const round1s = key.round1s.sort(
+                            (a, b) => a.memberId - b.memberId,
+                        );
+                        for (let k = 0; k < round1s.length; k++) {
+                            const round1 = round1s[k];
+                            const contribution: Group[] = [];
+                            round1.contribution.map((point) => {
+                                contribution.push(Group.from(point.x, point.y));
+                            });
+
+                            const level2Index =
+                                this._round1.contributionStorage.calculateLevel2Index(
+                                    Field(round1.memberId),
+                                );
+                            this._round1.contributionStorage.updateLeaf(
+                                { level1Index, level2Index },
+                                this._round1.contributionStorage.calculateLeaf(
+                                    new Round1Contribution({
+                                        C: Libs.Committee.CArray.from(
+                                            contribution,
+                                        ),
+                                    }),
+                                ),
+                            );
+                            this._round1.publicKeyStorage.updateLeaf(
+                                {
+                                    level1Index,
+                                    level2Index,
+                                },
+                                this._round1.publicKeyStorage.calculateLeaf(
+                                    Group.from(
+                                        round1.contribution[0].x,
+                                        round1.contribution[0].y,
+                                    ),
+                                ),
+                            );
+                        }
+
+                        if (key.status == KeyStatusEnum.ACTIVE) {
+                            const round2s = key.round2s.sort(
+                                (a, b) => a.memberId - b.memberId,
+                            );
+                            const contributions: Libs.Committee.Round2Contribution[] =
+                                [];
+                            for (let k = 0; k < round2s.length; k++) {
+                                const round2 = round2s[k];
+                                const c: Bit255[] = [];
+                                round2.contribution.c.map((value) => {
+                                    c.push(Bit255.fromBigInt(BigInt(value)));
+                                });
+                                const u: Group[] = [];
+                                round2.contribution.u.map((point) => {
+                                    u.push(Group.from(point.x, point.y));
+                                });
+                                contributions.push(
+                                    new Libs.Committee.Round2Contribution({
+                                        c: Libs.Committee.cArray.from(c),
+                                        U: Libs.Committee.UArray.from(u),
+                                    }),
+                                );
+                            }
+
+                            for (let k = 0; k < round2s.length; k++) {
+                                const round2 = round2s[k];
+                                const level2Index =
+                                    this._round2.contributionStorage.calculateLevel2Index(
+                                        Field(round2.memberId),
+                                    );
+                                this._round2.contributionStorage.updateLeaf(
+                                    { level1Index, level2Index },
+                                    this._round2.contributionStorage.calculateLeaf(
+                                        contributions[k],
+                                    ),
+                                );
+                                this._round2.encryptionStorage.updateLeaf(
+                                    { level1Index, level2Index },
+                                    this._round2.encryptionStorage.calculateLeaf(
+                                        {
+                                            memberId: Field(round2.memberId),
+                                            contributions: contributions,
+                                        },
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         } catch (err) {}
     }
-
-    private async updateMerkleTreesForDkg() {}
-
-    private async updateMerkleTreesForRound1() {}
-
-    private async updateMerkleTreesForRound2() {}
 }
