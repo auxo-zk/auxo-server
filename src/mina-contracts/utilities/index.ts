@@ -2,6 +2,7 @@ import mongoose, { ObjectId } from 'mongoose';
 import { AccountUpdate, Cache, Field, Mina, PrivateKey } from 'o1js';
 import { Logger } from '@nestjs/common';
 import * as fs from 'fs';
+import { calculateKeyIndex } from '@auxo-dev/dkg';
 
 export type Profiler = {
     times: Record<string, any>;
@@ -38,8 +39,10 @@ export class Utilities {
         );
     }
 
-    static getKeyObjectId(committeeId: number, keyId: number): string {
-        return committeeId + '_' + keyId;
+    static getKeyObjectId(committeeId: number, keyId: number): number {
+        return Number(
+            calculateKeyIndex(Field(committeeId), Field(keyId)).toBigInt(),
+        );
     }
 
     static async compile(

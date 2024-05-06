@@ -14,7 +14,7 @@ export class Round2 {
 
 @Schema({ versionKey: false, _id: false })
 export class Key {
-    @Prop({ type: String, _id: true, index: true })
+    @Prop({ type: Number, _id: true, index: true })
     _id: ObjectId;
 
     @Prop({ require: true })
