@@ -38,13 +38,16 @@ import { Committee } from 'src/schemas/committee.schema';
 import {
     ActionReduceStatusEnum,
     DkgActionEnum,
+    DkgEventEnum,
     DkgZkAppIndex,
+    EventEnum,
     KeyStatusEnum,
     MaxRetries,
     ZkAppEnum,
     zkAppCache,
 } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
+import { Event } from 'src/interfaces/event.interface';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import {
     DkgState,
@@ -54,6 +57,9 @@ import {
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
 import * as _ from 'lodash';
 import { RollupAction } from 'src/schemas/actions/rollup-action.schema';
+import { DkgEvent } from 'src/schemas/actions/dkg-event.schema';
+import { Round1Event } from 'src/schemas/actions/round-1-event.schema';
+import { Round2Event } from 'src/schemas/actions/round-2-event';
 
 @Injectable()
 export class DkgContractsService implements ContractServiceInterface {
@@ -111,10 +117,16 @@ export class DkgContractsService implements ContractServiceInterface {
         private readonly committeeContractService: CommitteeContractService,
         @InjectModel(DkgAction.name)
         private readonly dkgActionModel: Model<DkgAction>,
+        @InjectModel(DkgEvent.name)
+        private readonly dkgEventModel: Model<DkgEvent>,
         @InjectModel(Round1Action.name)
         private readonly round1ActionModel: Model<Round1Action>,
+        @InjectModel(Round1Event.name)
+        private readonly round1EventModel: Model<Round1Event>,
         @InjectModel(Round2Action.name)
         private readonly round2ActionModel: Model<Round2Action>,
+        @InjectModel(Round2Event.name)
+        private readonly round2EventModel: Model<Round2Event>,
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
         @InjectModel(Committee.name)
@@ -265,6 +277,39 @@ export class DkgContractsService implements ContractServiceInterface {
         }
     }
 
+    private async fetchDkgEvents() {
+        const lastEvent = await this.dkgEventModel.findOne(
+            {},
+            {},
+            { sort: { eventId: -1 } },
+        );
+        let events: Event[] = await this.queryService.fetchEvents(
+            process.env.DKG_ADDRESS,
+        );
+        let eventId: number;
+        if (!lastEvent) {
+            eventId = 0;
+        } else {
+            events = events.slice(lastEvent.eventId + 1);
+            eventId = lastEvent.eventId + 1;
+        }
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+            await this.dkgEventModel.findOneAndUpdate(
+                {
+                    eventId: eventId,
+                },
+                {
+                    eventId: eventId,
+                    enum: EventEnum.PROCESSED,
+                    data: event.events[0].data,
+                },
+                { new: true, upsert: true },
+            );
+            eventId += 1;
+        }
+    }
+
     private async fetchRound1Actions() {
         const lastAction = await this.round1ActionModel.findOne(
             {},
@@ -304,6 +349,39 @@ export class DkgContractsService implements ContractServiceInterface {
             );
             previousActionState = currentActionState;
             actionId += 1;
+        }
+    }
+
+    private async fetchRound1Events() {
+        const lastEvent = await this.round1EventModel.findOne(
+            {},
+            {},
+            { sort: { eventId: -1 } },
+        );
+        let events: Event[] = await this.queryService.fetchEvents(
+            process.env.ROUND_1_ADDRESS,
+        );
+        let eventId: number;
+        if (!lastEvent) {
+            eventId = 0;
+        } else {
+            events = events.slice(lastEvent.eventId + 1);
+            eventId = lastEvent.eventId + 1;
+        }
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+            await this.round1EventModel.findOneAndUpdate(
+                {
+                    eventId: eventId,
+                },
+                {
+                    eventId: eventId,
+                    enum: EventEnum.PROCESSED,
+                    data: event.events[0].data,
+                },
+                { new: true, upsert: true },
+            );
+            eventId += 1;
         }
     }
 
@@ -347,6 +425,39 @@ export class DkgContractsService implements ContractServiceInterface {
             );
             previousActionState = currentActionState;
             actionId += 1;
+        }
+    }
+
+    private async fetchRound2Events() {
+        const lastEvent = await this.round2EventModel.findOne(
+            {},
+            {},
+            { sort: { eventId: -1 } },
+        );
+        let events: Event[] = await this.queryService.fetchEvents(
+            process.env.ROUND_2_ADDRESS,
+        );
+        let eventId: number;
+        if (!lastEvent) {
+            eventId = 0;
+        } else {
+            events = events.slice(lastEvent.eventId + 1);
+            eventId = lastEvent.eventId + 1;
+        }
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+            await this.round2EventModel.findOneAndUpdate(
+                {
+                    eventId: eventId,
+                },
+                {
+                    eventId: eventId,
+                    enum: EventEnum.PROCESSED,
+                    data: event.events[0].data,
+                },
+                { new: true, upsert: true },
+            );
+            eventId += 1;
         }
     }
 

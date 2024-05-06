@@ -10,6 +10,10 @@ export enum DkgEventEnum {
     __LENGTH,
 }
 
+export enum EventEnum {
+    PROCESSED,
+}
+
 export enum FundingEventEnum {
     ACTIONS_REDUCED,
     REQUEST_SENT,

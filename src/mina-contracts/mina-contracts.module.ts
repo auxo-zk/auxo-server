@@ -87,6 +87,19 @@ import {
     FundingTask,
     FundingTaskSchema,
 } from 'src/schemas/funding-task.schema';
+import { DkgEvent, DkgEventSchema } from 'src/schemas/actions/dkg-event.schema';
+import {
+    Round1Event,
+    Round1EventSchema,
+} from 'src/schemas/actions/round-1-event.schema';
+import {
+    Round2Event,
+    Round2EventSchema,
+} from 'src/schemas/actions/round-2-event';
+import {
+    ResponseEvent,
+    ResponseEventSchema,
+} from 'src/schemas/actions/response-event.schema';
 
 @Module({
     imports: [
@@ -128,6 +141,22 @@ import {
             {
                 name: FundingTask.name,
                 schema: FundingTaskSchema,
+            },
+            {
+                name: DkgEvent.name,
+                schema: DkgEventSchema,
+            },
+            {
+                name: Round1Event.name,
+                schema: Round1EventSchema,
+            },
+            {
+                name: Round2Event.name,
+                schema: Round2EventSchema,
+            },
+            {
+                name: ResponseEvent.name,
+                schema: ResponseEventSchema,
             },
         ]),
         HttpModule,

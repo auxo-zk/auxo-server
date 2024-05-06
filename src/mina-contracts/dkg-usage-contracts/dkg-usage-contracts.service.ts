@@ -24,6 +24,7 @@ import {
 import {
     ActionReduceStatusEnum,
     DkgZkAppIndex,
+    EventEnum,
     MaxRetries,
     RequestActionEnum,
     RequestEventEnum,
@@ -46,6 +47,7 @@ import { DkgContractsService } from '../dkg-contracts/dkg-contracts.service';
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
 import * as _ from 'lodash';
 import { RollupAction } from 'src/schemas/actions/rollup-action.schema';
+import { ResponseEvent } from 'src/schemas/actions/response-event.schema';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
@@ -101,6 +103,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(ResponseAction.name)
         private readonly responseActionModel: Model<ResponseAction>,
+        @InjectModel(ResponseEvent.name)
+        private readonly responseEventModel: Model<ResponseEvent>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
         @InjectModel(RollupAction.name)
@@ -280,6 +284,39 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             );
             previousActionState = currentActionState;
             actionId += 1;
+        }
+    }
+
+    private async fetchResponseEvents() {
+        const lastEvent = await this.responseEventModel.findOne(
+            {},
+            {},
+            { sort: { eventId: -1 } },
+        );
+        let events: Event[] = await this.queryService.fetchEvents(
+            process.env.RESPONSE_ADDRESS,
+        );
+        let eventId: number;
+        if (!lastEvent) {
+            eventId = 0;
+        } else {
+            events = events.slice(lastEvent.eventId + 1);
+            eventId = lastEvent.eventId + 1;
+        }
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+            await this.responseEventModel.findOneAndUpdate(
+                {
+                    eventId: eventId,
+                },
+                {
+                    eventId: eventId,
+                    enum: EventEnum.PROCESSED,
+                    data: event.events[0].data,
+                },
+                { new: true, upsert: true },
+            );
+            eventId += 1;
         }
     }
 
