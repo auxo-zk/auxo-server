@@ -8,7 +8,7 @@ import { CampaignContractService } from '../mina-contracts/campaign-contract/cam
 import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
-import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 
 @Processor('boi-contract-services')
 export class BoiContractServicesConsumer {
@@ -80,15 +80,6 @@ export class BoiContractServicesConsumer {
                 this.fundingContractService.update(),
                 this.treasuryManagerContractService.update(),
             ]).then(async () => {
-                const runs = [
-                    await this.campaignContractService.rollup(),
-                    await this.participationContractService.rollup(),
-                    await this.projectContractService.rollup(),
-                    await this.fundingContractService.reduce(),
-                    await this.treasuryManagerContractService.rollup(),
-                ];
-                if (!runs.includes(true)) {
-                }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
                 return {};

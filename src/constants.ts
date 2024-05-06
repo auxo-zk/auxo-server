@@ -128,19 +128,3 @@ export enum DkgZkAppIndex {
 }
 
 export const MaxRetries = 5;
-
-export const BerkeleyNetwork = Mina.Network({
-    mina: process.env.BERKELEY_MINA,
-    archive: process.env.BERKELEY_ARCHIVE,
-});
-
-export const Lightnet = Mina.Network({
-    mina: process.env.LIGHTNET_MINA,
-    archive: process.env.LIGHTNET_ARCHIVE,
-    lightnetAccountManager: process.env.LIGHTNET_ACCOUNT_MANAGER,
-});
-
-export const MinaScanNetwork = Mina.Network({
-    mina: process.env.MINA_SCAN_MINA,
-    archive: process.env.MINA_SCAN_ARCHIVE,
-});

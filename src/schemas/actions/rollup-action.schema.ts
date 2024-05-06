@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
-import { Round1 } from '../round-1.schema';
 import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 

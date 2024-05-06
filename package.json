@@ -26,7 +26,7 @@
     "dependencies": {
         "@auxo-dev/auxo-libs": "0.5.7",
         "@auxo-dev/dkg": "0.4.3",
-        "@auxo-dev/platform": "0.2.5",
+        "@auxo-dev/platform": "0.2.6",
         "@aws-sdk/client-s3": "^3.485.0",
         "@nestjs/axios": "^3.0.1",
         "@nestjs/bull": "^10.0.1",
@@ -40,7 +40,6 @@
         "@nestjs/schedule": "^4.0.0",
         "@types/bcrypt": "^5.0.2",
         "@types/crypto-js": "^4.2.1",
-        "@types/lodash": "^4.14.202",
         "@types/multer": "^1.4.10",
         "aws-sdk": "^2.1531.0",
         "axios": "^1.6.1",

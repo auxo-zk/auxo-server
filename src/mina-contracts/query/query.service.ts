@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
     Field,
     Mina,
+    Provable,
     PublicKey,
     UInt32,
     UInt64,
@@ -11,11 +12,12 @@ import {
 import { Event } from '../../interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { MaxRetries } from 'src/constants';
+import { Network } from '../network/network';
 
 @Injectable()
 export class QueryService {
     private readonly logger = new Logger(QueryService.name);
-    constructor() {}
+    constructor(private readonly network: Network) {}
 
     async fetchEvents(
         publicKey: string,
@@ -101,11 +103,12 @@ export class QueryService {
         for (let count = 0; count < MaxRetries; count++) {
             try {
                 const result = await fetchAccount({
-                    publicKey: publicKey,
+                    publicKey: PublicKey.fromBase58(publicKey),
                 });
                 const account = result.account;
                 return account.zkapp.appState;
             } catch (err) {
+                console.log(err);
                 this.logger.error(err);
             }
         }

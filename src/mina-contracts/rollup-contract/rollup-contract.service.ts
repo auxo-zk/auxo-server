@@ -13,6 +13,7 @@ import { RollupState } from 'src/interfaces/zkapp-state.interface';
 import { Field, Reducer } from 'o1js';
 import { Action } from 'src/interfaces/action.interface';
 import { MaxRetries } from 'src/constants';
+import { Network } from '../network/network';
 
 @Injectable()
 export class RollupContractService implements ContractServiceInterface {
@@ -70,8 +71,8 @@ export class RollupContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -96,7 +97,7 @@ export class RollupContractService implements ContractServiceInterface {
             { sort: { actionId: -1 } },
         );
         let actions: Action[] = await this.queryService.fetchActions(
-            process.env.PROJECT_ADDRESS,
+            process.env.ROLLUP_ADDRESS,
         );
         let previousActionState: Field;
         let actionId: number;

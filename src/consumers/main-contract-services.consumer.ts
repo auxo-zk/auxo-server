@@ -8,7 +8,7 @@ import { CampaignContractService } from '../mina-contracts/campaign-contract/cam
 import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
-import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 
 @Processor('main-contract-services')
 export class MainContractServicesConsumer {

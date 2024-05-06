@@ -2,7 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Storage, ZkApp } from '@auxo-dev/platform';
 import { Utilities } from 'src/mina-contracts/utilities';
-import { RawProject } from '../raw-project.schema';
 import { Field, PublicKey } from 'o1js';
 import { ProjectActionEnum } from 'src/constants';
 

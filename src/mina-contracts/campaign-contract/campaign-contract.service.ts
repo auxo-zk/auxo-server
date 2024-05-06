@@ -117,8 +117,8 @@ export class CampaignContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 

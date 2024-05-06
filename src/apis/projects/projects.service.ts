@@ -142,7 +142,7 @@ export class ProjectsService {
                 projectId: projectId,
             });
             if (project) {
-                if (project.payeeAccount == jwtPayload.sub) {
+                if (project.treasuryAddress == jwtPayload.sub) {
                     const result = await this.ipfs.uploadJson(
                         createParticipationDto,
                     );

@@ -8,7 +8,7 @@ import { CampaignContractService } from '../mina-contracts/campaign-contract/cam
 import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
-import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 
 @Processor('dkg-contract-services')
 export class DkgContractServicesConsumer {
@@ -78,40 +78,6 @@ export class DkgContractServicesConsumer {
                 this.dkgContractsService.update(),
                 this.dkgUsageContractsService.update(),
             ]).then(async () => {
-                const runs = [
-                    await this.committeeContractService.rollup(),
-                    await this.dkgContractsService.rollupDkg(),
-                    await this.dkgContractsService.reduceRound1(),
-                    await this.dkgContractsService.reduceRound2(),
-                    await this.dkgUsageContractsService.reduceDkgResponse(),
-                    await this.dkgUsageContractsService.rollupDkgRequest(),
-                ];
-                if (!runs.includes(true)) {
-                    const keysForRound1Finalization =
-                        await this.dkgContractsService.getKeysReadyForRound1Finalization();
-                    const keysForRound2Finalization =
-                        await this.dkgContractsService.getKeysReadyForRound2Finalization();
-                    const requestsForResponseCompletion =
-                        await this.dkgUsageContractsService.getDkgRequestsReadyForResponseCompletion();
-
-                    keysForRound1Finalization.length > 0
-                        ? await this.dkgContractsService.finalizeRound1(
-                              keysForRound1Finalization[0].committeeId,
-                              keysForRound1Finalization[0].keyId,
-                          )
-                        : false;
-                    keysForRound2Finalization.length > 0
-                        ? await this.dkgContractsService.finalizeRound2(
-                              keysForRound2Finalization[0].committeeId,
-                              keysForRound2Finalization[0].keyId,
-                          )
-                        : false;
-                    requestsForResponseCompletion.length > 0
-                        ? await this.dkgUsageContractsService.completeResponse(
-                              requestsForResponseCompletion[0].requestId,
-                          )
-                        : false;
-                }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
                 return {};
@@ -129,39 +95,6 @@ export class DkgContractServicesConsumer {
                 this.dkgContractsService.update(),
                 this.dkgUsageContractsService.update(),
             ]).then(async () => {
-                const keysForRound1Finalization =
-                    await this.dkgContractsService.getKeysReadyForRound1Finalization();
-                const keysForRound2Finalization =
-                    await this.dkgContractsService.getKeysReadyForRound2Finalization();
-                const requestsForResponseCompletion =
-                    await this.dkgUsageContractsService.getDkgRequestsReadyForResponseCompletion();
-                const runs = [
-                    keysForRound1Finalization.length > 0
-                        ? await this.dkgContractsService.finalizeRound1(
-                              keysForRound1Finalization[0].committeeId,
-                              keysForRound1Finalization[0].keyId,
-                          )
-                        : false,
-                    keysForRound2Finalization.length > 0
-                        ? await this.dkgContractsService.finalizeRound2(
-                              keysForRound2Finalization[0].committeeId,
-                              keysForRound2Finalization[0].keyId,
-                          )
-                        : false,
-                    requestsForResponseCompletion.length > 0
-                        ? await this.dkgUsageContractsService.completeResponse(
-                              requestsForResponseCompletion[0].requestId,
-                          )
-                        : false,
-                ];
-                if (!runs.includes(true)) {
-                    await this.committeeContractService.rollup();
-                    await this.dkgContractsService.rollupDkg();
-                    await this.dkgContractsService.reduceRound1();
-                    await this.dkgContractsService.reduceRound2();
-                    await this.dkgUsageContractsService.reduceDkgResponse();
-                    await this.dkgUsageContractsService.rollupDkgRequest();
-                }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
                 return {};

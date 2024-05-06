@@ -3,7 +3,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field, Provable } from 'o1js';
 import { Utilities } from 'src/mina-contracts/utilities';
-import { Treasury } from '../treasury.schema';
 
 export class TreasuryManagerActionData {
     actionType: Storage.TreasuryManagerStorage.TreasuryManagerActionEnum;
