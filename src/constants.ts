@@ -12,6 +12,7 @@ export enum DkgEventEnum {
 
 export enum EventEnum {
     PROCESSED,
+    ROLLUPED,
 }
 
 export enum FundingEventEnum {

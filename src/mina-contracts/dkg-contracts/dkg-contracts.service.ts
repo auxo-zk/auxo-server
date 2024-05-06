@@ -446,17 +446,32 @@ export class DkgContractsService implements ContractServiceInterface {
         }
         for (let i = 0; i < events.length; i++) {
             const event = events[i];
-            await this.round2EventModel.findOneAndUpdate(
-                {
-                    eventId: eventId,
-                },
-                {
-                    eventId: eventId,
-                    enum: EventEnum.PROCESSED,
-                    data: event.events[0].data,
-                },
-                { new: true, upsert: true },
-            );
+            if (Number(event.events[0].data[0]) == EventEnum.PROCESSED) {
+                await this.round2EventModel.findOneAndUpdate(
+                    {
+                        eventId: eventId,
+                    },
+                    {
+                        eventId: eventId,
+                        enum: EventEnum.PROCESSED,
+                        data: event.events[0].data,
+                    },
+                    { new: true, upsert: true },
+                );
+            } else {
+                await this.round2EventModel.findOneAndUpdate(
+                    {
+                        eventId: eventId,
+                    },
+                    {
+                        eventId: eventId,
+                        enum: EventEnum.ROLLUPED,
+                        data: event.events[0].data,
+                    },
+                    { new: true, upsert: true },
+                );
+            }
+
             eventId += 1;
         }
     }

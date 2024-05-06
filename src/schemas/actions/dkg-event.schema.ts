@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field, PublicKey } from 'o1js';
-import { Constants, ZkApp } from '@auxo-dev/dkg';
+import { Constants, ProcessedActions, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
-import { DkgActionEnum } from 'src/constants';
+import { DkgActionEnum, EventEnum } from 'src/constants';
 
 @Schema({ versionKey: false })
 export class DkgEvent {
@@ -15,6 +15,15 @@ export class DkgEvent {
 
     @Prop({})
     data: string[];
+
+    getData(): ProcessedActions {
+        if (this.enum == EventEnum.PROCESSED) {
+            return ProcessedActions.fromFields(
+                Utilities.stringArrayToFields(this.data),
+            );
+        }
+        return null;
+    }
 }
 
 export type DkgEventDocument = HydratedDocument<DkgEvent>;
