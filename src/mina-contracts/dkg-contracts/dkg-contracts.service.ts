@@ -182,6 +182,9 @@ export class DkgContractsService implements ContractServiceInterface {
                 await this.updateDkgActions();
                 await this.updateRound1Actions();
                 await this.updateRound2Actions();
+                await this.fetchDkgEvents();
+                await this.fetchRound1Events();
+                await this.fetchRound2Events();
                 count = MaxRetries;
             } catch (err) {
                 console.log(err);

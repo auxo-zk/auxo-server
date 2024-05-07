@@ -47,6 +47,7 @@ export class CommitteesService {
                                 {
                                     $project: {
                                         keyId: 1,
+                                        keyIndex: 1,
                                         publicKey: 1,
                                         status: 1,
                                     },
@@ -77,6 +78,7 @@ export class CommitteesService {
                                 {
                                     $project: {
                                         keyId: 1,
+                                        keyIndex: 1,
                                         publicKey: 1,
                                         status: 1,
                                     },
@@ -102,6 +104,7 @@ export class CommitteesService {
                                 {
                                     $project: {
                                         keyId: 1,
+                                        keyIndex: 1,
                                         publicKey: 1,
                                         status: 1,
                                     },
@@ -128,6 +131,7 @@ export class CommitteesService {
                             {
                                 $project: {
                                     keyId: 1,
+                                    keyIndex: 1,
                                     publicKey: 1,
                                     status: 1,
                                 },
@@ -151,6 +155,7 @@ export class CommitteesService {
                             {
                                 $project: {
                                     keyId: 1,
+                                    keyIndex: 1,
                                     publicKey: 1,
                                     status: 1,
                                 },

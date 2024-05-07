@@ -13,13 +13,13 @@ export class MainCronTasksService {
     ) {}
 
     // 3 minutes
-    @Interval(180000)
-    async handleUpdateContractMerkleTrees(): Promise<void> {
-        this.logger.log(
-            'Register updateContractMerkleTrees task at ' + process.pid,
-        );
-        this.contractServices.add('updateContractMerkleTrees', {
-            date: Date.now(),
-        });
-    }
+    // @Interval(180000)
+    // async handleUpdateContractMerkleTrees(): Promise<void> {
+    //     this.logger.log(
+    //         'Register updateContractMerkleTrees task at ' + process.pid,
+    //     );
+    //     this.contractServices.add('updateContractMerkleTrees', {
+    //         date: Date.now(),
+    //     });
+    // }
 }
