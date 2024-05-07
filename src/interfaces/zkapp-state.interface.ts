@@ -1,10 +1,12 @@
 import { Field } from 'o1js';
 
 export interface CommitteeState {
+    zkAppRoot: Field;
     nextCommitteeId: Field;
     memberRoot: Field;
     settingRoot: Field;
-    zkAppRoot: Field;
+    feeRoot: Field;
+    feeReceiverRoot: Field;
     actionState: Field;
 }
 

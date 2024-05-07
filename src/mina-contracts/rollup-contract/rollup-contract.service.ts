@@ -52,6 +52,7 @@ export class RollupContractService implements ContractServiceInterface {
             try {
                 await this.fetchRollupActions();
                 await this.updateRollupActions();
+                count = MaxRetries;
             } catch (err) {
                 this.logger.error(err);
             }
@@ -71,8 +72,8 @@ export class RollupContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
+            await this.fetch();
+            await this.updateMerkleTrees();
         } catch (err) {}
     }
 

@@ -39,7 +39,7 @@ export class Utilities {
         );
     }
 
-    static getKeyObjectId(committeeId: number, keyId: number): number {
+    static getKeyIndex(committeeId: number, keyId: number): number {
         return Number(
             calculateKeyIndex(Field(committeeId), Field(keyId)).toBigInt(),
         );

@@ -206,7 +206,7 @@ export class CommitteesService {
 
     async getRequests(committeeId: number): Promise<DkgRequest[]> {
         const keys = await this.keyModel.find({ committeeId: committeeId });
-        const keyIndexes = keys.map((key) => Number(key._id));
+        const keyIndexes = keys.map((key) => Number(key.keyIndex));
         const result = await this.dkgRequestModel.find({
             keyIndex: { $in: keyIndexes },
         });

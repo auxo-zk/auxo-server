@@ -108,11 +108,13 @@ export class CommitteeContractService implements ContractServiceInterface {
             process.env.COMMITTEE_ADDRESS,
         );
         const result: CommitteeState = {
-            nextCommitteeId: Field(state[0]),
-            memberRoot: Field(state[1]),
-            settingRoot: Field(state[2]),
-            zkAppRoot: Field(state[3]),
-            actionState: Field(state[4]),
+            zkAppRoot: Field(state[0]),
+            nextCommitteeId: Field(state[1]),
+            memberRoot: Field(state[2]),
+            settingRoot: Field(state[3]),
+            feeRoot: Field(state[4]),
+            feeReceiverRoot: Field(state[5]),
+            actionState: Field(state[6]),
         };
         this._nextCommitteeId = Number(result.nextCommitteeId.toBigInt());
         this._actionState = result.actionState.toString();
@@ -131,19 +133,19 @@ export class CommitteeContractService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.COMMITTEE_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
             const actionData = getCommitteeActionData(action.actions[0]);
             await this.committeeActionModel.findOneAndUpdate(
                 {
@@ -151,9 +153,8 @@ export class CommitteeContractService implements ContractServiceInterface {
                 },
                 {
                     actionId: actionId,
-                    actionHash: action.hash,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
+                    currentActionState: currentActionState,
+                    previousActionState: previousActionState,
                     actions: action.actions[0],
                     actionData: actionData,
                 },
@@ -165,7 +166,7 @@ export class CommitteeContractService implements ContractServiceInterface {
     }
 
     private async updateCommittees() {
-        this.fetchCommitteeState();
+        await this.fetchCommitteeState();
         const currentAction = await this.committeeActionModel.findOne({
             currentActionState: this._actionState,
         });
@@ -185,14 +186,14 @@ export class CommitteeContractService implements ContractServiceInterface {
                 const ipfsData = await this.ipfs.getData(
                     notActiveAction.actionData.ipfsHash,
                 );
-                await Promise.all([
-                    notActiveAction.save(),
-                    this.committeeModel.findOneAndUpdate(
+
+                this.committeeModel
+                    .findOneAndUpdate(
                         {
-                            committeeId: this._nextCommitteeId,
+                            committeeId: notActiveAction.actionId,
                         },
                         {
-                            committeeId: this._nextCommitteeId,
+                            committeeId: notActiveAction.actionId,
                             threshold: notActiveAction.actionData.threshold,
                             numberOfMembers:
                                 notActiveAction.actionData.addresses.length,
@@ -200,9 +201,10 @@ export class CommitteeContractService implements ContractServiceInterface {
                             ipfsData: ipfsData,
                         },
                         { new: true, upsert: true },
-                    ),
-                ]);
-                this._nextCommitteeId += 1;
+                    )
+                    .then(async () => {
+                        await notActiveAction.save();
+                    });
             }
         }
     }

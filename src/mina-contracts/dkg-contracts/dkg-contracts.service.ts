@@ -182,7 +182,9 @@ export class DkgContractsService implements ContractServiceInterface {
                 await this.updateDkgActions();
                 await this.updateRound1Actions();
                 await this.updateRound2Actions();
+                count = MaxRetries;
             } catch (err) {
+                console.log(err);
                 this.logger.error(err);
             }
         }
@@ -244,29 +246,28 @@ export class DkgContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.DKG_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
             const actionData = getDkgActionData(action.actions[0]);
             await this.dkgActionModel.findOneAndUpdate(
                 {
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                 },
                 {
                     actionId: actionId,
-                    actionHash: action.hash,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
+                    currentActionState: currentActionState,
+                    previousActionState: previousActionState,
                     actions: action.actions[0],
                     actionData: actionData,
                 },
@@ -319,29 +320,28 @@ export class DkgContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.ROUND_1_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
             const actionData = getRound1ActionData(action.actions[0]);
             await this.round1ActionModel.findOneAndUpdate(
                 {
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                 },
                 {
                     actionId: actionId,
-                    actionHash: action.hash,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
+                    currentActionState: currentActionState,
+                    previousActionState: previousActionState,
                     actions: action.actions[0],
                     actionData: actionData,
                 },
@@ -395,29 +395,28 @@ export class DkgContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.ROUND_2_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
             const actionData = getRound2ActionData(action.actions[0]);
             await this.round2ActionModel.findOneAndUpdate(
                 {
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                 },
                 {
                     actionId: actionId,
-                    actionHash: action.hash,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
+                    currentActionState: currentActionState,
+                    previousActionState: previousActionState,
                     actions: action.actions[0],
                     actionData: actionData,
                 },
@@ -500,7 +499,6 @@ export class DkgContractsService implements ContractServiceInterface {
                 const promises = [];
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                promises.push(notActiveAction.save());
                 const committeeId = notActiveAction.actionData.committeeId;
                 if (nextKeyIdMapping[committeeId] == undefined) {
                     const lastKeyByCommitteeId = await this.keyModel.findOne(
@@ -519,15 +517,15 @@ export class DkgContractsService implements ContractServiceInterface {
                 }
                 switch (notActiveAction.actionData.actionEnum) {
                     case DkgActionEnum.GENERATE_KEY: {
-                        const keyObjectId = Utilities.getKeyObjectId(
+                        const keyIndex = Utilities.getKeyIndex(
                             committeeId,
                             nextKeyIdMapping[committeeId],
                         );
                         promises.push(
                             this.keyModel.create({
-                                _id: keyObjectId,
+                                keyIndex: keyIndex,
                                 committeeId: committeeId,
-                                keyId: nextKeyIdMapping,
+                                keyId: nextKeyIdMapping[committeeId],
                                 status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
                             }),
                         );
@@ -535,12 +533,12 @@ export class DkgContractsService implements ContractServiceInterface {
                         break;
                     }
                     case DkgActionEnum.FINALIZE_ROUND_1: {
-                        const keyObjectId = Utilities.getKeyObjectId(
+                        const keyIndex = Utilities.getKeyIndex(
                             committeeId,
                             notActiveAction.actionData.keyId,
                         );
                         const key = await this.keyModel.findOne({
-                            _id: keyObjectId,
+                            keyIndex: keyIndex,
                         });
                         key.set('status', KeyStatusEnum.ROUND_2_CONTRIBUTION);
                         key.set('key', notActiveAction.actionData.key);
@@ -548,24 +546,24 @@ export class DkgContractsService implements ContractServiceInterface {
                         break;
                     }
                     case DkgActionEnum.FINALIZE_ROUND_2: {
-                        const keyObjectId = Utilities.getKeyObjectId(
+                        const keyIndex = Utilities.getKeyIndex(
                             committeeId,
                             notActiveAction.actionData.keyId,
                         );
                         const key = await this.keyModel.findOne({
-                            _id: keyObjectId,
+                            keyIndex: keyIndex,
                         });
                         key.set('status', KeyStatusEnum.ACTIVE);
                         promises.push(key.save());
                         break;
                     }
                     case DkgActionEnum.DEPRECATE_KEY: {
-                        const keyObjectId = Utilities.getKeyObjectId(
+                        const keyIndex = Utilities.getKeyIndex(
                             committeeId,
                             notActiveAction.actionData.keyId,
                         );
                         const key = await this.keyModel.findOne({
-                            _id: keyObjectId,
+                            keyIndex: keyIndex,
                         });
                         key.set('status', KeyStatusEnum.DEPRECATED);
                         promises.push(key.save());
@@ -573,7 +571,9 @@ export class DkgContractsService implements ContractServiceInterface {
                     }
                 }
 
-                await Promise.all(promises);
+                Promise.all(promises).then(async () => {
+                    await notActiveAction.save();
+                });
             }
         }
     }
@@ -598,18 +598,20 @@ export class DkgContractsService implements ContractServiceInterface {
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                const keyObjectId = Utilities.getKeyObjectId(
+                const keyIndex = Utilities.getKeyIndex(
                     notActiveAction.actionData.committeeId,
                     notActiveAction.actionData.keyId,
                 );
                 const key = await this.keyModel.findOne({
-                    _id: keyObjectId,
+                    keyIndex: keyIndex,
                 });
                 key.round1s.push({
                     memberId: notActiveAction.actionData.memberId,
                     contribution: notActiveAction.actionData.contribution,
                 });
-                await Promise.all([notActiveAction.save(), key.save()]);
+                key.save().then(async () => {
+                    await notActiveAction.save();
+                });
             }
         }
     }
@@ -634,18 +636,20 @@ export class DkgContractsService implements ContractServiceInterface {
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                const keyObjectId = Utilities.getKeyObjectId(
+                const keyIndex = Utilities.getKeyIndex(
                     notActiveAction.actionData.committeeId,
                     notActiveAction.actionData.keyId,
                 );
                 const key = await this.keyModel.findOne({
-                    _id: keyObjectId,
+                    keyIndex: keyIndex,
                 });
                 key.round2s.push({
                     memberId: notActiveAction.actionData.memberId,
                     contribution: notActiveAction.actionData.contribution,
                 });
-                await Promise.all([notActiveAction.save(), key.save()]);
+                key.save().then(async () => {
+                    await notActiveAction.save();
+                });
             }
         }
     }

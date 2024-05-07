@@ -49,10 +49,11 @@ export class Round2ActionData {
                 y: point.y.toBigInt().toString(),
             });
         }
+        const unpackedId = ZkApp.Round2.Round2Action.unpackId(action.packedId);
         return new Round2ActionData(
-            Number(action.committeeId.toBigInt()),
-            Number(action.keyId.toBigInt()),
-            Number(action.memberId.toBigInt()),
+            Number(unpackedId.committeeId.toBigInt()),
+            Number(unpackedId.keyId.toBigInt()),
+            Number(unpackedId.memberId.toBigInt()),
             contribution,
         );
     }

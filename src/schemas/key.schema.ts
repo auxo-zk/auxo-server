@@ -25,10 +25,10 @@ export class Round2 {
     contribution: Round2Contribution;
 }
 
-@Schema({ versionKey: false, _id: false })
+@Schema({ versionKey: false })
 export class Key {
-    @Prop({ type: Number, _id: true, index: true })
-    _id: ObjectId;
+    @Prop({ index: true, required: true, unique: true })
+    keyIndex: number;
 
     @Prop({ require: true })
     committeeId: number;

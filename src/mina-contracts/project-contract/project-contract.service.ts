@@ -75,6 +75,7 @@ export class ProjectContractService implements ContractServiceInterface {
             try {
                 await this.fetchProjectActions();
                 await this.updateProjectActions();
+                count = MaxRetries;
             } catch (err) {
                 this.logger.error(err);
             }

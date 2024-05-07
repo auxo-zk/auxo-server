@@ -155,6 +155,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 await this.fetchResponseActions();
                 await this.updateRequestActions();
                 await this.updateResponseActions();
+                count = MaxRetries;
             } catch (err) {
                 this.logger.error(err);
             }
@@ -211,29 +212,28 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.REQUEST_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
             const actionData = getRequestActionData(action.actions[0]);
             await this.requestActionModel.findOneAndUpdate(
                 {
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                 },
                 {
                     actionId: actionId,
-                    actionHash: action.hash,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
+                    currentActionState: currentActionState,
+                    previousActionState: previousActionState,
                     actions: action.actions[0],
                     actionData: actionData,
                 },
@@ -254,28 +254,27 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.RESPONSE_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
             const actionData = getResponseActionData(action.actions[0]);
             await this.responseActionModel.findOneAndUpdate(
                 {
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                 },
                 {
                     actionId: actionId,
-                    actionHash: action.hash,
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
                     actionData: actionData,
@@ -339,7 +338,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const promises = [];
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                promises.push(notActiveAction.save());
                 if (
                     notActiveAction.actionData.requestId ==
                     Number(Field(-1).toBigInt())
@@ -368,7 +366,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     request.set('status', RequestStatusEnum.RESOLVED);
                     promises.push(request.save());
                 }
-                await Promise.all(promises);
+                Promise.all(promises).then(async () => {
+                    await notActiveAction.save();
+                });
             }
         }
 
@@ -419,69 +419,67 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     dimension: notActiveAction.actionData.dimension,
                     rootD: notActiveAction.actionData.responseRootD,
                 });
-                await Promise.all([notActiveAction.save(), request.save()]);
+                request.save().then(async () => {
+                    await notActiveAction.save();
+                });
             }
         }
     }
 
     async updateMerkleTrees() {
         try {
-            //
-        } catch (err) {}
-    }
-
-    private async updateMerkleTreesForRequest() {
-        const requests = await this.dkgRequestModel.find(
-            {},
-            {},
-            { sort: { requestId: 1 } },
-        );
-        for (let i = 0; i < requests.length; i++) {
-            const request = requests[i];
-            const level1Index =
-                this._dkgRequest.keyIndexStorage.calculateLevel1Index(
-                    Field(request.requestId),
-                );
-            this._dkgRequest.keyIndexStorage.updateLeaf(
-                { level1Index },
-                Field(request.keyIndex),
+            const requests = await this.dkgRequestModel.find(
+                {},
+                {},
+                { sort: { requestId: 1 } },
             );
-            this._dkgRequest.taskIdStorage.updateLeaf(
-                { level1Index },
-                Field(request.taskId),
-            );
-            this._dkgRequest.accumulationStorage.updateLeaf(
-                { level1Index },
-                Field(request.accumulationRoot),
-            );
-            this._dkgRequest.expirationStorage.updateLeaf(
-                { level1Index },
-                Field(request.expirationTimestamp),
-            );
-            this._dkgRequest.resultStorage.updateLeaf(
-                { level1Index },
-                Field(request.resultRoot),
-            );
-
-            const responses = request.responses.sort(
-                (a, b) => a.memberId - b.memberId,
-            );
-            for (let j = 0; j < responses.length; j++) {
-                const response = responses[j];
-                const level2Index =
-                    this._dkgResponse.contributionStorage.calculateLevel2Index(
-                        Field(response.memberId),
+            for (let i = 0; i < requests.length; i++) {
+                const request = requests[i];
+                const level1Index =
+                    this._dkgRequest.keyIndexStorage.calculateLevel1Index(
+                        Field(request.requestId),
                     );
-
-                // this._dkgResponse.contributionStorage.updateLeaf(
-                //     { level1Index, level2Index },
-                //     Field(response.rootD),
-                // );
-                this._dkgResponse.responseStorage.updateLeaf(
-                    { level1Index, level2Index },
-                    Field(response.rootD),
+                this._dkgRequest.keyIndexStorage.updateLeaf(
+                    { level1Index },
+                    Field(request.keyIndex),
                 );
+                this._dkgRequest.taskIdStorage.updateLeaf(
+                    { level1Index },
+                    Field(request.taskId),
+                );
+                this._dkgRequest.accumulationStorage.updateLeaf(
+                    { level1Index },
+                    Field(request.accumulationRoot),
+                );
+                this._dkgRequest.expirationStorage.updateLeaf(
+                    { level1Index },
+                    Field(request.expirationTimestamp),
+                );
+                this._dkgRequest.resultStorage.updateLeaf(
+                    { level1Index },
+                    Field(request.resultRoot),
+                );
+
+                const responses = request.responses.sort(
+                    (a, b) => a.memberId - b.memberId,
+                );
+                for (let j = 0; j < responses.length; j++) {
+                    const response = responses[j];
+                    const level2Index =
+                        this._dkgResponse.contributionStorage.calculateLevel2Index(
+                            Field(response.memberId),
+                        );
+
+                    // this._dkgResponse.contributionStorage.updateLeaf(
+                    //     { level1Index, level2Index },
+                    //     Field(response.rootD),
+                    // );
+                    this._dkgResponse.responseStorage.updateLeaf(
+                        { level1Index, level2Index },
+                        Field(response.rootD),
+                    );
+                }
             }
-        }
+        } catch (err) {}
     }
 }

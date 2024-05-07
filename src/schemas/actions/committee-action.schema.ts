@@ -21,7 +21,7 @@ export class CommitteeActionData {
         action: ZkApp.Committee.CommitteeAction,
     ): CommitteeActionData {
         const addresses = [];
-        for (let i = 0; i < action.addresses.length.toBigInt(); i++) {
+        for (let i = 0; i < action.addresses.values.length; i++) {
             addresses.push(
                 PublicKey.from(action.addresses.values[i]).toBase58(),
             );
@@ -37,9 +37,6 @@ export class CommitteeActionData {
 export class CommitteeAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
     actionId: number;
-
-    @Prop({ index: true })
-    actionHash: string;
 
     @Prop({ required: true, unique: true })
     currentActionState: string;
