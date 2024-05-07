@@ -36,6 +36,8 @@ import {
     FundingResult,
     FundingResultSchema,
 } from 'src/schemas/funding-result.schema';
+import { MethodInputsService } from './method-inputs/method-inputs.service';
+import { MethodInputsController } from './method-inputs/method-inputs.controller';
 
 @Module({
     imports: [
@@ -68,6 +70,7 @@ import {
         BuildersController,
         OrganizersController,
         CampaignsController,
+        MethodInputsController,
     ],
     providers: [
         Ipfs,
@@ -79,6 +82,7 @@ import {
         OrganizersService,
         ObjectStorageService,
         CampaignsService,
+        MethodInputsService,
     ],
 })
 export class ApisModule {}
