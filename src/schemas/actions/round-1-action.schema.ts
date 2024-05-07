@@ -5,9 +5,16 @@ import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 
 export class Round1ActionData {
+    @Prop()
     committeeId: number;
+
+    @Prop()
     keyId: number;
+
+    @Prop()
     memberId: number;
+
+    @Prop({ type: [{ x: String, y: String }] })
     contribution: { x: string; y: string }[];
 
     constructor(

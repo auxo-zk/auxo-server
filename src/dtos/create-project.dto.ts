@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsArray, IsString, IsUrl, ValidateNested } from 'class-validator';
 
-export class ProjectMember {
+class ProjectMember {
     @IsString()
     name: string;
 

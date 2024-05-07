@@ -6,12 +6,24 @@ import { Utilities } from 'src/mina-contracts/utilities';
 import { RequestActionEnum } from 'src/constants';
 
 export class RequesterActionData {
+    @Prop()
     taskId: number;
+
+    @Prop()
     timestamp: number;
+
     keyIndex: number;
+
+    @Prop()
     indices: string;
+
+    @Prop({ type: [{ x: String, y: String }] })
     R: { x: string; y: string }[];
+
+    @Prop({ type: [{ x: String, y: String }] })
     M: { x: string; y: string }[];
+
+    @Prop()
     commitments: string[];
 
     constructor(

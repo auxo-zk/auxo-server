@@ -7,7 +7,7 @@ import {
     ValidateNested,
 } from 'class-validator';
 
-export class ProjectMember {
+class ProjectMember {
     @IsString()
     @IsOptional()
     name?: string;

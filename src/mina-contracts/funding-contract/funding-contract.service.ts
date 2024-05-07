@@ -392,19 +392,4 @@ export class FundingContractService implements ContractServiceInterface {
             }
         } catch (err) {}
     }
-
-    // async bruteForceFundingResults() {
-    //     const incompleteFundingResults = await this.fundingResultModel.find({
-    //         result: undefined,
-    //     });
-    //     for (let i = 0; i < incompleteFundingResults.length; i++) {
-    //         const incompleteFundingResult = incompleteFundingResults[i];
-    //         const result: string[] = [];
-    //         for (let j = 0; j < incompleteFundingResult.sumM.length; j++) {
-    //             result.push('0');
-    //         }
-    //         incompleteFundingResult.set('result', result);
-    //         await incompleteFundingResult.save();
-    //     }
-    // }
 }

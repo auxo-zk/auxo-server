@@ -3,13 +3,26 @@ import { HydratedDocument, ObjectId } from 'mongoose';
 import { KeyStatusEnum } from 'src/constants';
 
 export class Round1 {
+    @Prop()
     memberId: number;
+
+    @Prop({ type: [{ x: String, y: String }] })
     contribution: { x: string; y: string }[];
 }
 
+export class Round2Contribution {
+    @Prop({ type: [String], default: [] })
+    c: string[];
+
+    @Prop({ type: [{ x: String, y: String }], default: [] })
+    u: { x: string; y: string }[];
+}
 export class Round2 {
+    @Prop()
     memberId: number;
-    contribution: { c: string[]; u: { x: string; y: string }[] };
+
+    @Prop({ type: Round2Contribution })
+    contribution: Round2Contribution;
 }
 
 @Schema({ versionKey: false, _id: false })

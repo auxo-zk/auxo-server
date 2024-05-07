@@ -6,7 +6,7 @@ import { Field, PublicKey } from 'o1js';
 import { ProjectActionEnum } from 'src/constants';
 
 export class ProjectActionData {
-    actionType: Storage.ProjectStorage.ProjectActionEnum;
+    actionType: ProjectActionEnum;
     projectId: number;
     members: string[];
     ipfsHash: string;

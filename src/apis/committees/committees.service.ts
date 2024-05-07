@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { MemberRoleEnum } from 'src/constants';
+import { CommitteeMemberRoleEnum } from 'src/constants';
 import { CreateCommitteeDto } from 'src/dtos/create-committee.dto';
 import { GetCommitteesDto } from 'src/dtos/get-committees.dto';
 import { IpfsResponse } from 'src/entities/ipfs-response.entity';
@@ -34,7 +34,7 @@ export class CommitteesService {
             getCommitteesDto.member != undefined &&
             getCommitteesDto.role != undefined
         ) {
-            if (getCommitteesDto.role == MemberRoleEnum.OWNER) {
+            if (getCommitteesDto.role == CommitteeMemberRoleEnum.OWNER) {
                 committees = await this.committeeModel.aggregate([
                     { $match: { 'ipfsData.creator': getCommitteesDto.member } },
                     {
@@ -54,19 +54,10 @@ export class CommitteesService {
                             ],
                         },
                     },
-                    {
-                        $lookup: {
-                            from: 'dkgrequests',
-                            as: 'requests',
-                            localField: 'committeeId',
-                            foreignField: 'committeeId',
-                            pipeline: [
-                                { $project: { requestId: 1, requester: 1 } },
-                            ],
-                        },
-                    },
                 ]);
-            } else if (getCommitteesDto.role == MemberRoleEnum.MEMBER) {
+            } else if (
+                getCommitteesDto.role == CommitteeMemberRoleEnum.MEMBER
+            ) {
                 committees = await this.committeeModel.aggregate([
                     {
                         $match: {
@@ -93,17 +84,6 @@ export class CommitteesService {
                             ],
                         },
                     },
-                    {
-                        $lookup: {
-                            from: 'dkgrequests',
-                            as: 'requests',
-                            localField: 'committeeId',
-                            foreignField: 'committeeId',
-                            pipeline: [
-                                { $project: { requestId: 1, requester: 1 } },
-                            ],
-                        },
-                    },
                 ]);
             } else {
                 committees = await this.committeeModel.aggregate([
@@ -126,17 +106,6 @@ export class CommitteesService {
                                         status: 1,
                                     },
                                 },
-                            ],
-                        },
-                    },
-                    {
-                        $lookup: {
-                            from: 'dkgrequests',
-                            as: 'requests',
-                            localField: 'committeeId',
-                            foreignField: 'committeeId',
-                            pipeline: [
-                                { $project: { requestId: 1, requester: 1 } },
                             ],
                         },
                     },
@@ -166,17 +135,6 @@ export class CommitteesService {
                         ],
                     },
                 },
-                {
-                    $lookup: {
-                        from: 'dkgrequests',
-                        as: 'requests',
-                        localField: 'committeeId',
-                        foreignField: 'committeeId',
-                        pipeline: [
-                            { $project: { requestId: 1, requester: 1 } },
-                        ],
-                    },
-                },
             ]);
         } else {
             committees = await this.committeeModel.aggregate([
@@ -200,17 +158,6 @@ export class CommitteesService {
                         ],
                     },
                 },
-                {
-                    $lookup: {
-                        from: 'dkgrequests',
-                        as: 'requests',
-                        localField: 'committeeId',
-                        foreignField: 'committeeId',
-                        pipeline: [
-                            { $project: { requestId: 1, requester: 1 } },
-                        ],
-                    },
-                },
             ]);
         }
         return committees;
@@ -227,7 +174,14 @@ export class CommitteesService {
     }
 
     async getCommittee(committeeId: number): Promise<Committee> {
-        return this.committeeModel.findOne({ committeeId: committeeId });
+        const result = await this.committeeModel.findOne({
+            committeeId: committeeId,
+        });
+        if (result) {
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
     }
 
     async getKeys(committeeId: number): Promise<Key[]> {
@@ -239,10 +193,15 @@ export class CommitteesService {
     }
 
     async getKey(committeeId: number, keyId: number): Promise<Key> {
-        return this.keyModel.findOne({
+        const result = this.keyModel.findOne({
             committeeId: committeeId,
             keyId: keyId,
         });
+        if (result) {
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
     }
 
     async getRequests(committeeId: number): Promise<DkgRequest[]> {

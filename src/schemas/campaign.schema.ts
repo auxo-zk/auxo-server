@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Timeline } from './actions/campaign-action.schema';
 import { Storage } from '@auxo-dev/platform';
+import { CampaignStateEnum } from 'src/constants';
 
 @Schema({ versionKey: false })
 export class Campaign {
@@ -34,9 +35,9 @@ export class Campaign {
 
     @Prop({
         index: true,
-        default: Storage.TreasuryManagerStorage.CampaignStateEnum.NOT_ENDED,
+        default: CampaignStateEnum.NOT_ENDED,
     })
-    state?: Storage.TreasuryManagerStorage.CampaignStateEnum;
+    state?: CampaignStateEnum;
 }
 
 export type CampaignDocument = HydratedDocument<Campaign>;

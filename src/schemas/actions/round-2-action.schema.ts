@@ -4,18 +4,26 @@ import { Field, Provable } from 'o1js';
 import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 import { CustomScalar } from '@auxo-dev/auxo-libs';
+import { Round2Contribution } from '../key.schema';
 
 export class Round2ActionData {
+    @Prop()
     committeeId: number;
+
+    @Prop()
     keyId: number;
+
+    @Prop()
     memberId: number;
-    contribution: { c: string[]; u: { x: string; y: string }[] };
+
+    @Prop({ type: Round2Contribution })
+    contribution: Round2Contribution;
 
     constructor(
         committeeId: number,
         keyId: number,
         memberId: number,
-        contribution: { c: string[]; u: { x: string; y: string }[] },
+        contribution: Round2Contribution,
     ) {
         this.committeeId = committeeId;
         this.keyId = keyId;
@@ -24,7 +32,7 @@ export class Round2ActionData {
     }
 
     static fromAction(action: ZkApp.Round2.Round2Action): Round2ActionData {
-        const contribution: { c: string[]; u: { x: string; y: string }[] } = {
+        const contribution: Round2Contribution = {
             c: [],
             u: [],
         };

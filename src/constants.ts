@@ -61,6 +61,12 @@ export enum CampaignActionEnum {
     UPDATE_CAMPAIGN,
 }
 
+export enum CampaignStateEnum {
+    NOT_ENDED,
+    COMPLETED,
+    ABORTED,
+}
+
 export enum FundingStateEnum {
     FUNDED,
     REFUNDED,
@@ -92,7 +98,7 @@ export enum AuthRoleEnum {
     INVESTOR,
 }
 
-export enum MemberRoleEnum {
+export enum CommitteeMemberRoleEnum {
     OWNER,
     MEMBER,
     NONE,

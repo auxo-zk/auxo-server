@@ -23,7 +23,9 @@ export class AuthenticateDto {
     address: string;
 
     @IsEnum(AuthRoleEnum)
-    @ApiProperty({ description: 'BUILDER | ORGANIZER | INVESTOR' })
+    @ApiProperty({
+        enum: AuthRoleEnum,
+    })
     role: number;
 
     signature: { r: string; s: string };
