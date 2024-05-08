@@ -4,11 +4,11 @@ import { CommitteeContractService } from '../mina-contracts/committee-contract/c
 import { Logger } from '@nestjs/common';
 import { DkgContractsService } from '../mina-contracts/dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from '../mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
-import { CampaignContractService } from '../mina-contracts/campaign-contract/campaign-contract.service';
-import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
-import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
-import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
-import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
+// import { CampaignContractService } from '../mina-contracts/campaign-contract/campaign-contract.service';
+// import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
+// import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
+// import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
+// import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
 
 @Processor('main-contract-services')
