@@ -12,8 +12,20 @@ export class MainCronTasksService {
         private readonly contractServices: Queue,
     ) {}
 
-    // 3 minutes
-    // @Interval(180000)
+    // 6 minutes
+    @Interval(360000)
+    async handleUpdateContracts() {
+        this.logger.log('Register updateContracts task at ' + process.pid);
+        this.contractServices.add('updateContracts', {
+            date: Date.now(),
+        });
+        this.contractServices.add('updateContractMerkleTrees', {
+            date: Date.now(),
+        });
+    }
+
+    // 6 minutes
+    // @Interval(360000)
     // async handleUpdateContractMerkleTrees(): Promise<void> {
     //     this.logger.log(
     //         'Register updateContractMerkleTrees task at ' + process.pid,

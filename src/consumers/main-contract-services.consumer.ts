@@ -9,6 +9,7 @@ import { ParticipationContractService } from '../mina-contracts/participation-co
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
 import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
+import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
 
 @Processor('main-contract-services')
 export class MainContractServicesConsumer {
@@ -17,11 +18,12 @@ export class MainContractServicesConsumer {
         private readonly committeeContractService: CommitteeContractService,
         private readonly dkgContractsService: DkgContractsService,
         private readonly dkgUsageContractsService: DkgUsageContractsService,
-        private readonly campaignContractService: CampaignContractService,
-        private readonly participationContractService: ParticipationContractService,
-        private readonly projectContractService: ProjectContractService,
-        private readonly fundingContractService: FundingContractService,
-        private readonly treasuryManagerContractService: TreasuryManagerContractService,
+        private readonly rollupContractService: RollupContractService,
+        // private readonly campaignContractService: CampaignContractService,
+        // private readonly participationContractService: ParticipationContractService,
+        // private readonly projectContractService: ProjectContractService,
+        // private readonly fundingContractService: FundingContractService,
+        // private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
     @Process('updateContractMerkleTrees')
@@ -31,18 +33,17 @@ export class MainContractServicesConsumer {
                 this.committeeContractService.updateMerkleTrees(),
                 this.dkgContractsService.updateMerkleTrees(),
                 this.dkgUsageContractsService.updateMerkleTrees(),
-                this.campaignContractService.updateMerkleTrees(),
-                this.participationContractService.updateMerkleTrees(),
-                this.projectContractService.updateMerkleTrees(),
-                this.fundingContractService.updateMerkleTrees(),
-                this.treasuryManagerContractService.updateMerkleTrees(),
+                this.dkgUsageContractsService.updateMerkleTrees(),
             ]).then(async () => {
                 this.logger.log('All contract trees updated successfully');
                 await job.progress();
                 return {};
             });
         } catch (err) {
-            this.logger.error('Error during updating contract trees: ', err);
+            this.logger.error(
+                'Error during updating contract merkle trees: ',
+                err,
+            );
             return undefined;
         }
     }
@@ -50,18 +51,16 @@ export class MainContractServicesConsumer {
     @Process('updateContracts')
     async updateContracts(job: Job<unknown>) {
         try {
-            Promise.all([
-                this.committeeContractService.update(),
-                this.dkgContractsService.update(),
-                this.dkgUsageContractsService.update(),
-                this.campaignContractService.update(),
-                this.participationContractService.update(),
-                this.projectContractService.update(),
-                this.fundingContractService.update(),
-            ]).then(async () => {
-                this.logger.log('All contracts updated successfully');
-                await job.progress();
-                return {};
+            this.rollupContractService.update().then(() => {
+                Promise.all([
+                    this.committeeContractService.update(),
+                    this.dkgContractsService.update(),
+                    this.dkgUsageContractsService.update(),
+                ]).then(async () => {
+                    this.logger.log('All contracts updated successfully');
+                    await job.progress();
+                    return {};
+                });
             });
         } catch (err) {
             this.logger.error('Error during updating contracts: ', err);
