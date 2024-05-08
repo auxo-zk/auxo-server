@@ -149,11 +149,9 @@ export class RollupContractService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             for (let i = 0; i < notActiveActions.length; i++) {
-                const promises = [];
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                promises.push(notActiveAction.save());
-                await Promise.all(promises);
+                await notActiveAction.save();
             }
         }
     }

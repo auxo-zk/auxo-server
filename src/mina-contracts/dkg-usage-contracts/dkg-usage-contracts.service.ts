@@ -310,7 +310,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 },
                 {
                     eventId: eventId,
-                    enum: EventEnum.PROCESSED,
+                    enum: 0,
                     data: event.events[0].data,
                 },
                 { new: true, upsert: true },
@@ -470,10 +470,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             Field(response.memberId),
                         );
 
-                    // this._dkgResponse.contributionStorage.updateLeaf(
-                    //     { level1Index, level2Index },
-                    //     Field(response.rootD),
-                    // );
+                    this._dkgResponse.contributionStorage.updateLeaf(
+                        { level1Index, level2Index },
+                        Field(response.rootD),
+                    );
                     this._dkgResponse.responseStorage.updateLeaf(
                         { level1Index, level2Index },
                         Field(response.rootD),

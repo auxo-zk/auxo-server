@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import {
+    fetchAccount,
     Field,
     Group,
     Mina,
@@ -8,6 +9,7 @@ import {
     Provable,
     PublicKey,
     Reducer,
+    UInt8,
 } from 'o1js';
 import { Model } from 'mongoose';
 import {
@@ -70,18 +72,21 @@ export class DkgContractsService implements ContractServiceInterface {
         keyStatusStorage: Storage.DKGStorage.KeyStatusStorage;
         keyStorage: Storage.DKGStorage.KeyStorage;
         processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     };
     private _round1: {
         zkAppStorage: Storage.AddressStorage.AddressStorage;
         contributionStorage: Storage.DKGStorage.Round1ContributionStorage;
         publicKeyStorage: Storage.DKGStorage.PublicKeyStorage;
         processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     };
     private _round2: {
         zkAppStorage: Storage.AddressStorage.AddressStorage;
         contributionStorage: Storage.DKGStorage.Round2ContributionStorage;
         encryptionStorage: Storage.DKGStorage.EncryptionStorage;
         processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     };
 
     public get dkg(): {
@@ -99,6 +104,7 @@ export class DkgContractsService implements ContractServiceInterface {
         contributionStorage: Storage.DKGStorage.Round1ContributionStorage;
         publicKeyStorage: Storage.DKGStorage.PublicKeyStorage;
         processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     } {
         return this._round1;
     }
@@ -108,6 +114,7 @@ export class DkgContractsService implements ContractServiceInterface {
         contributionStorage: Storage.DKGStorage.Round2ContributionStorage;
         encryptionStorage: Storage.DKGStorage.EncryptionStorage;
         processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     } {
         return this._round2;
     }
@@ -140,6 +147,7 @@ export class DkgContractsService implements ContractServiceInterface {
             keyStatusStorage: new Storage.DKGStorage.KeyStatusStorage(),
             keyStorage: new Storage.DKGStorage.KeyStorage(),
             processStorage: new Storage.ProcessStorage.ProcessStorage(),
+            processStorageMapping: {},
         };
         this._round1 = {
             zkAppStorage: new Storage.AddressStorage.AddressStorage(),
@@ -147,6 +155,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 new Storage.DKGStorage.Round1ContributionStorage(),
             publicKeyStorage: new Storage.DKGStorage.PublicKeyStorage(),
             processStorage: new Storage.ProcessStorage.ProcessStorage(),
+            processStorageMapping: {},
         };
         this._round2 = {
             zkAppStorage: new Storage.AddressStorage.AddressStorage(),
@@ -154,6 +163,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 new Storage.DKGStorage.Round2ContributionStorage(),
             encryptionStorage: new Storage.DKGStorage.EncryptionStorage(),
             processStorage: new Storage.ProcessStorage.ProcessStorage(),
+            processStorageMapping: {},
         };
     }
 
@@ -161,6 +171,8 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            Provable.log(await this.fetchDkgState());
+            Provable.log(this._dkg.processStorage.root);
         } catch (err) {
             console.log(err);
         }
@@ -187,7 +199,6 @@ export class DkgContractsService implements ContractServiceInterface {
                 await this.fetchRound2Events();
                 count = MaxRetries;
             } catch (err) {
-                console.log(err);
                 this.logger.error(err);
             }
         }
@@ -305,7 +316,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 },
                 {
                     eventId: eventId,
-                    enum: EventEnum.PROCESSED,
+                    enum: 0,
                     data: event.events[0].data,
                 },
                 { new: true, upsert: true },
@@ -345,7 +356,7 @@ export class DkgContractsService implements ContractServiceInterface {
                     actionId: actionId,
                     currentActionState: currentActionState,
                     previousActionState: previousActionState,
-                    actions: action.actions[0],
+                    actions: action.actions[0].slice(1),
                     actionData: actionData,
                 },
                 { new: true, upsert: true },
@@ -379,7 +390,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 },
                 {
                     eventId: eventId,
-                    enum: EventEnum.PROCESSED,
+                    enum: 0,
                     data: event.events[0].data,
                 },
                 { new: true, upsert: true },
@@ -448,15 +459,15 @@ export class DkgContractsService implements ContractServiceInterface {
         }
         for (let i = 0; i < events.length; i++) {
             const event = events[i];
-            if (Number(event.events[0].data[0]) == EventEnum.PROCESSED) {
+            if (Number(event.events[0].data[0]) == 0) {
                 await this.round2EventModel.findOneAndUpdate(
                     {
                         eventId: eventId,
                     },
                     {
                         eventId: eventId,
-                        enum: EventEnum.PROCESSED,
-                        data: event.events[0].data,
+                        enum: 0,
+                        data: event.events[0].data.slice(1),
                     },
                     { new: true, upsert: true },
                 );
@@ -467,8 +478,8 @@ export class DkgContractsService implements ContractServiceInterface {
                     },
                     {
                         eventId: eventId,
-                        enum: EventEnum.ROLLUPED,
-                        data: event.events[0].data,
+                        enum: 1,
+                        data: event.events[0].data.slice(1),
                     },
                     { new: true, upsert: true },
                 );
@@ -794,6 +805,166 @@ export class DkgContractsService implements ContractServiceInterface {
                     }
                 }
             }
+            await this.updateProcessStorageForDkg();
+            await this.updateProcessStorageForRound1();
+            await this.updateProcessStorageForRound2();
         } catch (err) {}
+    }
+
+    private async updateProcessStorageForDkg() {
+        const dkgEvents = await this.dkgEventModel.find(
+            { enum: 0 },
+            {},
+            { sort: { eventId: 1 } },
+        );
+        for (let i = 0; i < dkgEvents.length; i++) {
+            const dkgEvent = dkgEvents[i];
+            const processedActions =
+                Storage.ProcessStorage.ProcessedActions.fromFields(
+                    Utilities.stringArrayToFields(dkgEvent.data),
+                );
+
+            for (let j = 0; j < processedActions.length.toBigInt(); j++) {
+                const processedAction = processedActions.values[j];
+                if (processedAction.toBigInt() != 0n) {
+                    const actionState = processedAction.toString();
+                    if (!this._dkg.processStorageMapping[actionState]) {
+                        this._dkg.processStorageMapping[actionState] = 0;
+                    } else {
+                        this._dkg.processStorageMapping[actionState] += 1;
+                    }
+                }
+            }
+        }
+        const dkgActions = await this.dkgActionModel.find(
+            { active: true },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        for (let i = 0; i < dkgActions.length; i++) {
+            const dkgAction = dkgActions[i];
+            if (
+                this._dkg.processStorageMapping[dkgAction.currentActionState] !=
+                undefined
+            ) {
+                this._dkg.processStorage.updateLeaf(
+                    { level1Index: Field(dkgAction.actionId) },
+                    this._dkg.processStorage.calculateLeaf({
+                        actionState: Field(dkgAction.currentActionState),
+                        processCounter: new UInt8(
+                            this._dkg.processStorageMapping[
+                                dkgAction.currentActionState
+                            ],
+                        ),
+                    }),
+                );
+            }
+        }
+    }
+
+    private async updateProcessStorageForRound1() {
+        const round1Events = await this.round1EventModel.find(
+            { enum: 0 },
+            {},
+            { sort: { eventId: 1 } },
+        );
+        for (let i = 0; i < round1Events.length; i++) {
+            const round1Event = round1Events[i];
+            const processedActions =
+                Storage.ProcessStorage.ProcessedActions.fromFields(
+                    Utilities.stringArrayToFields(round1Event.data),
+                );
+
+            for (let j = 0; j < processedActions.length.toBigInt(); j++) {
+                const processedAction = processedActions.values[j];
+                if (processedAction.toBigInt() != 0n) {
+                    const actionState = processedAction.toString();
+                    if (!this._round1.processStorageMapping[actionState]) {
+                        this._round1.processStorageMapping[actionState] = 0;
+                    } else {
+                        this._round1.processStorageMapping[actionState] += 1;
+                    }
+                }
+            }
+        }
+
+        const round1Actions = await this.round1ActionModel.find(
+            { active: true },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        for (let i = 0; i < round1Actions.length; i++) {
+            const round1Action = round1Actions[i];
+            if (
+                this._round1.processStorageMapping[
+                    round1Action.currentActionState
+                ] != undefined
+            ) {
+                this._round1.processStorage.updateAction(
+                    Field(round1Action.actionId),
+                    {
+                        actionState: Field(round1Action.currentActionState),
+                        processCounter: new UInt8(
+                            this._round1.processStorageMapping[
+                                round1Action.currentActionState
+                            ],
+                        ),
+                    },
+                );
+            }
+        }
+    }
+
+    private async updateProcessStorageForRound2() {
+        const round2Events = await this.round2EventModel.find(
+            { enum: 0 },
+            {},
+            { sort: { eventId: 1 } },
+        );
+        for (let i = 0; i < round2Events.length; i++) {
+            const round2Event = round2Events[i];
+            const processedActions =
+                Storage.ProcessStorage.ProcessedActions.fromFields(
+                    Utilities.stringArrayToFields(round2Event.data),
+                );
+
+            for (let j = 0; j < processedActions.length.toBigInt(); j++) {
+                const processedAction = processedActions.values[j];
+                if (processedAction.toBigInt() != 0n) {
+                    const actionState = processedAction.toString();
+                    if (!this._round2.processStorageMapping[actionState]) {
+                        this._round2.processStorageMapping[actionState] = 0;
+                    } else {
+                        this._round2.processStorageMapping[actionState] += 1;
+                    }
+                }
+            }
+        }
+
+        const round2Actions = await this.round2ActionModel.find(
+            { active: true },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        for (let i = 0; i < round2Actions.length; i++) {
+            const round2Action = round2Actions[i];
+            if (
+                this._round2.processStorageMapping[
+                    round2Action.currentActionState
+                ] != undefined
+            ) {
+                this._round2.processStorage.updateAction(
+                    Field(round2Action.actionId),
+                    {
+                        actionState: Field(round2Action.currentActionState),
+                        processCounter: new UInt8(
+                            this._round2.processStorageMapping[
+                                round2Action.currentActionState
+                            ],
+                        ),
+                    },
+                );
+            }
+        }
     }
 }

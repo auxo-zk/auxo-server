@@ -80,6 +80,57 @@ export class MethodInputsService {
         }
     }
 
+    getRound1ContractFinalize(committeeId: number, keyId: number) {
+        try {
+            const settingWitness =
+                this.committeeContractService.settingStorage.getWitness(
+                    this.committeeContractService.settingStorage.calculateLevel1Index(
+                        Field(committeeId),
+                    ),
+                );
+            const keyStatusWitness =
+                this.dkgContractService.dkg.keyStatusStorage.getWitness(
+                    this.dkgContractService.dkg.keyStatusStorage.calculateLevel1Index(
+                        {
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        },
+                    ),
+                );
+            const committeeRef =
+                this.dkgContractService.round1.zkAppStorage.getZkAppRef(
+                    ZkAppEnum.COMMITTEE,
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                );
+            const dkgRef =
+                this.dkgContractService.round1.zkAppStorage.getZkAppRef(
+                    ZkAppEnum.DKG,
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                );
+            const rollupRef =
+                this.dkgContractService.round1.zkAppStorage.getZkAppRef(
+                    ZkAppEnum.ROLLUP,
+                    PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
+                );
+            const selfRef =
+                this.dkgContractService.round1.zkAppStorage.getZkAppRef(
+                    ZkAppEnum.ROUND1,
+                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                );
+
+            return {
+                settingWitness,
+                keyStatusWitness,
+                committeeRef,
+                dkgRef,
+                rollupRef,
+                selfRef,
+            };
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
     getRound2ContractContribute(committeeId: number, memberId: number) {
         try {
             const memberWitness =
@@ -119,6 +170,67 @@ export class MethodInputsService {
         }
     }
 
+    getRound2ContractFinalize(committeeId: number, keyId: number) {
+        try {
+            const encryptionWitness =
+                this.dkgContractService.round2.encryptionStorage.getLevel1Witness(
+                    this.dkgContractService.round2.encryptionStorage.calculateLevel1Index(
+                        {
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        },
+                    ),
+                );
+            const settingWitness =
+                this.committeeContractService.settingStorage.getWitness(
+                    this.committeeContractService.settingStorage.calculateLevel1Index(
+                        Field(committeeId),
+                    ),
+                );
+            const keyStatusWitness =
+                this.dkgContractService.dkg.keyStatusStorage.getWitness(
+                    this.dkgContractService.dkg.keyStatusStorage.calculateLevel1Index(
+                        {
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        },
+                    ),
+                );
+            const committeeRef =
+                this.dkgContractService.round1.zkAppStorage.getZkAppRef(
+                    ZkAppEnum.COMMITTEE,
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                );
+            const dkgRef =
+                this.dkgContractService.round1.zkAppStorage.getZkAppRef(
+                    ZkAppEnum.DKG,
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                );
+            const rollupRef =
+                this.dkgContractService.round1.zkAppStorage.getZkAppRef(
+                    ZkAppEnum.ROLLUP,
+                    PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
+                );
+            const selfRef =
+                this.dkgContractService.round1.zkAppStorage.getZkAppRef(
+                    ZkAppEnum.ROUND1,
+                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+                );
+
+            return {
+                encryptionWitness,
+                settingWitness,
+                keyStatusWitness,
+                committeeRef,
+                dkgRef,
+                rollupRef,
+                selfRef,
+            };
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
     getResponseContractContribute(
         committeeId: number,
         memberId: number,
@@ -138,6 +250,24 @@ export class MethodInputsService {
                             committeeId: Field(committeeId),
                             keyId: Field(keyId),
                         },
+                    ),
+                );
+            const encryptionWitness =
+                this.dkgContractService.round2.encryptionStorage.getWitness(
+                    this.dkgContractService.round2.encryptionStorage.calculateLevel1Index(
+                        {
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        },
+                    ),
+                    this.dkgContractService.round2.encryptionStorage.calculateLevel2Index(
+                        Field(memberId),
+                    ),
+                );
+            const accumulationWitness =
+                this.dkgUsageContractsService.dkgRequest.accumulationStorage.getWitness(
+                    this.dkgUsageContractsService.dkgRequest.accumulationStorage.calculateLevel1Index(
+                        Field(requestId),
                     ),
                 );
 
@@ -175,6 +305,8 @@ export class MethodInputsService {
             return {
                 memberWitness,
                 publicKeyWitness,
+                encryptionWitness,
+                accumulationWitness,
                 committeeRef,
                 round1Ref,
                 round2Ref,

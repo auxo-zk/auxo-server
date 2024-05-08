@@ -30,6 +30,18 @@ export class MethodInputsController {
         );
     }
 
+    @Get('round1-contract/finalize')
+    @ApiTags('Method Inputs')
+    async getRound1ContractFinalize(
+        @Query('committeeId', new ParseIntPipe()) committeeId: number,
+        @Query('keyId', new ParseIntPipe()) keyId: number,
+    ) {
+        return this.methodInputsService.getRound1ContractFinalize(
+            committeeId,
+            keyId,
+        );
+    }
+
     @Get('round2-contract/contribute')
     @ApiTags('Method Inputs')
     async getRound2ContractContribute(
@@ -39,6 +51,18 @@ export class MethodInputsController {
         return this.methodInputsService.getRound2ContractContribute(
             committeeId,
             memberId,
+        );
+    }
+
+    @Get('round2-contract/finalize')
+    @ApiTags('Method Inputs')
+    async getRound2ContractFinalize(
+        @Query('committeeId', new ParseIntPipe()) committeeId: number,
+        @Query('keyId', new ParseIntPipe()) keyId: number,
+    ) {
+        return this.methodInputsService.getRound2ContractFinalize(
+            committeeId,
+            keyId,
         );
     }
 
