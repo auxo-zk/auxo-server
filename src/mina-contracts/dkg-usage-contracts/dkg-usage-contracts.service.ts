@@ -142,8 +142,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     async update() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -211,7 +211,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.REQUEST_ADDRESS,
         );
-        Provable.log(actions);
         let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
