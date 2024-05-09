@@ -436,6 +436,26 @@ export class StoragesService {
         }
     }
 
+    // getRound2ProcessStorageLevel1(): MerkleLeaf[] {
+    //     const leafCount =
+    //         this.dkgContractService.round2.processStorage.level1.leafCount;
+    //     const result: MerkleLeaf[] = [];
+    //     for (let i = 0; i < leafCount; i++) {
+    //         result.push(
+    //             this.dkgContractService.round1.processStorage
+    //                 .getLevel1Witness(Field(i))
+    //                 .toJSON(),
+    //         );
+    //     }
+    //     return result;
+    // }
+
+    getRound2ProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.round2.processStorage.leafs;
+    }
+
     // getRequesterTreeLevel1(): { [key: string]: MerkleLeaf } {
     //     const indexes = this.dkgUsageContractService.requestIds;
     //     const result: { [key: string]: MerkleLeaf } = {};

@@ -64,7 +64,7 @@ export class StoragesController {
         return this.storagesService.getDkgZkAppStorage();
     }
 
-    @Get('dkg/zkapps/leafs')
+    @Get('dkg/zkapp/leafs')
     @ApiTags('Storage DKG')
     getDkgZkAppStorageLeafs(): {
         [key: string]: any;
@@ -194,7 +194,7 @@ export class StoragesController {
     //     return this.storagesService.getRound1ProcessStorageLevel1();
     // }
 
-    @Get('round1/public-key/leafs')
+    @Get('round1/process/leafs')
     @ApiTags('Storage Round1')
     getRound1ProcessStorageLeafs(): {
         [key: string]: any;
@@ -203,13 +203,13 @@ export class StoragesController {
     }
 
     @Get('round2/zkapp')
-    @ApiTags('Storage Round1')
+    @ApiTags('Storage Round2')
     getRound2ZkAppStorage(): MerkleLeaf[] {
         return this.storagesService.getRound2ZkAppStorage();
     }
 
     @Get('round2/zkapp/leafs')
-    @ApiTags('Storage Round1')
+    @ApiTags('Storage Round2')
     getRound2ZkAppStorageLeafs(): { [key: string]: any } {
         return this.storagesService.getRound2ZkAppStorageLeafs();
     }
@@ -256,6 +256,20 @@ export class StoragesController {
         return this.storagesService.getRound2EncryptionStorageLevel2(
             level1Index,
         );
+    }
+
+    // @Get('round2/process/level1')
+    // @ApiTags('Storage Round2')
+    // getRound2ProcessStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getRound2ProcessStorageLevel1();
+    // }
+
+    @Get('round2/process/leafs')
+    @ApiTags('Storage Round2')
+    getRound2ProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRound2ProcessStorageLeafs();
     }
 
     // @Get('request/requester/level1')
