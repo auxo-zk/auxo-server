@@ -14,7 +14,7 @@ export class StoragesController {
         return this.storagesService.getCommitteeZkAppStorage();
     }
 
-    @Get('dkg/zkapps/leafs')
+    @Get('committee/zkapp/leafs')
     @ApiTags('Storage Committee')
     getCommitteeZkAppStorageLeafs(): {
         [key: string]: any;
@@ -92,151 +92,171 @@ export class StoragesController {
         return this.storagesService.getKeyStatusStorageLevel1();
     }
 
-    // @Get('dkg/key-status/leafs')
+    @Get('dkg/key-status/leafs')
+    @ApiTags('Storage DKG')
+    getKeyStatusStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getKeyStatusStorageLeafs();
+    }
+
+    @Get('dkg/key/level1')
+    @ApiTags('Storage DKG')
+    getKeyStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getKeyStorageLevel1();
+    }
+
+    @Get('dkg/key/leafs')
+    @ApiTags('Storage DKG')
+    getKeyStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getKeyStorageLeafs();
+    }
+
+    // @Get('dkg/process/level1')
     // @ApiTags('Storage DKG')
-    // getKeyStatusTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.storagesService.getKeyStatusTreeLeafs();
+    // getProcessStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getProcessStorageLevel1();
     // }
 
-    // @Get('round1/zkapps')
+    @Get('dkg/process/leafs')
+    @ApiTags('Storage DKG')
+    getProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getProcessStorageLeafs();
+    }
+
+    @Get('round1/zkapp')
+    @ApiTags('Storage Round1')
+    getRound1ZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getRound1ZkAppStorage();
+    }
+
+    @Get('round1/zkapp/leafs')
+    @ApiTags('Storage Round1')
+    getRound1ZkAppStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound1ZkAppStorageLeafs();
+    }
+
+    @Get('round1/contribution/level1')
+    @ApiTags('Storage Round1')
+    getRound1ContributionStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRound1ContributionStorageLevel1();
+    }
+
+    @Get('round1/contribution/leafs')
+    @ApiTags('Storage Round1')
+    getRound1ContributionStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRound1ContributionStorageLeafs();
+    }
+
+    @Get('round1/contribution/level2/:level1Index')
+    @ApiTags('Storage Round1')
+    getRound1ContributionStorageLevel2(
+        @Param('level1Index', ParseIntPipe) level1Index: number,
+    ) {
+        return this.storagesService.getRound1ContributionStorageLevel2(
+            level1Index,
+        );
+    }
+
+    @Get('round1/public-key/level1')
+    @ApiTags('Storage Round1')
+    getRound1PublicKeyStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRound1PublicKeyStorageLevel1();
+    }
+
+    @Get('round1/public-key/leafs')
+    @ApiTags('Storage Round1')
+    getRound1PublicKeyStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRound1PublicKeyStorageLeafs();
+    }
+
+    @Get('round1/public-key/level2/:level1Index')
+    @ApiTags('Storage Round1')
+    getRound1PublicKeyStorageLevel2(
+        @Param('level1Index', ParseIntPipe) level1Index: number,
+    ) {
+        return this.storagesService.getRound1PublicKeyStorageLevel2(
+            level1Index,
+        );
+    }
+
+    // @Get('round1/process/level1')
     // @ApiTags('Storage Round1')
-    // getRound1ZkApps(): MerkleLeaf[] {
-    //     return this.storagesService.getRound1ZkAppTree();
+    // getRound1ProcessStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getRound1ProcessStorageLevel1();
     // }
 
-    // @Get('round1/zkapps/leafs')
-    // @ApiTags('Storage Round1')
-    // getRound1ZkAppTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRound1ZkAppTreeLeafs();
-    // }
+    @Get('round1/public-key/leafs')
+    @ApiTags('Storage Round1')
+    getRound1ProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRound1ProcessStorageLeafs();
+    }
 
-    // @Get('round1/reduce')
-    // @ApiTags('Storage Round1')
-    // getRound1ReduceTree(): { [key: string]: MerkleLeaf } {
-    //     return this.storagesService.getRound1ReduceTree();
-    // }
+    @Get('round2/zkapp')
+    @ApiTags('Storage Round1')
+    getRound2ZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getRound2ZkAppStorage();
+    }
 
-    // @Get('round1/reduce/leafs')
-    // @ApiTags('Storage Round1')
-    // getRound1ReduceTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.storagesService.getRound1ReduceTreeLeafs();
-    // }
+    @Get('round2/zkapp/leafs')
+    @ApiTags('Storage Round1')
+    getRound2ZkAppStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound2ZkAppStorageLeafs();
+    }
 
-    // @Get('round1/contribution/level1')
-    // @ApiTags('Storage Round1')
-    // getRound1ContributionTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRound1ContributionTreeLevel1();
-    // }
+    @Get('round2/contribution/level1')
+    @ApiTags('Storage Round2')
+    getRound2ContributionStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRound2ContributionStorageLevel1();
+    }
 
-    // @Get('round1/contribution/leafs')
-    // @ApiTags('Storage Round1')
-    // getRound1ContributionTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.storagesService.getRound1ContributionTreeLeafs();
-    // }
+    @Get('round2/contribution/leafs')
+    @ApiTags('Storage Round2')
+    getRound2ContributionStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound2ContributionStorageLeafs();
+    }
 
-    // @Get('round1/contribution/level2/:level1Index')
-    // @ApiTags('Storage Round1')
-    // getRound1ContributionTreeLevel2(
-    //     @Param('level1Index', ParseIntPipe) level1Index: number,
-    // ) {
-    //     return this.storagesService.getRound1ContributionTreeLevel2(
-    //         level1Index,
-    //     );
-    // }
+    @Get('round2/contribution/level2/:level1Index')
+    @ApiTags('Storage Round2')
+    getRound2ContributionStorageLevel2(
+        @Param('level1Index', ParseIntPipe) level1Index: number,
+    ) {
+        return this.storagesService.getRound2ContributionStorageLevel2(
+            level1Index,
+        );
+    }
 
-    // @Get('round1/public-key/level1')
-    // @ApiTags('Storage Round1')
-    // getRound1PublicKeyTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRound1PublicKeyTreeLevel1();
-    // }
+    @Get('round2/encryption/level1')
+    @ApiTags('Storage Round2')
+    getRound2EncryptionStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRound2EncryptionStorageLevel1();
+    }
 
-    // @Get('round1/public-key/leafs')
-    // @ApiTags('Storage Round1')
-    // getRound1PublicKeyTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.storagesService.getRound1PublicKeyTreeLeafs();
-    // }
+    @Get('round2/encryption/leafs')
+    @ApiTags('Storage Round2')
+    getRound2EncryptionStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRound2EncryptionStorageLeafs();
+    }
 
-    // @Get('round1/public-key/level2/:level1Index')
-    // @ApiTags('Storage Round1')
-    // getRound1PublicKeyTreeLevel2(
-    //     @Param('level1Index', ParseIntPipe) level1Index: number,
-    // ) {
-    //     return this.storagesService.getRound1PublickeyTreeLevel2(level1Index);
-    // }
-
-    // @Get('round2/zkapps')
-    // @ApiTags('Storage Round2')
-    // getRound2ZkApps(): MerkleLeaf[] {
-    //     return this.storagesService.getRound2ZkAppTree();
-    // }
-
-    // @Get('round2/zkapps/leafs')
-    // @ApiTags('Storage Round2')
-    // getRound2ZkAppTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRound2ZkAppTreeLeafs();
-    // }
-
-    // @Get('round2/reduce')
-    // @ApiTags('Storage Round2')
-    // getRound2ReduceTree(): { [key: string]: MerkleLeaf } {
-    //     return this.storagesService.getRound2ReduceTree();
-    // }
-
-    // @Get('round2/reduce/leafs')
-    // @ApiTags('Storage Round2')
-    // getRound2ReduceTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRound2ReduceTreeLeafs();
-    // }
-
-    // @Get('round2/contribution/level1')
-    // @ApiTags('Storage Round2')
-    // getRound2ContributionTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRound2ContributionTreeLevel1();
-    // }
-
-    // @Get('round2/contribution/leafs')
-    // @ApiTags('Storage Round2')
-    // getRound2ContributionTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRound2ContributionTreeLeafs();
-    // }
-
-    // @Get('round2/contribution/level2/:level1Index')
-    // @ApiTags('Storage Round2')
-    // getRound2ContributionTreeLevel2(
-    //     @Param('level1Index', ParseIntPipe) level1Index: number,
-    // ) {
-    //     return this.storagesService.getRound2ContributionTreeLevel2(
-    //         level1Index,
-    //     );
-    // }
-
-    // @Get('round2/encryption/level1')
-    // @ApiTags('Storage Round2')
-    // getRound2EncryptionTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRound2EncryptionTreeLevel1();
-    // }
-
-    // @Get('round2/encryption/leafs')
-    // @ApiTags('Storage Round2')
-    // getRound2EncryptionTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRound2EncryptionTreeLeafs();
-    // }
-
-    // @Get('round2/encryption/level2/:level1Index')
-    // @ApiTags('Storage Round2')
-    // getRound2EncryptionTreeLevel2(
-    //     @Param('level1Index', ParseIntPipe) level1Index: number,
-    // ) {
-    //     return this.storagesService.getRound2EncryptionTreeLevel2(level1Index);
-    // }
+    @Get('round2/encryption/level2/:level1Index')
+    @ApiTags('Storage Round2')
+    getRound2EncryptionStorageLevel2(
+        @Param('level1Index', ParseIntPipe) level1Index: number,
+    ) {
+        return this.storagesService.getRound2EncryptionStorageLevel2(
+            level1Index,
+        );
+    }
 
     // @Get('request/requester/level1')
     // @ApiTags('Storage Request')
