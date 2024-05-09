@@ -142,16 +142,13 @@ export class MethodInputsService {
                     Field(committeeId),
                     Field(memberId),
                 );
-            const publicKeyWitness =
-                this.dkgContractService.round1.publicKeyStorage.getWitness(
+            const publicKeysWitness =
+                this.dkgContractService.round1.publicKeyStorage.getLevel1Witness(
                     this.dkgContractService.round1.publicKeyStorage.calculateLevel1Index(
                         {
                             committeeId: Field(committeeId),
                             keyId: Field(keyId),
                         },
-                    ),
-                    this.dkgContractService.round1.publicKeyStorage.calculateLevel2Index(
-                        Field(memberId),
                     ),
                 );
             const committeeRef =
@@ -176,7 +173,7 @@ export class MethodInputsService {
                 );
             return {
                 memberWitness,
-                publicKeyWitness,
+                publicKeysWitness,
                 committeeRef,
                 round1Ref,
                 rollupRef,
