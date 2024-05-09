@@ -633,7 +633,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const latestRollupedActionId =
             (await this.rollupActionModel.count({
                 active: true,
-                'actionData.zkAppIndex': ZkAppIndex.ROUND1,
+                'actionData.zkAppIndex': ZkAppIndex.ROUND2,
             })) - 1;
         const notActiveActions = await this.round2ActionModel.find(
             {

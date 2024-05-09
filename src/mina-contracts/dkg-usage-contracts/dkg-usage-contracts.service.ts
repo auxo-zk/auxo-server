@@ -133,8 +133,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
+            await this.fetch();
+            await this.updateMerkleTrees();
         } catch (err) {
             console.log(err);
         }
@@ -142,8 +142,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     async update() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
+            await this.fetch();
+            await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -156,6 +156,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 await this.updateResponseActions();
                 count = MaxRetries;
             } catch (err) {
+                console.log(err);
                 this.logger.error(err);
             }
         }
@@ -394,7 +395,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         const latestRollupedActionId =
             (await this.rollupActionModel.count({
                 active: true,
-                'actionData.zkAppIndex': ZkAppIndex.DKG,
+                'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
             })) - 1;
         const notActiveActions = await this.responseActionModel.find(
             {
