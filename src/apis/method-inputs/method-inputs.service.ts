@@ -1,7 +1,7 @@
 import { Constants } from '@auxo-dev/dkg';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Field, PublicKey } from 'o1js';
-import { ZkAppEnum } from 'src/constants';
+import { ZkAppIndex } from 'src/constants';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
 import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
@@ -23,17 +23,17 @@ export class MethodInputsService {
                 );
             const committeeRef =
                 this.dkgContractService.dkg.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.COMMITTEE,
+                    ZkAppIndex.COMMITTEE,
                     PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
                 );
             const rollupRef =
                 this.dkgContractService.dkg.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROLLUP,
+                    ZkAppIndex.ROLLUP,
                     PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
                 );
             const selfRef =
                 this.dkgContractService.dkg.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.DKG,
+                    ZkAppIndex.DKG,
                     PublicKey.fromBase58(process.env.DKG_ADDRESS),
                 );
             return {
@@ -56,17 +56,17 @@ export class MethodInputsService {
                 );
             const committeeRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.COMMITTEE,
+                    ZkAppIndex.COMMITTEE,
                     PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
                 );
             const rollupRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROLLUP,
+                    ZkAppIndex.ROLLUP,
                     PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
                 );
             const selfRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROUND1,
+                    ZkAppIndex.ROUND1,
                     PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
                 );
             return {
@@ -99,22 +99,22 @@ export class MethodInputsService {
                 );
             const committeeRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.COMMITTEE,
+                    ZkAppIndex.COMMITTEE,
                     PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
                 );
             const dkgRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.DKG,
+                    ZkAppIndex.DKG,
                     PublicKey.fromBase58(process.env.DKG_ADDRESS),
                 );
             const rollupRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROLLUP,
+                    ZkAppIndex.ROLLUP,
                     PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
                 );
             const selfRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROUND1,
+                    ZkAppIndex.ROUND1,
                     PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
                 );
 
@@ -140,22 +140,22 @@ export class MethodInputsService {
                 );
             const committeeRef =
                 this.dkgContractService.round2.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.COMMITTEE,
+                    ZkAppIndex.COMMITTEE,
                     PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
                 );
             const round1Ref =
                 this.dkgContractService.round2.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROUND1,
+                    ZkAppIndex.ROUND1,
                     PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
                 );
             const rollupRef =
                 this.dkgContractService.round2.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROLLUP,
+                    ZkAppIndex.ROLLUP,
                     PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
                 );
             const selfRef =
                 this.dkgContractService.round2.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROUND2,
+                    ZkAppIndex.ROUND2,
                     PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
                 );
             return {
@@ -198,22 +198,22 @@ export class MethodInputsService {
                 );
             const committeeRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.COMMITTEE,
+                    ZkAppIndex.COMMITTEE,
                     PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
                 );
             const dkgRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.DKG,
+                    ZkAppIndex.DKG,
                     PublicKey.fromBase58(process.env.DKG_ADDRESS),
                 );
             const rollupRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROLLUP,
+                    ZkAppIndex.ROLLUP,
                     PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
                 );
             const selfRef =
                 this.dkgContractService.round1.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROUND1,
+                    ZkAppIndex.ROUND1,
                     PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
                 );
 
@@ -273,32 +273,32 @@ export class MethodInputsService {
 
             const committeeRef =
                 this.dkgUsageContractsService.dkgResponse.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.COMMITTEE,
+                    ZkAppIndex.COMMITTEE,
                     PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
                 );
             const round1Ref =
                 this.dkgUsageContractsService.dkgResponse.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROUND1,
+                    ZkAppIndex.ROUND1,
                     PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
                 );
             const round2Ref =
                 this.dkgUsageContractsService.dkgResponse.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROUND2,
+                    ZkAppIndex.ROUND2,
                     PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
                 );
             const requestRef =
                 this.dkgUsageContractsService.dkgResponse.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.REQUEST,
+                    ZkAppIndex.REQUEST,
                     PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
                 );
             const rollupRef =
                 this.dkgUsageContractsService.dkgResponse.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.ROLLUP,
+                    ZkAppIndex.ROLLUP,
                     PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
                 );
             const selfRef =
                 this.dkgUsageContractsService.dkgResponse.zkAppStorage.getZkAppRef(
-                    ZkAppEnum.RESPONSE,
+                    ZkAppIndex.RESPONSE,
                     PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
                 );
 

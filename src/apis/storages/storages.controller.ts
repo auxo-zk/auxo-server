@@ -2,80 +2,95 @@ import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { StoragesService } from './storages.service';
 import { ApiTags } from '@nestjs/swagger';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
+import { Constants } from '@auxo-dev/dkg';
 
 @Controller('storages')
 export class StoragesController {
     constructor(private readonly storagesService: StoragesService) {}
 
-    // @Get('committee/member/level1')
-    // @ApiTags('Storage Committee')
-    // getMemberTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getMemberTreeLevel1();
-    // }
+    @Get('committee/zkapp')
+    @ApiTags('Storage Committee')
+    getCommitteeZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getCommitteeZkAppStorage();
+    }
 
-    // @Get('committee/member/leafs')
-    // @ApiTags('Storage Committee')
-    // getMemberTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.storagesService.getMemberTreeLeafs();
-    // }
+    @Get('dkg/zkapps/leafs')
+    @ApiTags('Storage Committee')
+    getCommitteeZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getCommitteeZkAppStorageLeafs();
+    }
 
-    // @Get('committee/member/level2/:level1Index')
-    // @ApiTags('Storage Committee')
-    // getMemberTreeLevel2(
-    //     @Param('level1Index', ParseIntPipe) level1Index: number,
-    // ) {
-    //     return this.storagesService.getMemberTreeLevel2(level1Index);
-    // }
+    @Get('committee/member/level1')
+    @ApiTags('Storage Committee')
+    getMemberStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getMemberStorageLevel1();
+    }
 
-    // @Get('committee/setting/level1')
-    // @ApiTags('Storage Committee')
-    // getSettingTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getSettingTreeLevel1();
-    // }
+    @Get('committee/member/leafs')
+    @ApiTags('Storage Committee')
+    getMemberStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getMemberStorageLeafs();
+    }
 
-    // @Get('committee/setting/leafs')
-    // @ApiTags('Storage Committee')
-    // getSettingTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.storagesService.getSettingTreeLeafs();
-    // }
+    @Get('committee/member/level2/:level1Index')
+    @ApiTags('Storage Committee')
+    getMemberStorageLevel2(
+        @Param('level1Index', ParseIntPipe) level1Index: number,
+    ) {
+        return this.storagesService.getMemberStorageLevel2(level1Index);
+    }
 
-    // @Get('dkg/zkapps')
-    // @ApiTags('Storage DKG')
-    // getDkgZkApps(): MerkleLeaf[] {
-    //     return this.storagesService.getDkgZkAppTree();
-    // }
+    @Get('committee/setting/level1')
+    @ApiTags('Storage Committee')
+    getSettingStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getSettingStorageLevel1();
+    }
 
-    // @Get('dkg/zkapps/leafs')
-    // @ApiTags('Storage DKG')
-    // getDkgZkAppTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.storagesService.getDkgZkAppTreeLeafs();
-    // }
+    @Get('committee/setting/leafs')
+    @ApiTags('Storage Committee')
+    getSettingStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getSettingStorageLeafs();
+    }
+
+    @Get('dkg/zkapp')
+    @ApiTags('Storage DKG')
+    getDkgZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getDkgZkAppStorage();
+    }
+
+    @Get('dkg/zkapps/leafs')
+    @ApiTags('Storage DKG')
+    getDkgZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getDkgZkAppStorageLeafs();
+    }
 
     // @Get('dkg/key-counter/level1')
     // @ApiTags('Storage DKG')
-    // getKeyCounterTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getKeyCounterTreeLevel1();
+    // getKeyCounterStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getKeyCounterStorageLevel1();
     // }
 
-    // @Get('dkg/key-counter/leafs')
-    // @ApiTags('Storage DKG')
-    // getKeyCounterTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.storagesService.getKeyCounterTreeLeafs();
-    // }
+    @Get('dkg/key-counter/leafs')
+    @ApiTags('Storage DKG')
+    getKeyCounterStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getKeyCounterStorageLeafs();
+    }
 
-    // @Get('dkg/key-status/level1')
-    // @ApiTags('Storage DKG')
-    // getKeyStatusTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getKeyStatusTreeLevel1();
-    // }
+    @Get('dkg/key-status/level1')
+    @ApiTags('Storage DKG')
+    getKeyStatusStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getKeyStatusStorageLevel1();
+    }
 
     // @Get('dkg/key-status/leafs')
     // @ApiTags('Storage DKG')

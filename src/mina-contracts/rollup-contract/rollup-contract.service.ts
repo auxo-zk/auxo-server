@@ -14,6 +14,7 @@ import { Field, Reducer } from 'o1js';
 import { Action } from 'src/interfaces/action.interface';
 import { MaxRetries } from 'src/constants';
 import { Network } from '../network/network';
+import { Utilities } from '../utilities';
 
 @Injectable()
 export class RollupContractService implements ContractServiceInterface {
@@ -44,7 +45,7 @@ export class RollupContractService implements ContractServiceInterface {
         this._actionState = '';
         this._counterStorage = new Storage.RollupStorage.RollupCounterStorage();
         this._rollupStorage = new Storage.RollupStorage.RollupStorage();
-        this._zkAppStorage = new Storage.AddressStorage.AddressStorage();
+        this._zkAppStorage = Utilities.getZkAppStorageForDkg();
     }
 
     async fetch() {

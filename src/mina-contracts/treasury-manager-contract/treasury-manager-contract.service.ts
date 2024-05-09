@@ -61,54 +61,7 @@ export class TreasuryManagerContractService
             new Storage.TreasuryManagerStorage.CampaignStateStorage();
         this._claimedAmountStorage =
             new Storage.TreasuryManagerStorage.ClaimedAmountStorage();
-        this._zkAppStorage = new Storage.SharedStorage.ZkAppStorage([
-            {
-                index: Constants.ZkAppEnum.COMMITTEE,
-                address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.DKG,
-                address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.ROUND1,
-                address: PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.ROUND2,
-                address: PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.RESPONSE,
-                address: PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.REQUEST,
-                address: PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.PROJECT,
-                address: PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.CAMPAIGN,
-                address: PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.PARTICIPATION,
-                address: PublicKey.fromBase58(
-                    process.env.PARTICIPATION_ADDRESS,
-                ),
-            },
-            {
-                index: Constants.ZkAppEnum.FUNDING,
-                address: PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.TREASURY_MANAGER,
-                address: PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-            },
-        ]);
+        this._zkAppStorage = Utilities.getZkAppStorageForPlatform();
     }
 
     async onModuleInit() {
@@ -143,7 +96,7 @@ export class TreasuryManagerContractService
 
     async fetchTreasuryManagerState(): Promise<TreasuryManagerState> {
         const state = await this.queryService.fetchZkAppState(
-            process.env.TREASURY_ADDRESS,
+            process.env.TREASURY_MANAGER_ADDRESS,
         );
         const result: TreasuryManagerState = {
             campaignStateRoot: Field(state[0]),
@@ -277,7 +230,9 @@ export class TreasuryManagerContractService
                 }
                 const treasuryContract =
                     new ZkApp.TreasuryManager.TreasuryManagerContract(
-                        PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
+                        PublicKey.fromBase58(
+                            process.env.TREASURY_MANAGER_ADDRESS,
+                        ),
                     );
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
@@ -318,7 +273,7 @@ export class TreasuryManagerContractService
             { sort: { actionId: -1 } },
         );
         let actions: Action[] = await this.queryService.fetchActions(
-            process.env.TREASURY_ADDRESS,
+            process.env.TREASURY_MANAGER_ADDRESS,
         );
         let previousActionState: Field;
         let actionId: number;

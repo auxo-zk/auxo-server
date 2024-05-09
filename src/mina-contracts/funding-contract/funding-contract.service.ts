@@ -65,54 +65,7 @@ export class FundingContractService implements ContractServiceInterface {
         this._actionState = '';
         this._fundingInformationStorage =
             new Storage.FundingStorage.FundingInformationStorage();
-        this._zkAppStorage = new Storage.SharedStorage.ZkAppStorage([
-            {
-                index: Constants.ZkAppEnum.COMMITTEE,
-                address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.DKG,
-                address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.ROUND1,
-                address: PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.ROUND2,
-                address: PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.RESPONSE,
-                address: PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.REQUEST,
-                address: PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.PROJECT,
-                address: PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.CAMPAIGN,
-                address: PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.PARTICIPATION,
-                address: PublicKey.fromBase58(
-                    process.env.PARTICIPATION_ADDRESS,
-                ),
-            },
-            {
-                index: Constants.ZkAppEnum.FUNDING,
-                address: PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.TREASURY_MANAGER,
-                address: PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-            },
-        ]);
+        this._zkAppStorage = Utilities.getZkAppStorageForPlatform();
     }
 
     async onModuleInit() {

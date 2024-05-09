@@ -1,8 +1,15 @@
 import mongoose, { ObjectId } from 'mongoose';
-import { AccountUpdate, Cache, Field, Mina, PrivateKey } from 'o1js';
+import { AccountUpdate, Cache, Field, Mina, PrivateKey, PublicKey } from 'o1js';
 import { Logger } from '@nestjs/common';
 import * as fs from 'fs';
-import { calculateKeyIndex } from '@auxo-dev/dkg';
+import {
+    calculateKeyIndex,
+    Constants,
+    Storage as DkgStorage,
+    ZkApp,
+} from '@auxo-dev/dkg';
+import { Storage as PlatformStorage } from '@auxo-dev/platform';
+import { ZkAppIndex } from 'src/constants';
 
 export type Profiler = {
     times: Record<string, any>;
@@ -160,5 +167,100 @@ export class Utilities {
                 fs.appendFileSync('profiling.md', profilingData);
             },
         };
+    }
+
+    static getZkAppStorageForDkg(): DkgStorage.AddressStorage.AddressStorage {
+        const zkAppStorage = new DkgStorage.AddressStorage.AddressStorage();
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.ROLLUP),
+            PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.COMMITTEE),
+            PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.DKG),
+            PublicKey.fromBase58(process.env.DKG_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.ROUND1),
+            PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.ROUND2),
+            PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.REQUEST),
+            PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.RESPONSE),
+            PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+        );
+        return zkAppStorage;
+    }
+
+    static getZkAppStorageForRequester(
+        taskManager: string,
+        submission: string,
+    ): DkgStorage.AddressStorage.AddressStorage {
+        const zkAppStorage = new DkgStorage.AddressStorage.AddressStorage();
+        zkAppStorage.updateAddress(
+            Field(ZkApp.Requester.RequesterAddressBook.TASK_MANAGER),
+            PublicKey.fromBase58(taskManager),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkApp.Requester.RequesterAddressBook.SUBMISSION),
+            PublicKey.fromBase58(submission),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkApp.Requester.RequesterAddressBook.DKG),
+            PublicKey.fromBase58(process.env.DKG_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkApp.Requester.RequesterAddressBook.REQUEST),
+            PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+        );
+        return zkAppStorage;
+    }
+
+    static getZkAppStorageForPlatform(): PlatformStorage.SharedStorage.ZkAppStorage {
+        const zkAppStorage = new PlatformStorage.SharedStorage.ZkAppStorage();
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.DKG),
+            PublicKey.fromBase58(process.env.DKG_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.REQUEST),
+            PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.PROJECT),
+            PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.CAMPAIGN),
+            PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.PARTICIPATION),
+            PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.FUNDING),
+            PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.TREASURY_MANAGER),
+            PublicKey.fromBase58(process.env.TREASURY_MANAGER_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.FUNDING_REQUESTER),
+            PublicKey.fromBase58(process.env.FUNDING_REQUESTER_ADDRESS),
+        );
+
+        return zkAppStorage;
     }
 }

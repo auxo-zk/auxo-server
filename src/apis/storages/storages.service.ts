@@ -30,13 +30,113 @@ export class StoragesService {
         private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
-    // getMemberTreeLevel1(): MerkleLeaf[] {
+    getCommitteeZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.committeeContractsService.zkAppStorage.addressMap.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.committeeContractsService.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getCommitteeZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.committeeContractsService.zkAppStorage.addresses;
+    }
+
+    getMemberStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.committeeContractsService.memberStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.committeeContractsService.memberStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getMemberStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.committeeContractsService.memberStorage.leafs;
+    }
+
+    getMemberStorageLevel2(level1Index: number) {
+        const result: MerkleLeaf[] = [];
+        if (this.committeeContractsService.memberStorage.level2s[level1Index]) {
+            const leafCount =
+                this.committeeContractsService.memberStorage.level2s[
+                    level1Index
+                ].leafCount;
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.committeeContractsService.memberStorage
+                        .getLevel2Witness(Field(level1Index), Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
+    }
+
+    getSettingStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.committeeContractsService.settingStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.committeeContractsService.settingStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getSettingStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.committeeContractsService.settingStorage.leafs;
+    }
+
+    getDkgZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.dkg.zkAppStorage.addressMap.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.dkg.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getDkgZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.zkAppStorage.addresses;
+    }
+
+    // getKeyCounterStorageLevel1(): MerkleLeaf[] {
     //     const leafCount =
-    //         this.committeeContractsService.memberTree.level1.leafCount;
+    //         this.dkgContractService.dkg.keyCounterStorage.level1.leafCount;
     //     const result: MerkleLeaf[] = [];
     //     for (let i = 0; i < leafCount; i++) {
     //         result.push(
-    //             this.committeeContractsService.memberTree
+    //             this.dkgContractService.dkg.keyCounterStorage
     //                 .getLevel1Witness(Field(i))
     //                 .toJSON(),
     //         );
@@ -44,102 +144,25 @@ export class StoragesService {
     //     return result;
     // }
 
-    // getMemberTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.committeeContractsService.memberTree.leafs;
-    // }
+    getKeyCounterStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.keyCounterStorage.leafs;
+    }
 
-    // getMemberTreeLevel2(level1Index: number) {
-    //     const result: MerkleLeaf[] = [];
-    //     if (this.committeeContractsService.memberTree.level2s[level1Index]) {
-    //         const leafCount =
-    //             this.committeeContractsService.memberTree.level2s[level1Index]
-    //                 .leafCount;
-    //         for (let i = 0; i < leafCount; i++) {
-    //             result.push(
-    //                 this.committeeContractsService.memberTree
-    //                     .getLevel2Witness(Field(level1Index), Field(i))
-    //                     .toJSON(),
-    //             );
-    //         }
-    //         return result;
-    //     } else {
-    //         throw new NotFoundException();
-    //     }
-    // }
-
-    // getSettingTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.committeeContractsService.settingTree.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.committeeContractsService.settingTree
-    //                 .getWitness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getSettingTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.committeeContractsService.settingTree.leafs;
-    // }
-
-    // getDkgZkAppTree(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.dkgContractService.dkg.zkApp.addressMap.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.dkgContractService.dkg.zkApp.getWitness(Field(i)).toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getDkgZkAppTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.dkgContractService.dkg.zkApp.addresses;
-    // }
-
-    // getKeyCounterTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.dkgContractService.dkg.keyCounter.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.dkgContractService.dkg.keyCounter
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getKeyCounterTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.dkgContractService.dkg.keyCounter.leafs;
-    // }
-
-    // getKeyStatusTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.dkgContractService.dkg.keyStatus.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.dkgContractService.dkg.keyStatus
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getKeyStatusStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.dkg.keyStatusStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.dkg.keyStatusStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
     // getKeyStatusTreeLeafs(): {
     //     [key: string]: any;

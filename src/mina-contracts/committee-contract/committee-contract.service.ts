@@ -69,6 +69,7 @@ export class CommitteeContractService implements ContractServiceInterface {
         this._actionState = '';
         this._memberStorage = new Storage.CommitteeStorage.MemberStorage();
         this._settingStorage = new Storage.CommitteeStorage.SettingStorage();
+        this._zkAppStorage = Utilities.getZkAppStorageForDkg();
     }
 
     async onModuleInit() {

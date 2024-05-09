@@ -41,12 +41,11 @@ import {
     ActionReduceStatusEnum,
     DkgActionEnum,
     DkgEventEnum,
-    DkgZkAppIndex,
     EventEnum,
     KeyStatusEnum,
     MaxRetries,
-    ZkAppEnum,
     zkAppCache,
+    ZkAppIndex,
 } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
 import { Event } from 'src/interfaces/event.interface';
@@ -142,7 +141,7 @@ export class DkgContractsService implements ContractServiceInterface {
         private readonly rollupActionModel: Model<RollupAction>,
     ) {
         this._dkg = {
-            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            zkAppStorage: Utilities.getZkAppStorageForDkg(),
             keyCounterStorage: new Storage.CommitteeStorage.KeyCounterStorage(),
             keyStatusStorage: new Storage.DKGStorage.KeyStatusStorage(),
             keyStorage: new Storage.DKGStorage.KeyStorage(),
@@ -150,7 +149,7 @@ export class DkgContractsService implements ContractServiceInterface {
             processStorageMapping: {},
         };
         this._round1 = {
-            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            zkAppStorage: Utilities.getZkAppStorageForDkg(),
             contributionStorage:
                 new Storage.DKGStorage.Round1ContributionStorage(),
             publicKeyStorage: new Storage.DKGStorage.PublicKeyStorage(),
@@ -158,7 +157,7 @@ export class DkgContractsService implements ContractServiceInterface {
             processStorageMapping: {},
         };
         this._round2 = {
-            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            zkAppStorage: Utilities.getZkAppStorageForDkg(),
             contributionStorage:
                 new Storage.DKGStorage.Round2ContributionStorage(),
             encryptionStorage: new Storage.DKGStorage.EncryptionStorage(),
@@ -493,7 +492,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const latestRollupedActionId =
             (await this.rollupActionModel.count({
                 active: true,
-                'actionData.zkAppIndex': DkgZkAppIndex.DKG,
+                'actionData.zkAppIndex': ZkAppIndex.DKG,
             })) - 1;
         const notActiveActions = await this.dkgActionModel.find(
             {
@@ -596,7 +595,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const latestRollupedActionId =
             (await this.rollupActionModel.count({
                 active: true,
-                'actionData.zkAppIndex': DkgZkAppIndex.ROUND1,
+                'actionData.zkAppIndex': ZkAppIndex.ROUND1,
             })) - 1;
         const notActiveActions = await this.round1ActionModel.find(
             {
@@ -634,7 +633,7 @@ export class DkgContractsService implements ContractServiceInterface {
         const latestRollupedActionId =
             (await this.rollupActionModel.count({
                 active: true,
-                'actionData.zkAppIndex': DkgZkAppIndex.ROUND1,
+                'actionData.zkAppIndex': ZkAppIndex.ROUND1,
             })) - 1;
         const notActiveActions = await this.round2ActionModel.find(
             {

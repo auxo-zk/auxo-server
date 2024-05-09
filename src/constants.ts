@@ -106,30 +106,20 @@ export enum CommitteeMemberRoleEnum {
 
 export const zkAppCache = Cache.FileSystem(process.env.CACHE_DIR);
 
-export enum ZkAppEnum {
+export enum ZkAppIndex {
+    ROLLUP,
     COMMITTEE,
     DKG,
     ROUND1,
     ROUND2,
-    REQUEST,
-    REQUESTER,
     RESPONSE,
-    ROLLUP,
+    REQUEST,
     PROJECT,
     CAMPAIGN,
     PARTICIPATION,
     FUNDING,
-    TREASURY,
-}
-
-export enum DkgZkAppIndex {
-    ROLLUP,
-    COMMITTEE,
-    DKG,
-    ROUND1,
-    ROUND2,
-    RESPONSE,
-    REQUEST,
+    TREASURY_MANAGER,
+    FUNDING_REQUESTER,
     __LENGTH,
 }
 

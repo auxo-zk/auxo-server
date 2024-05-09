@@ -23,13 +23,12 @@ import {
 } from 'src/schemas/actions/response-action.schema';
 import {
     ActionReduceStatusEnum,
-    DkgZkAppIndex,
     EventEnum,
     MaxRetries,
     RequestActionEnum,
     RequestEventEnum,
     RequestStatusEnum,
-    ZkAppEnum,
+    ZkAppIndex,
     zkAppCache,
 } from 'src/constants';
 import { Event } from 'src/interfaces/event.interface';
@@ -111,7 +110,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly rollupActionModel: Model<RollupAction>,
     ) {
         this._dkgRequest = {
-            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            zkAppStorage: Utilities.getZkAppStorageForDkg(),
             requesterCounter: 0,
             keyIndexStorage:
                 new Storage.RequestStorage.RequestKeyIndexStorage(),
@@ -124,7 +123,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         };
 
         this._dkgResponse = {
-            zkAppStorage: new Storage.AddressStorage.AddressStorage(),
+            zkAppStorage: Utilities.getZkAppStorageForDkg(),
             contributionStorage:
                 new Storage.DKGStorage.ResponseContributionStorage(),
             responseStorage: new Storage.DKGStorage.ResponseStorage(),
@@ -212,6 +211,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.REQUEST_ADDRESS,
         );
+        Provable.log(actions);
         let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
@@ -395,7 +395,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         const latestRollupedActionId =
             (await this.rollupActionModel.count({
                 active: true,
-                'actionData.zkAppIndex': DkgZkAppIndex.DKG,
+                'actionData.zkAppIndex': ZkAppIndex.DKG,
             })) - 1;
         const notActiveActions = await this.responseActionModel.find(
             {

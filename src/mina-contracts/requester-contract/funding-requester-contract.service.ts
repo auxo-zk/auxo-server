@@ -22,6 +22,7 @@ import _, { last } from 'lodash';
 import { Encryption, FundingTask } from 'src/schemas/funding-task.schema';
 import { MaxRetries } from 'src/constants';
 import { Funding } from 'src/schemas/funding.schema';
+import { Utilities } from '../utilities';
 
 @Injectable()
 export class FundingRequesterContractService
@@ -73,13 +74,16 @@ export class FundingRequesterContractService
         @InjectModel(Funding.name)
         private readonly fundingModel: Model<Funding>,
     ) {
-        this.requesterAddress = '';
+        this.requesterAddress = process.env.FUNDING_REQUESTER_ADDRESS;
         this._counters = Storage.RequesterStorage.RequesterCounters.empty();
         this._lastTimestamp = 0;
         this._actionState = '';
         this._nextCommitmentIndex = 0;
 
-        this._zkAppStorage = new Storage.AddressStorage.AddressStorage();
+        this._zkAppStorage = Utilities.getZkAppStorageForRequester(
+            process.env.CAMPAIGN_ADDRESS,
+            process.env.FUNDING_ADDRESS,
+        );
         this._keyIndexStorage =
             new Storage.RequesterStorage.RequesterKeyIndexStorage();
         this._timestampStorage =

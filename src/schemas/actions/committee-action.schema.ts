@@ -21,7 +21,7 @@ export class CommitteeActionData {
         action: ZkApp.Committee.CommitteeAction,
     ): CommitteeActionData {
         const addresses = [];
-        for (let i = 0; i < action.addresses.values.length; i++) {
+        for (let i = 0; i < action.addresses.length.toBigInt(); i++) {
             addresses.push(
                 PublicKey.from(action.addresses.values[i]).toBase58(),
             );
