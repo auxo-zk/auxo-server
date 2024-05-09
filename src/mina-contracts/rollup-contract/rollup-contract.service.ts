@@ -10,9 +10,9 @@ import {
 } from 'src/schemas/actions/rollup-action.schema';
 import { Model } from 'mongoose';
 import { RollupState } from 'src/interfaces/zkapp-state.interface';
-import { Field, Reducer } from 'o1js';
+import { Field, Provable, Reducer } from 'o1js';
 import { Action } from 'src/interfaces/action.interface';
-import { MaxRetries } from 'src/constants';
+import { MaxRetries, ZkAppIndex } from 'src/constants';
 import { Network } from '../network/network';
 import { Utilities } from '../utilities';
 
@@ -61,7 +61,12 @@ export class RollupContractService implements ContractServiceInterface {
     }
 
     async updateMerkleTrees() {
-        throw new Error('Method not implemented.');
+        try {
+            await this.updateMerkleTreesForDkg();
+            await this.updateMerkleTreesForRound1();
+            await this.updateMerkleTreesForRound2();
+            await this.updateMerkleTreesForResponse();
+        } catch (err) {}
     }
 
     async update() {
@@ -75,6 +80,9 @@ export class RollupContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            Provable.log(await this.fetchRollupState());
+            Provable.log(this._counterStorage.root);
+            Provable.log(this._rollupStorage.root);
         } catch (err) {}
     }
 
@@ -154,6 +162,138 @@ export class RollupContractService implements ContractServiceInterface {
                 notActiveAction.set('active', true);
                 await notActiveAction.save();
             }
+        }
+    }
+
+    private async updateMerkleTreesForDkg() {
+        const rollupActions = await this.rollupActionModel.find(
+            {
+                active: true,
+                'actionData.zkAppIndex': ZkAppIndex.DKG,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        this._counterStorage.updateLeaf(
+            {
+                level1Index: this._counterStorage.calculateLevel1Index(
+                    Field(ZkAppIndex.DKG),
+                ),
+            },
+            Field(rollupActions.length),
+        );
+
+        for (let actionId = 0; actionId < rollupActions.length; actionId++) {
+            const rollupAction = rollupActions[actionId];
+            const level1Index = this._rollupStorage.calculateLevel1Index({
+                zkAppIndex: Field(rollupAction.actionData.zkAppIndex),
+                actionId: Field(actionId),
+            });
+            this._rollupStorage.updateLeaf(
+                { level1Index },
+                this._rollupStorage.calculateLeaf(
+                    Field(rollupAction.actionHash),
+                ),
+            );
+        }
+    }
+
+    private async updateMerkleTreesForRound1() {
+        const rollupActions = await this.rollupActionModel.find(
+            {
+                active: true,
+                'actionData.zkAppIndex': ZkAppIndex.ROUND1,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        this._counterStorage.updateLeaf(
+            {
+                level1Index: this._counterStorage.calculateLevel1Index(
+                    Field(ZkAppIndex.ROUND1),
+                ),
+            },
+            Field(rollupActions.length),
+        );
+
+        for (let actionId = 0; actionId < rollupActions.length; actionId++) {
+            const rollupAction = rollupActions[actionId];
+            const level1Index = this._rollupStorage.calculateLevel1Index({
+                zkAppIndex: Field(rollupAction.actionData.zkAppIndex),
+                actionId: Field(actionId),
+            });
+            this._rollupStorage.updateLeaf(
+                { level1Index },
+                this._rollupStorage.calculateLeaf(
+                    Field(rollupAction.actionHash),
+                ),
+            );
+        }
+    }
+
+    private async updateMerkleTreesForRound2() {
+        const rollupActions = await this.rollupActionModel.find(
+            {
+                active: true,
+                'actionData.zkAppIndex': ZkAppIndex.ROUND2,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        this._counterStorage.updateLeaf(
+            {
+                level1Index: this._counterStorage.calculateLevel1Index(
+                    Field(ZkAppIndex.ROUND2),
+                ),
+            },
+            Field(rollupActions.length),
+        );
+
+        for (let actionId = 0; actionId < rollupActions.length; actionId++) {
+            const rollupAction = rollupActions[actionId];
+            const level1Index = this._rollupStorage.calculateLevel1Index({
+                zkAppIndex: Field(rollupAction.actionData.zkAppIndex),
+                actionId: Field(actionId),
+            });
+            this._rollupStorage.updateLeaf(
+                { level1Index },
+                this._rollupStorage.calculateLeaf(
+                    Field(rollupAction.actionHash),
+                ),
+            );
+        }
+    }
+
+    private async updateMerkleTreesForResponse() {
+        const rollupActions = await this.rollupActionModel.find(
+            {
+                active: true,
+                'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        this._counterStorage.updateLeaf(
+            {
+                level1Index: this._counterStorage.calculateLevel1Index(
+                    Field(ZkAppIndex.RESPONSE),
+                ),
+            },
+            Field(rollupActions.length),
+        );
+
+        for (let actionId = 0; actionId < rollupActions.length; actionId++) {
+            const rollupAction = rollupActions[actionId];
+            const level1Index = this._rollupStorage.calculateLevel1Index({
+                zkAppIndex: Field(rollupAction.actionData.zkAppIndex),
+                actionId: Field(actionId),
+            });
+            this._rollupStorage.updateLeaf(
+                { level1Index },
+                this._rollupStorage.calculateLeaf(
+                    Field(rollupAction.actionHash),
+                ),
+            );
         }
     }
 }

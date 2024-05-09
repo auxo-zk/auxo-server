@@ -131,12 +131,28 @@ export class MethodInputsService {
         }
     }
 
-    getRound2ContractContribute(committeeId: number, memberId: number) {
+    getRound2ContractContribute(
+        committeeId: number,
+        keyId: number,
+        memberId: number,
+    ) {
         try {
             const memberWitness =
                 this.committeeContractService.memberStorage.getWitness(
                     Field(committeeId),
                     Field(memberId),
+                );
+            const publicKeyWitness =
+                this.dkgContractService.round1.publicKeyStorage.getWitness(
+                    this.dkgContractService.round1.publicKeyStorage.calculateLevel1Index(
+                        {
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        },
+                    ),
+                    this.dkgContractService.round1.publicKeyStorage.calculateLevel2Index(
+                        Field(memberId),
+                    ),
                 );
             const committeeRef =
                 this.dkgContractService.round2.zkAppStorage.getZkAppRef(
@@ -160,6 +176,7 @@ export class MethodInputsService {
                 );
             return {
                 memberWitness,
+                publicKeyWitness,
                 committeeRef,
                 round1Ref,
                 rollupRef,

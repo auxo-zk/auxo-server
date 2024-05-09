@@ -46,10 +46,12 @@ export class MethodInputsController {
     @ApiTags('Method Inputs')
     async getRound2ContractContribute(
         @Query('committeeId', new ParseIntPipe()) committeeId: number,
+        @Query('keyId', new ParseIntPipe()) keyId: number,
         @Query('memberId', new ParseIntPipe()) memberId: number,
     ) {
         return this.methodInputsService.getRound2ContractContribute(
             committeeId,
+            keyId,
             memberId,
         );
     }
