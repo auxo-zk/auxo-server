@@ -192,7 +192,7 @@ export class RollupContractService implements ContractServiceInterface {
             this._rollupStorage.updateLeaf(
                 { level1Index },
                 this._rollupStorage.calculateLeaf(
-                    Field(rollupAction.actionHash),
+                    Field(rollupAction.actionData.actionHash),
                 ),
             );
         }
@@ -225,7 +225,7 @@ export class RollupContractService implements ContractServiceInterface {
             this._rollupStorage.updateLeaf(
                 { level1Index },
                 this._rollupStorage.calculateLeaf(
-                    Field(rollupAction.actionHash),
+                    Field(rollupAction.actionData.actionHash),
                 ),
             );
         }
@@ -258,7 +258,7 @@ export class RollupContractService implements ContractServiceInterface {
             this._rollupStorage.updateLeaf(
                 { level1Index },
                 this._rollupStorage.calculateLeaf(
-                    Field(rollupAction.actionHash),
+                    Field(rollupAction.actionData.actionHash),
                 ),
             );
         }
@@ -291,7 +291,7 @@ export class RollupContractService implements ContractServiceInterface {
             this._rollupStorage.updateLeaf(
                 { level1Index },
                 this._rollupStorage.calculateLeaf(
-                    Field(rollupAction.actionHash),
+                    Field(rollupAction.actionData.actionHash),
                 ),
             );
         }
