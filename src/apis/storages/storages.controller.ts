@@ -8,6 +8,48 @@ import { Constants } from '@auxo-dev/dkg';
 export class StoragesController {
     constructor(private readonly storagesService: StoragesService) {}
 
+    @Get('rollup/zkapp')
+    @ApiTags('Storage Rollup')
+    getRollupZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getRollupZkAppStorage();
+    }
+
+    @Get('rollup/zkapp/leafs')
+    @ApiTags('Storage Rollup')
+    getRollupZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRollupZkAppStorageLeafs();
+    }
+
+    @Get('rollup/counter/level1')
+    @ApiTags('Storage Rollup')
+    getRollupCounterStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRollupCounterStorageLevel1();
+    }
+
+    @Get('rollup/member/leafs')
+    @ApiTags('Storage Rollup')
+    getRollupCounterStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRollupCounterStorageLeafs();
+    }
+
+    @Get('rollup/rollup/level1')
+    @ApiTags('Storage Rollup')
+    getRollupStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRollupStorageLevel1();
+    }
+
+    @Get('rollup/rollup/leafs')
+    @ApiTags('Storage Rollup')
+    getRollupStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getRollupStorageLeafs();
+    }
+
     @Get('committee/zkapp')
     @ApiTags('Storage Committee')
     getCommitteeZkAppStorage(): MerkleLeaf[] {
@@ -72,11 +114,11 @@ export class StoragesController {
         return this.storagesService.getDkgZkAppStorageLeafs();
     }
 
-    // @Get('dkg/key-counter/level1')
-    // @ApiTags('Storage DKG')
-    // getKeyCounterStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getKeyCounterStorageLevel1();
-    // }
+    @Get('dkg/key-counter/level1')
+    @ApiTags('Storage DKG')
+    getKeyCounterStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getKeyCounterStorageLevel1();
+    }
 
     @Get('dkg/key-counter/leafs')
     @ApiTags('Storage DKG')
@@ -114,11 +156,11 @@ export class StoragesController {
         return this.storagesService.getKeyStorageLeafs();
     }
 
-    // @Get('dkg/process/level1')
-    // @ApiTags('Storage DKG')
-    // getProcessStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getProcessStorageLevel1();
-    // }
+    @Get('dkg/process/level1')
+    @ApiTags('Storage DKG')
+    getProcessStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getProcessStorageLevel1();
+    }
 
     @Get('dkg/process/leafs')
     @ApiTags('Storage DKG')
@@ -188,11 +230,11 @@ export class StoragesController {
         );
     }
 
-    // @Get('round1/process/level1')
-    // @ApiTags('Storage Round1')
-    // getRound1ProcessStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRound1ProcessStorageLevel1();
-    // }
+    @Get('round1/process/level1')
+    @ApiTags('Storage Round1')
+    getRound1ProcessStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRound1ProcessStorageLevel1();
+    }
 
     @Get('round1/process/leafs')
     @ApiTags('Storage Round1')
@@ -258,11 +300,11 @@ export class StoragesController {
         );
     }
 
-    // @Get('round2/process/level1')
-    // @ApiTags('Storage Round2')
-    // getRound2ProcessStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRound2ProcessStorageLevel1();
-    // }
+    @Get('round2/process/level1')
+    @ApiTags('Storage Round2')
+    getRound2ProcessStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRound2ProcessStorageLevel1();
+    }
 
     @Get('round2/process/leafs')
     @ApiTags('Storage Round2')
