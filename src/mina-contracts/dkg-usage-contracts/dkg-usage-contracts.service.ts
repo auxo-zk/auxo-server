@@ -17,6 +17,7 @@ import {
     PublicKey,
     Reducer,
     UInt64,
+    UInt8,
 } from 'o1js';
 import {
     getResponseActionData,
@@ -69,6 +70,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         contributionStorage: Storage.DKGStorage.ResponseContributionStorage;
         responseStorage: Storage.DKGStorage.ResponseStorage;
         processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     };
 
     public get dkgRequest(): {
@@ -89,6 +91,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         contributionStorage: Storage.DKGStorage.ResponseContributionStorage;
         responseStorage: Storage.DKGStorage.ResponseStorage;
         processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     } {
         return this._dkgResponse;
     }
@@ -129,6 +132,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 new Storage.DKGStorage.ResponseContributionStorage(),
             responseStorage: new Storage.DKGStorage.ResponseStorage(),
             processStorage: new Storage.ProcessStorage.ProcessStorage(),
+            processStorageMapping: {},
         };
     }
 
@@ -484,6 +488,52 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     );
                 }
             }
+            await this.updateProcessStorageForResponse();
         } catch (err) {}
+    }
+
+    private async updateProcessStorageForResponse() {
+        const responseEvents = await this.responseEventModel.find(
+            {},
+            {},
+            { sort: { eventId: 1 } },
+        );
+        for (let i = 0; i < responseEvents.length; i++) {
+            const responseEvent = responseEvents[i];
+            for (let j = 0; j < responseEvent.data.length; j++) {
+                const actionState = responseEvent.data[j];
+                if (!this._dkgResponse.processStorageMapping[actionState]) {
+                    this._dkgResponse.processStorageMapping[actionState] = 0;
+                } else {
+                    this._dkgResponse.processStorageMapping[actionState] += 1;
+                }
+            }
+        }
+
+        const responseActions = await this.responseActionModel.find(
+            { active: true },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        for (let i = 0; i < responseActions.length; i++) {
+            const responseAction = responseActions[i];
+            if (
+                this._dkgResponse.processStorageMapping[
+                    responseAction.currentActionState
+                ] != undefined
+            ) {
+                this._dkgResponse.processStorage.updateAction(
+                    Field(responseAction.actionId),
+                    {
+                        actionState: Field(responseAction.currentActionState),
+                        processCounter: new UInt8(
+                            this._dkgResponse.processStorageMapping[
+                                responseAction.currentActionState
+                            ],
+                        ),
+                    },
+                );
+            }
+        }
     }
 }
