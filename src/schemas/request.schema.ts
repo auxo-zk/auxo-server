@@ -3,11 +3,17 @@ import { HydratedDocument } from 'mongoose';
 import { RequestStatusEnum } from 'src/constants';
 
 export class DkgResponse {
-    committeeId: number;
-    keyId: number;
+    @Prop()
     memberId: number;
+
+    @Prop()
     dimension: number;
+
+    @Prop()
     rootD: string;
+
+    @Prop({ type: [{ x: String, y: String }] })
+    Di: { x: string; y: string }[];
 }
 @Schema({ versionKey: false })
 export class DkgRequest {
@@ -31,6 +37,9 @@ export class DkgRequest {
 
     @Prop({ type: [DkgResponse], default: [], required: true })
     responses: DkgResponse[];
+
+    @Prop({ type: [{ x: String, y: String }], default: [] })
+    finalizedDi?: { x: string; y: string }[];
 
     @Prop({ default: RequestStatusEnum.INITIALIZED, required: true })
     status?: RequestStatusEnum;

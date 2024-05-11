@@ -1,7 +1,13 @@
 import { Prop, raw, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field, PublicKey } from 'o1js';
-import { Constants, FinalizedEvent, ZkApp } from '@auxo-dev/dkg';
+import {
+    Constants,
+    FinalizedDArrayEvent,
+    FinalizedEvent,
+    RespondedDArrayEvent,
+    ZkApp,
+} from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 import { DkgActionEnum } from 'src/constants';
 
@@ -45,14 +51,51 @@ export class ResponseFinalizedEventData {
     }
 }
 
-// export function getResponseFinalizedEventData(rawData: string[]) {
-
-// }
+export function getResponseFinalizedEventData(
+    rawData: string[],
+): ResponseFinalizedEventData {
+    const data = FinalizedDArrayEvent.fromFields(
+        Utilities.stringArrayToFields(rawData),
+    );
+    return new ResponseFinalizedEventData(
+        Number(data.requestId.toBigInt()),
+        Number(data.dimensionIndex.toBigInt()),
+        { x: data.Di.x.toString(), y: data.Di.y.toString() },
+    );
+}
 export class ResponseRespondedEventData {
     requestId: number;
-    dimensionIndex: number;
     memberId: number;
+    dimensionIndex: number;
     Di: { x: string; y: string };
+
+    constructor(
+        requestId: number,
+        memberId: number,
+        dimensionIndex: number,
+
+        Di: { x: string; y: string },
+    ) {
+        this.requestId = requestId;
+        this.memberId = memberId;
+        this.dimensionIndex = dimensionIndex;
+        this.Di = Di;
+    }
+}
+
+export function getResponseRespondedEventData(
+    rawData: string[],
+): ResponseFinalizedEventData {
+    const data = RespondedDArrayEvent.fromFields(
+        Utilities.stringArrayToFields(rawData),
+    );
+
+    return new ResponseRespondedEventData(
+        Number(data.requestId.toBigInt()),
+        Number(data.memberId.toBigInt()),
+        Number(data.dimensionIndex.toBigInt()),
+        { x: data.Di.x.toString(), y: data.Di.y.toString() },
+    );
 }
 
 @Schema({ versionKey: false })
@@ -65,6 +108,9 @@ export class ResponseProcessedEvent {
 
     @Prop({ type: ResponseProcessedEventData })
     data: ResponseProcessedEventData;
+
+    @Prop({ required: true, default: false })
+    processed?: boolean;
 }
 
 export class ResponseFinalizedEvent {
