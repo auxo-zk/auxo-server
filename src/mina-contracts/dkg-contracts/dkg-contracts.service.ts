@@ -179,9 +179,10 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            Provable.log(await this.fetchDkgState());
-            Provable.log(this._dkg.keyCounterStorage.root);
-            Provable.log(this._dkg.keyStatusStorage.root);
+            Provable.log(await this.fetchRound1State());
+            Provable.log(this._round1.contributionStorage.root);
+            Provable.log(this._round1.publicKeyStorage.root);
+            Provable.log(this._round1.processStorage.root);
         } catch (err) {
             console.log(err);
         }
@@ -803,26 +804,18 @@ export class DkgContractsService implements ContractServiceInterface {
 
     private async updateProcessStorageForDkg() {
         const dkgEvents = await this.dkgEventModel.find(
-            { enum: 0 },
+            {},
             {},
             { sort: { eventId: 1 } },
         );
         for (let i = 0; i < dkgEvents.length; i++) {
             const dkgEvent = dkgEvents[i];
-            const processedActions =
-                Storage.ProcessStorage.ProcessedActions.fromFields(
-                    Utilities.stringArrayToFields(dkgEvent.data),
-                );
-
-            for (let j = 0; j < processedActions.length.toBigInt(); j++) {
-                const processedAction = processedActions.values[j];
-                if (processedAction.toBigInt() != 0n) {
-                    const actionState = processedAction.toString();
-                    if (!this._dkg.processStorageMapping[actionState]) {
-                        this._dkg.processStorageMapping[actionState] = 0;
-                    } else {
-                        this._dkg.processStorageMapping[actionState] += 1;
-                    }
+            for (let j = 0; j < dkgEvent.data.length; j++) {
+                const actionState = dkgEvent.data[j];
+                if (!this._dkg.processStorageMapping[actionState]) {
+                    this._dkg.processStorageMapping[actionState] = 0;
+                } else {
+                    this._dkg.processStorageMapping[actionState] += 1;
                 }
             }
         }
@@ -854,26 +847,18 @@ export class DkgContractsService implements ContractServiceInterface {
 
     private async updateProcessStorageForRound1() {
         const round1Events = await this.round1EventModel.find(
-            { enum: 0 },
+            {},
             {},
             { sort: { eventId: 1 } },
         );
         for (let i = 0; i < round1Events.length; i++) {
             const round1Event = round1Events[i];
-            const processedActions =
-                Storage.ProcessStorage.ProcessedActions.fromFields(
-                    Utilities.stringArrayToFields(round1Event.data),
-                );
-
-            for (let j = 0; j < processedActions.length.toBigInt(); j++) {
-                const processedAction = processedActions.values[j];
-                if (processedAction.toBigInt() != 0n) {
-                    const actionState = processedAction.toString();
-                    if (!this._round1.processStorageMapping[actionState]) {
-                        this._round1.processStorageMapping[actionState] = 0;
-                    } else {
-                        this._round1.processStorageMapping[actionState] += 1;
-                    }
+            for (let j = 0; j < round1Event.data.length; j++) {
+                const actionState = round1Event.data[j];
+                if (!this._round1.processStorageMapping[actionState]) {
+                    this._round1.processStorageMapping[actionState] = 0;
+                } else {
+                    this._round1.processStorageMapping[actionState] += 1;
                 }
             }
         }
@@ -907,26 +892,18 @@ export class DkgContractsService implements ContractServiceInterface {
 
     private async updateProcessStorageForRound2() {
         const round2Events = await this.round2EventModel.find(
-            { enum: 0 },
+            {},
             {},
             { sort: { eventId: 1 } },
         );
         for (let i = 0; i < round2Events.length; i++) {
             const round2Event = round2Events[i];
-            const processedActions =
-                Storage.ProcessStorage.ProcessedActions.fromFields(
-                    Utilities.stringArrayToFields(round2Event.data),
-                );
-
-            for (let j = 0; j < processedActions.length.toBigInt(); j++) {
-                const processedAction = processedActions.values[j];
-                if (processedAction.toBigInt() != 0n) {
-                    const actionState = processedAction.toString();
-                    if (!this._round2.processStorageMapping[actionState]) {
-                        this._round2.processStorageMapping[actionState] = 0;
-                    } else {
-                        this._round2.processStorageMapping[actionState] += 1;
-                    }
+            for (let j = 0; j < round2Event.data.length; j++) {
+                const actionState = round2Event.data[j];
+                if (!this._round2.processStorageMapping[actionState]) {
+                    this._round2.processStorageMapping[actionState] = 0;
+                } else {
+                    this._round2.processStorageMapping[actionState] += 1;
                 }
             }
         }
