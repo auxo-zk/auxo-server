@@ -170,7 +170,7 @@ export class TreasuryManagerContractService
                                     campaignId,
                                 ),
                             );
-                        campaignStateStorage.updateLeaf(
+                        campaignStateStorage.updateRawLeaf(
                             campaignId,
                             campaignStateStorage.calculateLeaf(
                                 Storage.TreasuryManagerStorage.CampaignStateEnum

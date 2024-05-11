@@ -681,16 +681,14 @@ export class DkgContractsService implements ContractServiceInterface {
                     {},
                     { sort: { keyId: 1 } },
                 );
-                this._dkg.keyCounterStorage.updateLeaf(
+                this._dkg.keyCounterStorage.updateRawLeaf(
                     {
                         level1Index:
                             this._dkg.keyCounterStorage.calculateLevel1Index(
                                 Field(committee.committeeId),
                             ),
                     },
-                    this._dkg.keyCounterStorage.calculateLeaf(
-                        Field(keys.length),
-                    ),
+                    Field(keys.length),
                 );
                 for (let j = 0; j < keys.length; j++) {
                     const key = keys[j];
@@ -699,7 +697,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             committeeId: Field(committee.committeeId),
                             keyId: Field(key.keyId),
                         });
-                    this._dkg.keyStatusStorage.updateLeaf(
+                    this._dkg.keyStatusStorage.updateRawLeaf(
                         { level1Index },
                         Field(key.status),
                     );
@@ -707,11 +705,9 @@ export class DkgContractsService implements ContractServiceInterface {
                         key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION ||
                         key.status == KeyStatusEnum.ACTIVE
                     ) {
-                        this._dkg.keyStorage.updateLeaf(
+                        this._dkg.keyStorage.updateRawLeaf(
                             { level1Index },
-                            this._dkg.keyStorage.calculateLeaf(
-                                PublicKey.fromBase58(key.key).toGroup(),
-                            ),
+                            PublicKey.fromBase58(key.key).toGroup(),
                         );
 
                         const round1s = key.round1s.sort(
@@ -728,26 +724,20 @@ export class DkgContractsService implements ContractServiceInterface {
                                 this._round1.contributionStorage.calculateLevel2Index(
                                     Field(round1.memberId),
                                 );
-                            this._round1.contributionStorage.updateLeaf(
+                            this._round1.contributionStorage.updateRawLeaf(
                                 { level1Index, level2Index },
-                                this._round1.contributionStorage.calculateLeaf(
-                                    new Round1Contribution({
-                                        C: Libs.Committee.CArray.from(
-                                            contribution,
-                                        ),
-                                    }),
-                                ),
+                                new Round1Contribution({
+                                    C: Libs.Committee.CArray.from(contribution),
+                                }),
                             );
-                            this._round1.publicKeyStorage.updateLeaf(
+                            this._round1.publicKeyStorage.updateRawLeaf(
                                 {
                                     level1Index,
                                     level2Index,
                                 },
-                                this._round1.publicKeyStorage.calculateLeaf(
-                                    Group.from(
-                                        round1.contribution[0].x,
-                                        round1.contribution[0].y,
-                                    ),
+                                Group.from(
+                                    round1.contribution[0].x,
+                                    round1.contribution[0].y,
                                 ),
                             );
                         }
@@ -782,20 +772,16 @@ export class DkgContractsService implements ContractServiceInterface {
                                     this._round2.contributionStorage.calculateLevel2Index(
                                         Field(round2.memberId),
                                     );
-                                this._round2.contributionStorage.updateLeaf(
+                                this._round2.contributionStorage.updateRawLeaf(
                                     { level1Index, level2Index },
-                                    this._round2.contributionStorage.calculateLeaf(
-                                        contributions[k],
-                                    ),
+                                    contributions[k],
                                 );
-                                this._round2.encryptionStorage.updateLeaf(
+                                this._round2.encryptionStorage.updateRawLeaf(
                                     { level1Index, level2Index },
-                                    this._round2.encryptionStorage.calculateLeaf(
-                                        {
-                                            memberId: Field(round2.memberId),
-                                            contributions: contributions,
-                                        },
-                                    ),
+                                    {
+                                        memberId: Field(round2.memberId),
+                                        contributions: contributions,
+                                    },
                                 );
                             }
                         }

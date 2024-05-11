@@ -222,26 +222,24 @@ export class CommitteeContractService implements ContractServiceInterface {
                     level1Index,
                     Storage.CommitteeStorage.COMMITTEE_LEVEL_2_TREE(),
                 );
-                const settingLeaf = this._settingStorage.calculateLeaf({
-                    T: Field(committee.threshold),
-                    N: Field(committee.numberOfMembers),
-                });
-                this._settingStorage.updateLeaf(
-                    { level1Index: level1Index },
-                    settingLeaf,
+                this._settingStorage.updateRawLeaf(
+                    {
+                        level1Index: level1Index,
+                    },
+                    {
+                        T: Field(committee.threshold),
+                        N: Field(committee.numberOfMembers),
+                    },
                 );
                 for (let j = 0; j < committee.publicKeys.length; j++) {
                     const level2Index =
                         this._memberStorage.calculateLevel2Index(Field(j));
-                    const memberLeaf = this._memberStorage.calculateLeaf(
-                        PublicKey.fromBase58(committee.publicKeys[j]),
-                    );
-                    this._memberStorage.updateLeaf(
+                    this._memberStorage.updateRawLeaf(
                         {
                             level1Index: level1Index,
                             level2Index: level2Index,
                         },
-                        memberLeaf,
+                        PublicKey.fromBase58(committee.publicKeys[j]),
                     );
                 }
             }

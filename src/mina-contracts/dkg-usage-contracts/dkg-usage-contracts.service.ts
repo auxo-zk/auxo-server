@@ -16,6 +16,7 @@ import {
     Provable,
     PublicKey,
     Reducer,
+    UInt64,
 } from 'o1js';
 import {
     getResponseActionData,
@@ -439,7 +440,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     this._dkgRequest.keyIndexStorage.calculateLevel1Index(
                         Field(request.requestId),
                     );
-                this._dkgRequest.keyIndexStorage.updateLeaf(
+                this._dkgRequest.keyIndexStorage.updateRawLeaf(
                     { level1Index },
                     Field(request.keyIndex),
                 );
@@ -451,11 +452,11 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     { level1Index },
                     Field(request.accumulationRoot),
                 );
-                this._dkgRequest.expirationStorage.updateLeaf(
+                this._dkgRequest.expirationStorage.updateRawLeaf(
                     { level1Index },
-                    Field(request.expirationTimestamp),
+                    new UInt64(request.expirationTimestamp),
                 );
-                this._dkgRequest.resultStorage.updateLeaf(
+                this._dkgRequest.resultStorage.updateRawLeaf(
                     { level1Index },
                     Field(request.resultRoot),
                 );

@@ -174,7 +174,7 @@ export class RollupContractService implements ContractServiceInterface {
             {},
             { sort: { actionId: 1 } },
         );
-        this._counterStorage.updateLeaf(
+        this._counterStorage.updateRawLeaf(
             {
                 level1Index: this._counterStorage.calculateLevel1Index(
                     Field(ZkAppIndex.DKG),
@@ -189,11 +189,9 @@ export class RollupContractService implements ContractServiceInterface {
                 zkAppIndex: Field(rollupAction.actionData.zkAppIndex),
                 actionId: Field(actionId),
             });
-            this._rollupStorage.updateLeaf(
+            this._rollupStorage.updateRawLeaf(
                 { level1Index },
-                this._rollupStorage.calculateLeaf(
-                    Field(rollupAction.actionData.actionHash),
-                ),
+                Field(rollupAction.actionData.actionHash),
             );
         }
     }
@@ -207,7 +205,7 @@ export class RollupContractService implements ContractServiceInterface {
             {},
             { sort: { actionId: 1 } },
         );
-        this._counterStorage.updateLeaf(
+        this._counterStorage.updateRawLeaf(
             {
                 level1Index: this._counterStorage.calculateLevel1Index(
                     Field(ZkAppIndex.ROUND1),
@@ -222,11 +220,9 @@ export class RollupContractService implements ContractServiceInterface {
                 zkAppIndex: Field(rollupAction.actionData.zkAppIndex),
                 actionId: Field(actionId),
             });
-            this._rollupStorage.updateLeaf(
+            this._rollupStorage.updateRawLeaf(
                 { level1Index },
-                this._rollupStorage.calculateLeaf(
-                    Field(rollupAction.actionData.actionHash),
-                ),
+                Field(rollupAction.actionData.actionHash),
             );
         }
     }
@@ -240,7 +236,7 @@ export class RollupContractService implements ContractServiceInterface {
             {},
             { sort: { actionId: 1 } },
         );
-        this._counterStorage.updateLeaf(
+        this._counterStorage.updateRawLeaf(
             {
                 level1Index: this._counterStorage.calculateLevel1Index(
                     Field(ZkAppIndex.ROUND2),
@@ -255,11 +251,10 @@ export class RollupContractService implements ContractServiceInterface {
                 zkAppIndex: Field(rollupAction.actionData.zkAppIndex),
                 actionId: Field(actionId),
             });
-            this._rollupStorage.updateLeaf(
+            this._rollupStorage.updateRawLeaf(
                 { level1Index },
-                this._rollupStorage.calculateLeaf(
-                    Field(rollupAction.actionData.actionHash),
-                ),
+
+                Field(rollupAction.actionData.actionHash),
             );
         }
     }
@@ -273,7 +268,7 @@ export class RollupContractService implements ContractServiceInterface {
             {},
             { sort: { actionId: 1 } },
         );
-        this._counterStorage.updateLeaf(
+        this._counterStorage.updateRawLeaf(
             {
                 level1Index: this._counterStorage.calculateLevel1Index(
                     Field(ZkAppIndex.RESPONSE),
@@ -288,11 +283,9 @@ export class RollupContractService implements ContractServiceInterface {
                 zkAppIndex: Field(rollupAction.actionData.zkAppIndex),
                 actionId: Field(actionId),
             });
-            this._rollupStorage.updateLeaf(
+            this._rollupStorage.updateRawLeaf(
                 { level1Index },
-                this._rollupStorage.calculateLeaf(
-                    Field(rollupAction.actionData.actionHash),
-                ),
+                Field(rollupAction.actionData.actionHash),
             );
         }
     }
