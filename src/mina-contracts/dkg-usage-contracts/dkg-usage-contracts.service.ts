@@ -344,18 +344,47 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
         for (let i = 0; i < events.length; i++) {
             const event = events[i];
-            // PROCESSED
-            // await this.responseEventModel.findOneAndUpdate(
-            //     {
-            //         eventId: eventId,
-            //     },
-            //     {
-            //         eventId: eventId,
-            //         rawData: event.events[0].data,
-            //         data: [],
-            //     },
-            //     { new: true, upsert: true },
-            // );
+            // PROCESSED 0
+            // Finalized 1
+            // Responded 2
+            if (Number(event.events[0].data[0]) == 0) {
+                await this.responseProcessedEventModel.findOneAndUpdate(
+                    {
+                        eventId: eventId,
+                    },
+                    {
+                        eventId: eventId,
+                        rawData: event.events[0].data,
+                        data: [],
+                    },
+                    { new: true, upsert: true },
+                );
+            } else if (Number(event.events[0].data[0]) == 1) {
+                await this.responseFinalizedEventModel.findOneAndUpdate(
+                    {
+                        eventId: eventId,
+                    },
+                    {
+                        eventId: eventId,
+                        rawData: event.events[0].data,
+                        data: [],
+                    },
+                    { new: true, upsert: true },
+                );
+            } else {
+                await this.responseRespondedEventModel.findOneAndUpdate(
+                    {
+                        eventId: eventId,
+                    },
+                    {
+                        eventId: eventId,
+                        rawData: event.events[0].data,
+                        data: [],
+                    },
+                    { new: true, upsert: true },
+                );
+            }
+
             eventId += 1;
         }
     }

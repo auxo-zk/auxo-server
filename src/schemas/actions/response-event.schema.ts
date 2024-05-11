@@ -1,21 +1,53 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Prop, raw, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field, PublicKey } from 'o1js';
-import { Constants, ZkApp } from '@auxo-dev/dkg';
+import { Constants, FinalizedEvent, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 import { DkgActionEnum } from 'src/constants';
 
 export class ResponseProcessedEventData {
     requestId: number;
     actions: string[];
+    constructor(requestId: number, actions: string[]) {
+        this.requestId = requestId;
+        this.actions = actions;
+    }
 }
 
+export function getResponseProcessedEventData(
+    rawData: string[],
+): ResponseProcessedEventData {
+    const data = FinalizedEvent.fromFields(
+        Utilities.stringArrayToFields(rawData),
+    );
+    const actions: string[] = [];
+    for (let i = 0; i < data.actions.length.toBigInt(); i++) {
+        actions.push(data.actions.values[i].toString());
+    }
+    return new ResponseProcessedEventData(
+        Number(data.requestId.toBigInt()),
+        actions,
+    );
+}
 export class ResponseFinalizedEventData {
     requestId: number;
     dimensionIndex: number;
     Di: { x: string; y: string };
+
+    constructor(
+        requestId: number,
+        dimensionIndex: number,
+        Di: { x: string; y: string },
+    ) {
+        this.requestId = requestId;
+        this.dimensionIndex = dimensionIndex;
+        this.Di = Di;
+    }
 }
 
+// export function getResponseFinalizedEventData(rawData: string[]) {
+
+// }
 export class ResponseRespondedEventData {
     requestId: number;
     dimensionIndex: number;
