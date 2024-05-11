@@ -87,10 +87,6 @@ import {
     FundingRequesterActionSchema,
 } from './schemas/actions/funding-requester-action.schema';
 import {
-    ResponseEvent,
-    ResponseEventSchema,
-} from './schemas/actions/response-event.schema';
-import {
     RollupAction,
     RollupActionSchema,
 } from './schemas/actions/rollup-action.schema';
@@ -123,7 +119,6 @@ import { FundingTask, FundingTaskSchema } from './schemas/funding-task.schema';
             { name: ProjectAction.name, schema: ProjectActionSchema },
             { name: RequestAction.name, schema: RequestActionSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
-            { name: ResponseEvent.name, schema: ResponseEventSchema },
             { name: RollupAction.name, schema: RollupActionSchema },
             { name: Round1Action.name, schema: Round1ActionSchema },
             { name: Round1Event.name, schema: Round1EventSchema },

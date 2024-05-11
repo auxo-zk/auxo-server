@@ -179,7 +179,6 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            Provable.log(await this.fetchRound1State());
         } catch (err) {
             console.log(err);
         }

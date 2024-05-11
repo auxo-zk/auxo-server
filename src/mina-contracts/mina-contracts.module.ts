@@ -97,8 +97,12 @@ import {
     Round2EventSchema,
 } from 'src/schemas/actions/round-2-event.schema';
 import {
-    ResponseEvent,
-    ResponseEventSchema,
+    ResponseFinalizedEvent,
+    ResponseFinalizedEventSchema,
+    ResponseProcessedEvent,
+    ResponseProcessedEventSchema,
+    ResponseRespondedEvent,
+    ResponseRespondedEventSchema,
 } from 'src/schemas/actions/response-event.schema';
 import {
     CampaignResult,
@@ -125,7 +129,18 @@ import {
             { name: ProjectAction.name, schema: ProjectActionSchema },
             { name: RequestAction.name, schema: RequestActionSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
-            { name: ResponseEvent.name, schema: ResponseEventSchema },
+            {
+                name: ResponseProcessedEvent.name,
+                schema: ResponseProcessedEventSchema,
+            },
+            {
+                name: ResponseFinalizedEvent.name,
+                schema: ResponseFinalizedEventSchema,
+            },
+            {
+                name: ResponseRespondedEvent.name,
+                schema: ResponseRespondedEventSchema,
+            },
             { name: RollupAction.name, schema: RollupActionSchema },
             { name: Round1Action.name, schema: Round1ActionSchema },
             { name: Round1Event.name, schema: Round1EventSchema },

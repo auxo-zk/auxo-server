@@ -36,7 +36,12 @@ import {
 import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
-import { ResponseContributionStorage, Storage, ZkApp } from '@auxo-dev/dkg';
+import {
+    FinalizedEvent,
+    ResponseContributionStorage,
+    Storage,
+    ZkApp,
+} from '@auxo-dev/dkg';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import {
     DkgRequestState,
@@ -48,7 +53,11 @@ import { DkgContractsService } from '../dkg-contracts/dkg-contracts.service';
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
 import * as _ from 'lodash';
 import { RollupAction } from 'src/schemas/actions/rollup-action.schema';
-import { ResponseEvent } from 'src/schemas/actions/response-event.schema';
+import {
+    ResponseProcessedEvent,
+    ResponseFinalizedEvent,
+    ResponseRespondedEvent,
+} from 'src/schemas/actions/response-event.schema';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
@@ -106,8 +115,12 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(ResponseAction.name)
         private readonly responseActionModel: Model<ResponseAction>,
-        @InjectModel(ResponseEvent.name)
-        private readonly responseEventModel: Model<ResponseEvent>,
+        @InjectModel(ResponseProcessedEvent.name)
+        private readonly responseProcessedEventModel: Model<ResponseProcessedEvent>,
+        @InjectModel(ResponseFinalizedEvent.name)
+        private readonly responseFinalizedEventModel: Model<ResponseFinalizedEvent>,
+        @InjectModel(ResponseRespondedEvent.name)
+        private readonly responseRespondedEventModel: Model<ResponseRespondedEvent>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
         @InjectModel(RollupAction.name)
@@ -158,7 +171,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 await this.fetchRequestActions();
                 await this.fetchResponseActions();
                 await this.updateRequestActions();
-                await this.updateResponseActions();
+                // await this.updateResponseActions();
                 count = MaxRetries;
             } catch (err) {
                 console.log(err);
@@ -292,34 +305,57 @@ export class DkgUsageContractsService implements ContractServiceInterface {
     }
 
     private async fetchResponseEvents() {
-        const lastEvent = await this.responseEventModel.findOne(
-            {},
-            {},
-            { sort: { eventId: -1 } },
-        );
+        const lastProcessedEvent =
+            await this.responseProcessedEventModel.findOne(
+                {},
+                {},
+                { sort: { eventId: -1 } },
+            );
+        const lastFinalizedEvent =
+            await this.responseFinalizedEventModel.findOne(
+                {},
+                {},
+                { sort: { eventId: -1 } },
+            );
+        const lastRespondedEvent =
+            await this.responseProcessedEventModel.findOne(
+                {},
+                {},
+                { sort: { eventId: -1 } },
+            );
+        let eventId: number = lastProcessedEvent
+            ? lastProcessedEvent.eventId
+            : 0;
+        eventId = lastFinalizedEvent
+            ? lastFinalizedEvent.eventId > eventId
+                ? lastFinalizedEvent.eventId
+                : eventId
+            : eventId;
+        eventId = lastRespondedEvent
+            ? lastRespondedEvent.eventId > eventId
+                ? lastRespondedEvent.eventId
+                : eventId
+            : eventId;
         let events: Event[] = await this.queryService.fetchEvents(
             process.env.RESPONSE_ADDRESS,
         );
-        let eventId: number;
-        if (!lastEvent) {
-            eventId = 0;
-        } else {
-            events = events.slice(lastEvent.eventId + 1);
-            eventId = lastEvent.eventId + 1;
-        }
+        events = events.slice(eventId + 1);
+        eventId += 1;
+
         for (let i = 0; i < events.length; i++) {
             const event = events[i];
-            await this.responseEventModel.findOneAndUpdate(
-                {
-                    eventId: eventId,
-                },
-                {
-                    eventId: eventId,
-                    rawData: event.events[0].data,
-                    data: [],
-                },
-                { new: true, upsert: true },
-            );
+            // PROCESSED
+            // await this.responseEventModel.findOneAndUpdate(
+            //     {
+            //         eventId: eventId,
+            //     },
+            //     {
+            //         eventId: eventId,
+            //         rawData: event.events[0].data,
+            //         data: [],
+            //     },
+            //     { new: true, upsert: true },
+            // );
             eventId += 1;
         }
     }
@@ -395,44 +431,44 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         }
     }
 
-    private async updateResponseActions() {
-        await this.fetchDkgResponseState();
-        await this.fetchResponseEvents();
+    // private async updateResponseActions() {
+    //     await this.fetchDkgResponseState();
+    //     await this.fetchResponseEvents();
 
-        const notActiveActions = await this.responseActionModel.find(
-            {
-                active: false,
-            },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        if (notActiveActions.length > 0) {
-            for (let i = 0; i < notActiveActions.length; i++) {
-                const notActiveAction = notActiveActions[i];
-                const exist = await this.responseEventModel.exists({
-                    data: { $in: [notActiveAction.currentActionState] },
-                });
-                if (exist) {
-                    notActiveAction.set('active', true);
-                    const request = await this.dkgRequestModel.findOne({
-                        requestId: notActiveAction.actionData.requestId,
-                    });
-                    request.responses.push({
-                        committeeId: notActiveAction.actionData.committeeId,
-                        keyId: notActiveAction.actionData.keyId,
-                        memberId: notActiveAction.actionData.memberId,
-                        dimension: notActiveAction.actionData.dimension,
-                        rootD: notActiveAction.actionData.responseRootD,
-                    });
-                    request.save().then(async () => {
-                        await notActiveAction.save();
-                    });
-                } else {
-                    break;
-                }
-            }
-        }
-    }
+    //     const notActiveActions = await this.responseActionModel.find(
+    //         {
+    //             active: false,
+    //         },
+    //         {},
+    //         { sort: { actionId: 1 } },
+    //     );
+    //     if (notActiveActions.length > 0) {
+    //         for (let i = 0; i < notActiveActions.length; i++) {
+    //             const notActiveAction = notActiveActions[i];
+    //             const exist = await this.responseEventModel.exists({
+    //                 data: { $in: [notActiveAction.currentActionState] },
+    //             });
+    //             if (exist) {
+    //                 notActiveAction.set('active', true);
+    //                 const request = await this.dkgRequestModel.findOne({
+    //                     requestId: notActiveAction.actionData.requestId,
+    //                 });
+    //                 request.responses.push({
+    //                     committeeId: notActiveAction.actionData.committeeId,
+    //                     keyId: notActiveAction.actionData.keyId,
+    //                     memberId: notActiveAction.actionData.memberId,
+    //                     dimension: notActiveAction.actionData.dimension,
+    //                     rootD: notActiveAction.actionData.responseRootD,
+    //                 });
+    //                 request.save().then(async () => {
+    //                     await notActiveAction.save();
+    //                 });
+    //             } else {
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // }
 
     async updateMerkleTrees() {
         try {
@@ -488,52 +524,52 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     );
                 }
             }
-            await this.updateProcessStorageForResponse();
+            // await this.updateProcessStorageForResponse();
         } catch (err) {}
     }
 
-    private async updateProcessStorageForResponse() {
-        const responseEvents = await this.responseEventModel.find(
-            {},
-            {},
-            { sort: { eventId: 1 } },
-        );
-        for (let i = 0; i < responseEvents.length; i++) {
-            const responseEvent = responseEvents[i];
-            for (let j = 0; j < responseEvent.data.length; j++) {
-                const actionState = responseEvent.data[j];
-                if (!this._dkgResponse.processStorageMapping[actionState]) {
-                    this._dkgResponse.processStorageMapping[actionState] = 0;
-                } else {
-                    this._dkgResponse.processStorageMapping[actionState] += 1;
-                }
-            }
-        }
+    // private async updateProcessStorageForResponse() {
+    //     const responseEvents = await this.responseEventModel.find(
+    //         {},
+    //         {},
+    //         { sort: { eventId: 1 } },
+    //     );
+    //     for (let i = 0; i < responseEvents.length; i++) {
+    //         const responseEvent = responseEvents[i];
+    //         for (let j = 0; j < responseEvent.data.length; j++) {
+    //             const actionState = responseEvent.data[j];
+    //             if (!this._dkgResponse.processStorageMapping[actionState]) {
+    //                 this._dkgResponse.processStorageMapping[actionState] = 0;
+    //             } else {
+    //                 this._dkgResponse.processStorageMapping[actionState] += 1;
+    //             }
+    //         }
+    //     }
 
-        const responseActions = await this.responseActionModel.find(
-            { active: true },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        for (let i = 0; i < responseActions.length; i++) {
-            const responseAction = responseActions[i];
-            if (
-                this._dkgResponse.processStorageMapping[
-                    responseAction.currentActionState
-                ] != undefined
-            ) {
-                this._dkgResponse.processStorage.updateAction(
-                    Field(responseAction.actionId),
-                    {
-                        actionState: Field(responseAction.currentActionState),
-                        processCounter: new UInt8(
-                            this._dkgResponse.processStorageMapping[
-                                responseAction.currentActionState
-                            ],
-                        ),
-                    },
-                );
-            }
-        }
-    }
+    //     const responseActions = await this.responseActionModel.find(
+    //         { active: true },
+    //         {},
+    //         { sort: { actionId: 1 } },
+    //     );
+    //     for (let i = 0; i < responseActions.length; i++) {
+    //         const responseAction = responseActions[i];
+    //         if (
+    //             this._dkgResponse.processStorageMapping[
+    //                 responseAction.currentActionState
+    //             ] != undefined
+    //         ) {
+    //             this._dkgResponse.processStorage.updateAction(
+    //                 Field(responseAction.actionId),
+    //                 {
+    //                     actionState: Field(responseAction.currentActionState),
+    //                     processCounter: new UInt8(
+    //                         this._dkgResponse.processStorageMapping[
+    //                             responseAction.currentActionState
+    //                         ],
+    //                     ),
+    //                 },
+    //             );
+    //         }
+    //     }
+    // }
 }

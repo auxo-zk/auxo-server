@@ -5,17 +5,72 @@ import { Constants, ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 import { DkgActionEnum } from 'src/constants';
 
+export class ResponseProcessedEventData {
+    requestId: number;
+    actions: string[];
+}
+
+export class ResponseFinalizedEventData {
+    requestId: number;
+    dimensionIndex: number;
+    Di: { x: string; y: string };
+}
+
+export class ResponseRespondedEventData {
+    requestId: number;
+    dimensionIndex: number;
+    memberId: number;
+    Di: { x: string; y: string };
+}
+
 @Schema({ versionKey: false })
-export class ResponseEvent {
+export class ResponseProcessedEvent {
     @Prop({ required: true, unique: true, index: true, _id: true })
     eventId: number;
 
     @Prop({})
     rawData: string[];
 
-    @Prop({})
-    data: string[];
+    @Prop({ type: ResponseProcessedEventData })
+    data: ResponseProcessedEventData;
 }
 
-export type ResponseEventDocument = HydratedDocument<ResponseEvent>;
-export const ResponseEventSchema = SchemaFactory.createForClass(ResponseEvent);
+export class ResponseFinalizedEvent {
+    @Prop({ required: true, unique: true, index: true, _id: true })
+    eventId: number;
+
+    @Prop({})
+    rawData: string[];
+
+    @Prop({ type: ResponseFinalizedEventData })
+    data: ResponseFinalizedEventData;
+}
+
+export class ResponseRespondedEvent {
+    @Prop({ required: true, unique: true, index: true, _id: true })
+    eventId: number;
+
+    @Prop({})
+    rawData: string[];
+
+    @Prop({ type: ResponseRespondedEventData })
+    data: ResponseRespondedEventData;
+}
+
+export type ResponseProcessedEventDocument =
+    HydratedDocument<ResponseProcessedEvent>;
+export const ResponseProcessedEventSchema = SchemaFactory.createForClass(
+    ResponseProcessedEvent,
+);
+
+export type ResponseFinalizedEventDocument =
+    HydratedDocument<ResponseFinalizedEvent>;
+export const ResponseFinalizedEventSchema = SchemaFactory.createForClass(
+    ResponseFinalizedEvent,
+);
+
+export type ResponseRespondedEventDataDocument =
+    HydratedDocument<ResponseRespondedEventData>;
+export const ResponseRespondedEventSchema = SchemaFactory.createForClass(
+    ResponseRespondedEventData,
+);
