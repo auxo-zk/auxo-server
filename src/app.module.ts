@@ -81,7 +81,7 @@ import {
 import {
     Round2Event,
     Round2EventSchema,
-} from './schemas/actions/round-2-event';
+} from './schemas/actions/round-2-event.schema';
 import {
     FundingRequesterAction,
     FundingRequesterActionSchema,

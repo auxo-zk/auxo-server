@@ -311,8 +311,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 },
                 {
                     eventId: eventId,
-                    enum: 0,
-                    data: event.events[0].data,
+                    rawData: event.events[0].data,
+                    data: [],
                 },
                 { new: true, upsert: true },
             );
@@ -322,6 +322,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     private async updateRequestActions() {
         await this.fetchDkgRequestState();
+
         const currentAction = await this.requestActionModel.findOne({
             currentActionState: this._dkgRequest.actionState,
         });
@@ -392,15 +393,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     private async updateResponseActions() {
         await this.fetchDkgResponseState();
+        await this.fetchResponseEvents();
 
-        const latestRollupedActionId =
-            (await this.rollupActionModel.count({
-                active: true,
-                'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
-            })) - 1;
         const notActiveActions = await this.responseActionModel.find(
             {
-                actionId: { $lte: latestRollupedActionId },
                 active: false,
             },
             {},
@@ -409,20 +405,27 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         if (notActiveActions.length > 0) {
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
-                notActiveAction.set('active', true);
-                const request = await this.dkgRequestModel.findOne({
-                    requestId: notActiveAction.actionData.requestId,
+                const exist = await this.responseEventModel.exists({
+                    data: { $in: [notActiveAction.currentActionState] },
                 });
-                request.responses.push({
-                    committeeId: notActiveAction.actionData.committeeId,
-                    keyId: notActiveAction.actionData.keyId,
-                    memberId: notActiveAction.actionData.memberId,
-                    dimension: notActiveAction.actionData.dimension,
-                    rootD: notActiveAction.actionData.responseRootD,
-                });
-                request.save().then(async () => {
-                    await notActiveAction.save();
-                });
+                if (exist) {
+                    notActiveAction.set('active', true);
+                    const request = await this.dkgRequestModel.findOne({
+                        requestId: notActiveAction.actionData.requestId,
+                    });
+                    request.responses.push({
+                        committeeId: notActiveAction.actionData.committeeId,
+                        keyId: notActiveAction.actionData.keyId,
+                        memberId: notActiveAction.actionData.memberId,
+                        dimension: notActiveAction.actionData.dimension,
+                        rootD: notActiveAction.actionData.responseRootD,
+                    });
+                    request.save().then(async () => {
+                        await notActiveAction.save();
+                    });
+                } else {
+                    break;
+                }
             }
         }
     }

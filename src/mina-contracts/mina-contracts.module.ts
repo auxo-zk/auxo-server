@@ -95,7 +95,7 @@ import {
 import {
     Round2Event,
     Round2EventSchema,
-} from 'src/schemas/actions/round-2-event';
+} from 'src/schemas/actions/round-2-event.schema';
 import {
     ResponseEvent,
     ResponseEventSchema,

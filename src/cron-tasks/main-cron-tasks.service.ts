@@ -13,7 +13,7 @@ export class MainCronTasksService {
     ) {}
 
     // 6 minutes
-    @Interval(360000)
+    @Interval(120000)
     async handleUpdateContracts() {
         this.logger.log('Register updateContracts task at ' + process.pid);
         this.contractServices.add('updateContracts', {

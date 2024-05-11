@@ -58,9 +58,18 @@ import {
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
 import * as _ from 'lodash';
 import { RollupAction } from 'src/schemas/actions/rollup-action.schema';
-import { DkgEvent } from 'src/schemas/actions/dkg-event.schema';
-import { Round1Event } from 'src/schemas/actions/round-1-event.schema';
-import { Round2Event } from 'src/schemas/actions/round-2-event';
+import {
+    DkgEvent,
+    getDkgEventData,
+} from 'src/schemas/actions/dkg-event.schema';
+import {
+    getRound1EventData,
+    Round1Event,
+} from 'src/schemas/actions/round-1-event.schema';
+import {
+    getRound2EventData,
+    Round2Event,
+} from 'src/schemas/actions/round-2-event.schema';
 
 @Injectable()
 export class DkgContractsService implements ContractServiceInterface {
@@ -170,6 +179,9 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            Provable.log(await this.fetchDkgState());
+            Provable.log(this._dkg.keyCounterStorage.root);
+            Provable.log(this._dkg.keyStatusStorage.root);
         } catch (err) {
             console.log(err);
         }
@@ -191,9 +203,6 @@ export class DkgContractsService implements ContractServiceInterface {
                 await this.updateDkgActions();
                 await this.updateRound1Actions();
                 await this.updateRound2Actions();
-                await this.fetchDkgEvents();
-                await this.fetchRound1Events();
-                await this.fetchRound2Events();
                 count = MaxRetries;
             } catch (err) {
                 this.logger.error(err);
@@ -313,8 +322,8 @@ export class DkgContractsService implements ContractServiceInterface {
                 },
                 {
                     eventId: eventId,
-                    enum: 0,
-                    data: event.events[0].data,
+                    rawData: event.events[0].data,
+                    data: getDkgEventData(event.events[0].data),
                 },
                 { new: true, upsert: true },
             );
@@ -387,8 +396,8 @@ export class DkgContractsService implements ContractServiceInterface {
                 },
                 {
                     eventId: eventId,
-                    enum: 0,
-                    data: event.events[0].data,
+                    rawData: event.events[0].data,
+                    data: getRound1EventData(event.events[0].data),
                 },
                 { new: true, upsert: true },
             );
@@ -456,47 +465,28 @@ export class DkgContractsService implements ContractServiceInterface {
         }
         for (let i = 0; i < events.length; i++) {
             const event = events[i];
-            if (Number(event.events[0].data[0]) == 0) {
-                await this.round2EventModel.findOneAndUpdate(
-                    {
-                        eventId: eventId,
-                    },
-                    {
-                        eventId: eventId,
-                        enum: 0,
-                        data: event.events[0].data.slice(1),
-                    },
-                    { new: true, upsert: true },
-                );
-            } else {
-                await this.round2EventModel.findOneAndUpdate(
-                    {
-                        eventId: eventId,
-                    },
-                    {
-                        eventId: eventId,
-                        enum: 1,
-                        data: event.events[0].data.slice(1),
-                    },
-                    { new: true, upsert: true },
-                );
-            }
 
+            await this.round2EventModel.findOneAndUpdate(
+                {
+                    eventId: eventId,
+                },
+                {
+                    eventId: eventId,
+                    rawData: event.events[0].data,
+                    data: getRound2EventData(event.events[0].data),
+                },
+                { new: true, upsert: true },
+            );
             eventId += 1;
         }
     }
 
     private async updateDkgActions() {
         await this.fetchDkgState();
+        await this.fetchDkgEvents();
 
-        const latestRollupedActionId =
-            (await this.rollupActionModel.count({
-                active: true,
-                'actionData.zkAppIndex': ZkAppIndex.DKG,
-            })) - 1;
         const notActiveActions = await this.dkgActionModel.find(
             {
-                actionId: { $lte: latestRollupedActionId },
                 active: false,
             },
             {},
@@ -509,97 +499,103 @@ export class DkgContractsService implements ContractServiceInterface {
             for (let i = 0; i < notActiveActions.length; i++) {
                 const promises = [];
                 const notActiveAction = notActiveActions[i];
-                notActiveAction.set('active', true);
-                const committeeId = notActiveAction.actionData.committeeId;
-                if (nextKeyIdMapping[committeeId] == undefined) {
-                    const lastKeyByCommitteeId = await this.keyModel.findOne(
-                        {
-                            committeeId: committeeId,
-                        },
-                        {},
-                        { sort: { keyId: -1 } },
-                    );
-                    if (lastKeyByCommitteeId != undefined) {
-                        nextKeyIdMapping[committeeId] =
-                            lastKeyByCommitteeId.keyId + 1;
-                    } else {
-                        nextKeyIdMapping[committeeId] = 0;
-                    }
-                }
-                switch (notActiveAction.actionData.actionEnum) {
-                    case DkgActionEnum.GENERATE_KEY: {
-                        const keyIndex = Utilities.getKeyIndex(
-                            committeeId,
-                            nextKeyIdMapping[committeeId],
-                        );
-                        promises.push(
-                            this.keyModel.create({
-                                keyIndex: keyIndex,
-                                committeeId: committeeId,
-                                keyId: nextKeyIdMapping[committeeId],
-                                status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
-                            }),
-                        );
-                        nextKeyIdMapping[committeeId] += 1;
-                        break;
-                    }
-                    case DkgActionEnum.FINALIZE_ROUND_1: {
-                        const keyIndex = Utilities.getKeyIndex(
-                            committeeId,
-                            notActiveAction.actionData.keyId,
-                        );
-                        const key = await this.keyModel.findOne({
-                            keyIndex: keyIndex,
-                        });
-                        key.set('status', KeyStatusEnum.ROUND_2_CONTRIBUTION);
-                        key.set('key', notActiveAction.actionData.key);
-                        promises.push(key.save());
-                        break;
-                    }
-                    case DkgActionEnum.FINALIZE_ROUND_2: {
-                        const keyIndex = Utilities.getKeyIndex(
-                            committeeId,
-                            notActiveAction.actionData.keyId,
-                        );
-                        const key = await this.keyModel.findOne({
-                            keyIndex: keyIndex,
-                        });
-                        key.set('status', KeyStatusEnum.ACTIVE);
-                        promises.push(key.save());
-                        break;
-                    }
-                    case DkgActionEnum.DEPRECATE_KEY: {
-                        const keyIndex = Utilities.getKeyIndex(
-                            committeeId,
-                            notActiveAction.actionData.keyId,
-                        );
-                        const key = await this.keyModel.findOne({
-                            keyIndex: keyIndex,
-                        });
-                        key.set('status', KeyStatusEnum.DEPRECATED);
-                        promises.push(key.save());
-                        break;
-                    }
-                }
-
-                Promise.all(promises).then(async () => {
-                    await notActiveAction.save();
+                const exist = await this.dkgEventModel.exists({
+                    data: { $in: [notActiveAction.currentActionState] },
                 });
+                if (exist) {
+                    notActiveAction.set('active', true);
+                    const committeeId = notActiveAction.actionData.committeeId;
+                    if (nextKeyIdMapping[committeeId] == undefined) {
+                        const lastKeyByCommitteeId =
+                            await this.keyModel.findOne(
+                                {
+                                    committeeId: committeeId,
+                                },
+                                {},
+                                { sort: { keyId: -1 } },
+                            );
+                        if (lastKeyByCommitteeId != undefined) {
+                            nextKeyIdMapping[committeeId] =
+                                lastKeyByCommitteeId.keyId + 1;
+                        } else {
+                            nextKeyIdMapping[committeeId] = 0;
+                        }
+                    }
+                    switch (notActiveAction.actionData.actionEnum) {
+                        case DkgActionEnum.GENERATE_KEY: {
+                            const keyIndex = Utilities.getKeyIndex(
+                                committeeId,
+                                nextKeyIdMapping[committeeId],
+                            );
+                            promises.push(
+                                this.keyModel.create({
+                                    keyIndex: keyIndex,
+                                    committeeId: committeeId,
+                                    keyId: nextKeyIdMapping[committeeId],
+                                    status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
+                                }),
+                            );
+                            nextKeyIdMapping[committeeId] += 1;
+                            break;
+                        }
+                        case DkgActionEnum.FINALIZE_ROUND_1: {
+                            const keyIndex = Utilities.getKeyIndex(
+                                committeeId,
+                                notActiveAction.actionData.keyId,
+                            );
+                            const key = await this.keyModel.findOne({
+                                keyIndex: keyIndex,
+                            });
+                            key.set(
+                                'status',
+                                KeyStatusEnum.ROUND_2_CONTRIBUTION,
+                            );
+                            key.set('key', notActiveAction.actionData.key);
+                            promises.push(key.save());
+                            break;
+                        }
+                        case DkgActionEnum.FINALIZE_ROUND_2: {
+                            const keyIndex = Utilities.getKeyIndex(
+                                committeeId,
+                                notActiveAction.actionData.keyId,
+                            );
+                            const key = await this.keyModel.findOne({
+                                keyIndex: keyIndex,
+                            });
+                            key.set('status', KeyStatusEnum.ACTIVE);
+                            promises.push(key.save());
+                            break;
+                        }
+                        case DkgActionEnum.DEPRECATE_KEY: {
+                            const keyIndex = Utilities.getKeyIndex(
+                                committeeId,
+                                notActiveAction.actionData.keyId,
+                            );
+                            const key = await this.keyModel.findOne({
+                                keyIndex: keyIndex,
+                            });
+                            key.set('status', KeyStatusEnum.DEPRECATED);
+                            promises.push(key.save());
+                            break;
+                        }
+                    }
+
+                    Promise.all(promises).then(async () => {
+                        await notActiveAction.save();
+                    });
+                } else {
+                    break;
+                }
             }
         }
     }
 
     private async updateRound1Actions() {
         await this.fetchRound1State();
+        await this.fetchRound1Events();
 
-        const latestRollupedActionId =
-            (await this.rollupActionModel.count({
-                active: true,
-                'actionData.zkAppIndex': ZkAppIndex.ROUND1,
-            })) - 1;
         const notActiveActions = await this.round1ActionModel.find(
             {
-                actionId: { $lte: latestRollupedActionId },
                 active: false,
             },
             {},
@@ -608,36 +604,40 @@ export class DkgContractsService implements ContractServiceInterface {
         if (notActiveActions.length > 0) {
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
-                notActiveAction.set('active', true);
-                const keyIndex = Utilities.getKeyIndex(
-                    notActiveAction.actionData.committeeId,
-                    notActiveAction.actionData.keyId,
-                );
-                const key = await this.keyModel.findOne({
-                    keyIndex: keyIndex,
+                const exist = await this.round1EventModel.exists({
+                    data: {
+                        $in: [notActiveAction.currentActionState],
+                    },
                 });
-                key.round1s.push({
-                    memberId: notActiveAction.actionData.memberId,
-                    contribution: notActiveAction.actionData.contribution,
-                });
-                key.save().then(async () => {
-                    await notActiveAction.save();
-                });
+                if (exist) {
+                    notActiveAction.set('active', true);
+                    const keyIndex = Utilities.getKeyIndex(
+                        notActiveAction.actionData.committeeId,
+                        notActiveAction.actionData.keyId,
+                    );
+                    const key = await this.keyModel.findOne({
+                        keyIndex: keyIndex,
+                    });
+                    key.round1s.push({
+                        memberId: notActiveAction.actionData.memberId,
+                        contribution: notActiveAction.actionData.contribution,
+                    });
+                    key.save().then(async () => {
+                        await notActiveAction.save();
+                    });
+                } else {
+                    break;
+                }
             }
         }
     }
 
     private async updateRound2Actions() {
         await this.fetchRound2State();
+        await this.fetchRound2Events();
 
-        const latestRollupedActionId =
-            (await this.rollupActionModel.count({
-                active: true,
-                'actionData.zkAppIndex': ZkAppIndex.ROUND2,
-            })) - 1;
         const notActiveActions = await this.round2ActionModel.find(
             {
-                actionId: { $lte: latestRollupedActionId },
                 active: false,
             },
             {},
@@ -646,21 +646,28 @@ export class DkgContractsService implements ContractServiceInterface {
         if (notActiveActions.length > 0) {
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
-                notActiveAction.set('active', true);
-                const keyIndex = Utilities.getKeyIndex(
-                    notActiveAction.actionData.committeeId,
-                    notActiveAction.actionData.keyId,
-                );
-                const key = await this.keyModel.findOne({
-                    keyIndex: keyIndex,
+                const exist = await this.round2EventModel.exists({
+                    data: { $in: [notActiveAction.currentActionState] },
                 });
-                key.round2s.push({
-                    memberId: notActiveAction.actionData.memberId,
-                    contribution: notActiveAction.actionData.contribution,
-                });
-                key.save().then(async () => {
-                    await notActiveAction.save();
-                });
+                if (exist) {
+                    notActiveAction.set('active', true);
+                    const keyIndex = Utilities.getKeyIndex(
+                        notActiveAction.actionData.committeeId,
+                        notActiveAction.actionData.keyId,
+                    );
+                    const key = await this.keyModel.findOne({
+                        keyIndex: keyIndex,
+                    });
+                    key.round2s.push({
+                        memberId: notActiveAction.actionData.memberId,
+                        contribution: notActiveAction.actionData.contribution,
+                    });
+                    key.save().then(async () => {
+                        await notActiveAction.save();
+                    });
+                } else {
+                    break;
+                }
             }
         }
     }

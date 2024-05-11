@@ -10,8 +10,8 @@ export class ResponseEvent {
     @Prop({ required: true, unique: true, index: true, _id: true })
     eventId: number;
 
-    @Prop()
-    enum: number;
+    @Prop({})
+    rawData: string[];
 
     @Prop({})
     data: string[];

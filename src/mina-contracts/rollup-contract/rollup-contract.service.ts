@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { Storage } from '@auxo-dev/dkg';
+import { FinalizeResponse, Storage } from '@auxo-dev/dkg';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -80,9 +80,6 @@ export class RollupContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            Provable.log(await this.fetchRollupState());
-            Provable.log(this._counterStorage.root);
-            Provable.log(this._rollupStorage.root);
         } catch (err) {}
     }
 
