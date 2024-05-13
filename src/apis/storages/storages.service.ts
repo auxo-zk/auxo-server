@@ -25,11 +25,6 @@ export class StoragesService {
         private readonly committeeContractsService: CommitteeContractService,
         private readonly dkgContractService: DkgContractsService,
         private readonly dkgUsageContractService: DkgUsageContractsService,
-        private readonly campaignContractService: CampaignContractService,
-        private readonly participationContractService: ParticipationContractService,
-        private readonly projectContractService: ProjectContractService,
-        private readonly fundingContractService: FundingContractService,
-        private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
     getRollupZkAppStorage(): MerkleLeaf[] {
@@ -516,6 +511,27 @@ export class StoragesService {
         [key: string]: any;
     } {
         return this.dkgContractService.round2.processStorage.leafs;
+    }
+
+    getRequestZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.zkAppStorage.addressMap
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgUsageContractService.dkgRequest.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRequestZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.zkAppStorage.addresses;
     }
 
     // getRequesterTreeLevel1(): { [key: string]: MerkleLeaf } {

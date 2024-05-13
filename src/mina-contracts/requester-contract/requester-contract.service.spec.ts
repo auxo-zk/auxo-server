@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FundingRequesterContractService } from './funding-requester-contract.service';
+import { FundingRequesterContractService } from './requester-contract.service';
 
 describe('FundingRequesterContractService', () => {
     let service: FundingRequesterContractService;

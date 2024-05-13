@@ -159,10 +159,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            Provable.log(await this.fetchDkgResponseState());
-            Provable.log(this._dkgResponse.contributionStorage.root);
-            Provable.log(this._dkgResponse.responseStorage.root);
-            Provable.log(this._dkgResponse.processStorage.root);
         } catch (err) {
             console.log(err);
         }
@@ -455,7 +451,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     await this.dkgRequestModel.create({
                         requestId: nextRequestId,
                         keyIndex: notActiveAction.actionData.keyIndex,
-                        taskId: notActiveAction.actionData.taskId,
+                        task: notActiveAction.actionData.taskId,
                         expirationTimestamp:
                             notActiveAction.actionData.expirationTimestamp,
                         accumulationRoot:
@@ -579,7 +575,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 );
                 this._dkgRequest.taskIdStorage.updateLeaf(
                     { level1Index },
-                    Field(request.taskId),
+                    Field(request.task),
                 );
                 this._dkgRequest.accumulationStorage.updateLeaf(
                     { level1Index },
@@ -597,17 +593,24 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const responses = request.responses.sort(
                     (a, b) => a.memberId - b.memberId,
                 );
-                const groupVectorStorage = new GroupVectorStorage();
-                request.finalizedD.map((Di, index) => {
-                    groupVectorStorage.updateRawLeaf(
-                        { level1Index: Field(index) },
-                        Group.from(Di.x, Di.y),
+
+                if (
+                    request.finalizedD.length != 0 &&
+                    request.finalizedD != undefined
+                ) {
+                    const groupVectorStorage = new GroupVectorStorage();
+                    request.finalizedD.map((Di, index) => {
+                        groupVectorStorage.updateRawLeaf(
+                            { level1Index: Field(index) },
+                            Group.from(Di.x, Di.y),
+                        );
+                    });
+                    this._dkgResponse.responseStorage.updateLeaf(
+                        { level1Index },
+                        groupVectorStorage.root,
                     );
-                });
-                this._dkgResponse.responseStorage.updateLeaf(
-                    { level1Index },
-                    groupVectorStorage.root,
-                );
+                }
+
                 for (let j = 0; j < responses.length; j++) {
                     const response = responses[j];
                     const D = new DArray();
@@ -650,8 +653,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 }
             }
         }
-
-        // console.log(this._dkgResponse.processStorageMapping);
         const responseActions = await this.responseActionModel.find(
             { active: true },
             {},
@@ -664,6 +665,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     responseAction.currentActionState
                 ] != undefined
             ) {
+                console.log('here');
                 this._dkgResponse.processStorage.updateAction(
                     Field(responseAction.actionId),
                     {

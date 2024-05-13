@@ -78,15 +78,12 @@ import {
     RollupAction,
     RollupActionSchema,
 } from 'src/schemas/actions/rollup-action.schema';
-import { FundingRequesterContractService } from './requester-contract/funding-requester-contract.service';
+import { FundingRequesterContractService } from './requester-contract/requester-contract.service';
 import {
-    FundingRequesterAction,
-    FundingRequesterActionSchema,
+    RequesterAction,
+    RequesterActionSchema,
 } from 'src/schemas/actions/funding-requester-action.schema';
-import {
-    FundingTask,
-    FundingTaskSchema,
-} from 'src/schemas/funding-task.schema';
+import { Task, TaskSchema } from 'src/schemas/funding-task.schema';
 import { DkgEvent, DkgEventSchema } from 'src/schemas/actions/dkg-event.schema';
 import {
     Round1Event,
@@ -119,8 +116,8 @@ import {
             { name: DkgEvent.name, schema: DkgEventSchema },
             { name: FundingAction.name, schema: FundingActionSchema },
             {
-                name: FundingRequesterAction.name,
-                schema: FundingRequesterActionSchema,
+                name: RequesterAction.name,
+                schema: RequesterActionSchema,
             },
             {
                 name: ParticipationAction.name,
@@ -154,7 +151,7 @@ import {
             { name: Campaign.name, schema: CampaignSchema },
             { name: Committee.name, schema: CommitteeSchema },
             { name: FundingResult.name, schema: FundingResultSchema },
-            { name: FundingTask.name, schema: FundingTaskSchema },
+            { name: Task.name, schema: TaskSchema },
             { name: Funding.name, schema: FundingSchema },
             { name: Key.name, schema: KeySchema },
             {

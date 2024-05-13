@@ -83,8 +83,8 @@ import {
     Round2EventSchema,
 } from './schemas/actions/round-2-event.schema';
 import {
-    FundingRequesterAction,
-    FundingRequesterActionSchema,
+    RequesterAction,
+    RequesterActionSchema,
 } from './schemas/actions/funding-requester-action.schema';
 import {
     RollupAction,
@@ -94,7 +94,7 @@ import {
     CampaignResult,
     CampaignResultSchema,
 } from './schemas/campaign-result.schema';
-import { FundingTask, FundingTaskSchema } from './schemas/funding-task.schema';
+import { Task, TaskSchema } from './schemas/funding-task.schema';
 
 @Module({
     imports: [
@@ -109,8 +109,8 @@ import { FundingTask, FundingTaskSchema } from './schemas/funding-task.schema';
             { name: DkgEvent.name, schema: DkgEventSchema },
             { name: FundingAction.name, schema: FundingActionSchema },
             {
-                name: FundingRequesterAction.name,
-                schema: FundingRequesterActionSchema,
+                name: RequesterAction.name,
+                schema: RequesterActionSchema,
             },
             {
                 name: ParticipationAction.name,
@@ -132,7 +132,7 @@ import { FundingTask, FundingTaskSchema } from './schemas/funding-task.schema';
             { name: Campaign.name, schema: CampaignSchema },
             { name: Committee.name, schema: CommitteeSchema },
             { name: FundingResult.name, schema: FundingResultSchema },
-            { name: FundingTask.name, schema: FundingTaskSchema },
+            { name: Task.name, schema: TaskSchema },
             { name: Funding.name, schema: FundingSchema },
             { name: Key.name, schema: KeySchema },
             {

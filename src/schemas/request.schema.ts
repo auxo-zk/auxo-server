@@ -23,8 +23,8 @@ export class DkgRequest {
     @Prop()
     keyIndex: number;
 
-    @Prop({ index: true })
-    taskId: string;
+    @Prop({ unique: true, index: true })
+    task: string;
 
     @Prop()
     expirationTimestamp: number;

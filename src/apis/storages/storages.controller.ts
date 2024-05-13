@@ -28,7 +28,7 @@ export class StoragesController {
         return this.storagesService.getRollupCounterStorageLevel1();
     }
 
-    @Get('rollup/member/leafs')
+    @Get('rollup/counter/leafs')
     @ApiTags('Storage Rollup')
     getRollupCounterStorageLeafs(): {
         [key: string]: any;
@@ -314,309 +314,231 @@ export class StoragesController {
         return this.storagesService.getRound2ProcessStorageLeafs();
     }
 
+    @Get('request/zkapp')
+    @ApiTags('Storage Request')
+    getRequestZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getRequestZkAppStorage();
+    }
+
+    @Get('request/zkapp/leafs')
+    @ApiTags('Storage Request')
+    getRequestZkAppStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequestZkAppStorageLeafs();
+    }
+
     // @Get('request/requester/level1')
     // @ApiTags('Storage Request')
-    // getRequesterTreeLevel1(): { [key: string]: MerkleLeaf } {
-    //     return this.storagesService.getRequesterTreeLevel1();
+    // getRequestRequesterStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getRequestRequesterStorageLevel1();
     // }
 
     // @Get('request/requester/leafs')
     // @ApiTags('Storage Request')
-    // getRequesterTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRequesterTreeLeafs();
+    // getRequestRequesterStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getRequestRequesterStorageLeafs();
     // }
 
-    // @Get('request/request-status/level1')
-    // @ApiTags('Storage Request')
-    // getRequestStatusTreeLevel1(): { [key: string]: MerkleLeaf } {
-    //     return this.storagesService.getRequestStatusTreeLevel1();
-    // }
-
-    // @Get('request/request-status/leafs')
-    // @ApiTags('Storage Request')
-    // getRequestStatusTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRequestStatusTreeLeafs();
-    // }
-
-    // @Get('response/zkapps')
+    // @Get('request/keyIndex/level1')
     // @ApiTags('Storage Response')
-    // getResponseZkApps(): MerkleLeaf[] {
-    //     return this.storagesService.getResponseZkAppTree();
+    // getRequestKeyIndexStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getRequestKeyIndexStorageLevel1();
     // }
 
-    // @Get('response/zkapps/leafs')
+    // @Get('request/keyIndex/leafs')
     // @ApiTags('Storage Response')
-    // getResponseZkAppsLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getResponseZkAppTreeLeafs();
+    // getRequestKeyIndexStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getRequestKeyIndexStorageLeafs();
     // }
 
-    // @Get('response/reduce')
+    // @Get('request/task-id/level1')
     // @ApiTags('Storage Response')
-    // getResponseReduceTree(): { [key: string]: MerkleLeaf } {
-    //     return this.storagesService.getResponseReduceTree();
+    // getRequestTaskIdStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getRequestTaskIdStorageLevel1();
     // }
 
-    // @Get('response/reduce/leafs')
+    // @Get('request/task-id/leafs')
     // @ApiTags('Storage Response')
-    // getResponseReduceTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getResponseReduceTreeLeafs();
+    // getRequestTaskIdStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getRequestTaskIdStorageLeafs();
+    // }
+
+    // @Get('request/accumulation/level1')
+    // @ApiTags('Storage Response')
+    // getRequestAccumulationStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getRequestAccumulationStorageLevel1();
+    // }
+
+    // @Get('request/accumulation/leafs')
+    // @ApiTags('Storage Response')
+    // getRequestAccumulationStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getRequestAccumulationStorageLeafs();
+    // }
+
+    // @Get('request/expiration/level1')
+    // @ApiTags('Storage Response')
+    // getRequestExpirationStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getRequestExpirationStorageLevel1();
+    // }
+
+    // @Get('request/accumulation/leafs')
+    // @ApiTags('Storage Response')
+    // getRequestExpirationStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getRequestExpirationStorageLeafs();
+    // }
+
+    // @Get('request/result/level1')
+    // @ApiTags('Storage Response')
+    // getRequestResultStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getRequestExpirationStorageLevel1();
+    // }
+
+    // @Get('request/result/leafs')
+    // @ApiTags('Storage Response')
+    // getRequestResultStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getRequestExpirationStorageLeafs();
+    // }
+
+    // @Get('response/zkapp')
+    // @ApiTags('Storage Response')
+    // getResponseZkAppStorage(): MerkleLeaf[] {
+    //     return this.storagesService.getResponseZkAppStorage();
+    // }
+
+    // @Get('response/zkapp/leafs')
+    // @ApiTags('Storage Response')
+    // getResponseZkAppStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getResponseZkAppStorageLeafs();
     // }
 
     // @Get('response/contribution/level1')
     // @ApiTags('Storage Response')
-    // getResponseContributionTreeLevel1(): { [key: string]: MerkleLeaf } {
-    //     return this.storagesService.getResponseContributionTreeLevel1();
+    // getResponseContributionStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getResponseContributionStorageLevel1();
     // }
 
     // @Get('response/contribution/leafs')
     // @ApiTags('Storage Response')
-    // getResponseContributionTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getResponseContributionTreeLeafs();
+    // getResponseContributionStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getResponseContributionStorageLeafs();
     // }
 
-    // @Get('response/contribution/level2/:level1Index')
+    // @Get('response/response/level1')
     // @ApiTags('Storage Response')
-    // getResponseContributionTreeLevel2(
-    //     @Param('level1Index') level1Index: string,
+    // getResponseResponseStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getResponseResponseStorageLevel1();
+    // }
+
+    // @Get('response/response/leafs')
+    // @ApiTags('Storage Response')
+    // getResponseResponseStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getResponseResponseStorageLeafs();
+    // }
+
+    // @Get('response/process/level1')
+    // @ApiTags('Storage Response')
+    // getResponseProcessStorageLevel1(): MerkleLeaf[] {
+    //     return this.storagesService.getResponseProcessStorageLevel1();
+    // }
+
+    // @Get('response/process/leafs')
+    // @ApiTags('Storage Response')
+    // getResponseProcessStorageLeafs(): { [key: string]: any } {
+    //     return this.storagesService.getResponseProcessStorageLeafs();
+    // }
+
+    // @Get('requester/:requesterAddress/zkapp')
+    // @ApiTags('Storage Requester')
+    // getRequesterZkAppStorage(
+    //     @Param('requesterAddress') requesterAddress: string,
     // ): MerkleLeaf[] {
-    //     return this.storagesService.getResponseContributionTreeLevel2(
-    //         level1Index,
+    //     return this.storagesService.getRequesterZkAppStorage(requesterAddress);
+    // }
+
+    // @Get('requester/:requesterAddress/zkapp/leafs')
+    // @ApiTags('Storage Requester')
+    // getRequesterZkAppStorageLeafs(
+    //     @Param('requesterAddress') requesterAddress: string,
+    // ): { [key: string]: any } {
+    //     return this.storagesService.getRequesterZkAppStorageLeafs();
+    // }
+
+    // @Get('requester/:requesterAddress/keyIndex/level1')
+    // @ApiTags('Storage Requester')
+    // getRequesterKeyIndexStorageLevel1(
+    //     @Param('requesterAddress') requesterAddress: string,
+    // ): MerkleLeaf[] {
+    //     return this.storagesService.getRequesterKeyIndexStorageLevel1(
+    //         requesterAddress,
     //     );
     // }
 
-    // @Get('campaign/info/level1')
-    // @ApiTags('Storage Campaign')
-    // getCampaignInfoTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getCampaignInfoTreeLevel1();
+    // @Get('requester/:requesterAddress/keyIndex/leafs')
+    // @ApiTags('Storage Requester')
+    // getRequesterKeyIndexStorageLeafs(
+    //     @Param('requesterAddress') requesterAddress: string,
+    // ): { [key: string]: any } {
+    //     return this.storagesService.getRequesterKeyIndexStorageLeafs(
+    //         requesterAddress,
+    //     );
     // }
 
-    // @Get('campaign/info/leafs')
-    // @ApiTags('Storage Campaign')
-    // getCampaignInfoTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getCampaignInfoTreeLeafs();
-    // }
-
-    // @Get('campaign/owner/level1')
-    // @ApiTags('Storage Campaign')
-    // getCampaignOwnerTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getCampaignOwnerTreeLevel1();
-    // }
-
-    // @Get('campaign/owner/leafs')
-    // @ApiTags('Storage Campaign')
-    // getCampaignOwnerTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getCampaignOwnerTreeLeafs();
-    // }
-
-    // @Get('campaign/status/level1')
-    // @ApiTags('Storage Campaign')
-    // getCampaignStatusTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getCampaignStatusTreeLevel1();
-    // }
-
-    // @Get('campaign/status/leafs')
-    // @ApiTags('Storage Campaign')
-    // getCampaignStatusTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getCampaignStatusTreeLeafs();
-    // }
-
-    // @Get('campaign/config/level1')
-    // @ApiTags('Storage Campaign')
-    // getCampaignConfigTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getCampaignConfigTreeLevel1();
-    // }
-
-    // @Get('campaign/config/leafs')
-    // @ApiTags('Storage Campaign')
-    // getCampaignConfigTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getCampaignConfigTreeLeafs();
-    // }
-
-    // @Get('campaign/zkapps')
-    // @ApiTags('Storage Campaign')
-    // getCampaignZkApps(): MerkleLeaf[] {
-    //     return this.storagesService.getCampaignZkAppTree();
-    // }
-
-    // @Get('campaign/zkapps/leafs')
-    // @ApiTags('Storage Campaign')
-    // getCampaignZkAppsLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getCampaignZkAppTreeLeafs();
-    // }
-
-    // @Get('participation/counter/level1')
-    // @ApiTags('Storage Participation')
-    // getParticipationCounterTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getParticipationCounterTreeLevel1();
-    // }
-
-    // @Get('participation/counter/leafs')
-    // @ApiTags('Storage Participation')
-    // getParticipationCounterTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getParticipationCounterTreeLeafs();
-    // }
-
-    // @Get('participation/index/level1')
-    // @ApiTags('Storage Participation')
-    // getParticipationIndexTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getParticipationIndexTreeLevel1();
-    // }
-
-    // @Get('participation/index/leafs')
-    // @ApiTags('Storage Participation')
-    // getParticipationIndexTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getParticipationIndexTreeLeafs();
-    // }
-
-    // @Get('participation/info/level1')
-    // @ApiTags('Storage Participation')
-    // getParticipationInfoTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getParticipationInfoTreeLevel1();
-    // }
-
-    // @Get('participation/info/leafs')
-    // @ApiTags('Storage Participation')
-    // getParticipationInfoTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getParticipationInfoTreeLeafs();
-    // }
-
-    // @Get('participation/zkapps')
-    // @ApiTags('Storage Participation')
-    // getParticipationZkApps(): MerkleLeaf[] {
-    //     return this.storagesService.getParticipationZkAppTree();
-    // }
-
-    // @Get('participation/zkapps/leafs')
-    // @ApiTags('Storage Participation')
-    // getParticipationZkAppsLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getParticipationZkAppTreeLeafs();
-    // }
-
-    // @Get('project/info/level1')
-    // @ApiTags('Storage Project')
-    // getProjectInfoTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getProjectInfoTreeLevel1();
-    // }
-
-    // @Get('project/info/leafs')
-    // @ApiTags('Storage Project')
-    // getProjectInfoTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getProjectInfoTreeLeafs();
-    // }
-
-    // @Get('project/payee/level1')
-    // @ApiTags('Storage Project')
-    // getProjectPayeeTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getProjectPayeeTreeLevel1();
-    // }
-
-    // @Get('project/address/leafs')
-    // @ApiTags('Storage Project')
-    // getProjectAddressTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getProjectPayeeTreeLeafs();
-    // }
-
-    // @Get('project/member/level1')
-    // @ApiTags('Storage Project')
-    // getProjectMemberTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getProjectMemberTreeLevel1();
-    // }
-
-    // @Get('project/member/leafs')
-    // @ApiTags('Storage Project')
-    // getProjectMemberTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getProjectMemberTreeLeafs();
-    // }
-
-    // @Get('project/member/level2/:level1Index')
-    // @ApiTags('Storage Project')
-    // getProjectMemberTreeLevel2(
-    //     @Param('level1Index', ParseIntPipe) level1Index: number,
+    // @Get('requester/:requesterAddress/timestamp/level1')
+    // @ApiTags('Storage Requester')
+    // getRequesterTimestampStorageLevel1(
+    //     @Param('requesterAddress') requesterAddress: string,
     // ): MerkleLeaf[] {
-    //     return this.storagesService.getProjectMemberTreeLevel2(level1Index);
+    //     return this.storagesService.getRequesterTimestampStorageLevel1(
+    //         requesterAddress,
+    //     );
     // }
 
-    // @Get('funding/total-m/level1')
-    // @ApiTags('Storage Funding')
-    // getFundingTotalMTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getFundingTotalMTreeLevel1();
+    // @Get('requester/:requesterAddress/timestamp/leafs')
+    // @ApiTags('Storage Requester')
+    // getRequesterTimestampStorageLeafs(
+    //     @Param('requesterAddress') requesterAddress: string,
+    // ): { [key: string]: any } {
+    //     return this.storagesService.getRequesterTimestampStorageLeafs(
+    //         requesterAddress,
+    //     );
     // }
 
-    // @Get('funding/total-m/leafs')
-    // @ApiTags('Storage Funding')
-    // getFundingTotalMTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getFundingTotalMTreeLeafs();
+    // @Get('requester/:requesterAddress/timestamp/level1')
+    // @ApiTags('Storage Requester')
+    // getRequesterAccumulationStorageLevel1(
+    //     @Param('requesterAddress') requesterAddress: string,
+    // ): MerkleLeaf[] {
+    //     return this.storagesService.getRequesterTimestampStorageLevel1(
+    //         requesterAddress,
+    //     );
     // }
 
-    // @Get('funding/total-r/level1')
-    // @ApiTags('Storage Funding')
-    // getFundingTotalRTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getFundingTotalRTreeLevel1();
+    // @Get('requester/:requesterAddress/timestamp/leafs')
+    // @ApiTags('Storage Requester')
+    // getRequesterAccumulationStorageLeafs(
+    //     @Param('requesterAddress') requesterAddress: string,
+    // ): { [key: string]: any } {
+    //     return this.storagesService.getRequesterTimestampStorageLeafs(
+    //         requesterAddress,
+    //     );
     // }
 
-    // @Get('funding/total-r/leafs')
-    // @ApiTags('Storage Funding')
-    // getFundingTotalRTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getFundingTotalRTreeLeafs();
+    // @Get('requester/:requesterAddress/commitment/level1')
+    // @ApiTags('Storage Requester')
+    // getRequesterCommitmentStorageLevel1(
+    //     @Param('requesterAddress') requesterAddress: string,
+    // ): MerkleLeaf[] {
+    //     return this.storagesService.getRequesterCommitmentStorageLevel1(
+    //         requesterAddress,
+    //     );
     // }
 
-    // @Get('funding/request-id/level1')
-    // @ApiTags('Storage Funding')
-    // getFundingRequestIdTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getFundingRequestIdTreeLevel1();
-    // }
-
-    // @Get('funding/request-id/leafs')
-    // @ApiTags('Storage Funding')
-    // getFundingRequestIdTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getFundingRequestIdTreeLeafs();
-    // }
-
-    // @Get('funding/zkapps')
-    // @ApiTags('Storage Funding')
-    // getFundingZkApps(): MerkleLeaf[] {
-    //     return this.storagesService.getFundingZkAppTree();
-    // }
-
-    // @Get('funding/zkapps/leafs')
-    // @ApiTags('Storage Funding')
-    // getFundingZkAppsLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getFundingZkAppTreeLeafs();
-    // }
-
-    // @Get('funding/reduce')
-    // @ApiTags('Storage Funding')
-    // getFundingReduceTree(): { [key: string]: MerkleLeaf } {
-    //     return this.storagesService.getFundingReduceTree();
-    // }
-
-    // @Get('funding/reduce/leafs')
-    // @ApiTags('Storage Funding')
-    // getFundingReduceTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getFundingReduceTreeLeafs();
-    // }
-
-    // @Get('treasury/claimed/level1')
-    // @ApiTags('Storage Treasury')
-    // getTreasuryClaimedTreeLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getTreasuryClaimedTreeLevel1();
-    // }
-
-    // @Get('treasury/claimed/leafs')
-    // @ApiTags('Storage Treasury')
-    // getTreasuryClaimedTreeLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getTreasuryClaimedTreeLeafs();
-    // }
-
-    // @Get('treasury/zkapps')
-    // @ApiTags('Storage Treasury')
-    // getTreasuryZkApps(): MerkleLeaf[] {
-    //     return this.storagesService.getTreasuryZkAppTree();
-    // }
-
-    // @Get('treasury/zkapps/leafs')
-    // @ApiTags('Storage Treasury')
-    // getTreasuryZkAppsLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getTreasuryZkAppTreeLeafs();
+    // @Get('requester/:requesterAddress/commitment/leafs')
+    // @ApiTags('Storage Requester')
+    // getRequesterCommitmentStorageLeafs(
+    //     @Param('requesterAddress') requesterAddress: string,
+    // ): { [key: string]: any } {
+    //     return this.storagesService.getRequesterCommitmentStorageLeafs(
+    //         requesterAddress,
+    //     );
     // }
 }

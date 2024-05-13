@@ -1,4 +1,6 @@
+import { Constants } from '@auxo-dev/dkg';
 import { Cache, Mina } from 'o1js';
+import _, { last } from 'lodash';
 
 export enum CommitteeEventEnum {
     COMMITTEE_CREATED,
@@ -124,3 +126,40 @@ export enum ZkAppIndex {
 }
 
 export const MaxRetries = 5;
+
+export const RequesterAddresses = [
+    'B62qovNcjV7L6BQEZu8tHBocUZetcnuzKWLyjp2ZEMpkQeHMSUF5MWL',
+];
+// export const RequesterAddresses = [process.env.FUNDING_REQUESTER];
+
+const RequesterAddressMapping: {
+    [key: string]: { taskManagerAddress: string; submissionAddress: string };
+} = {};
+
+// RequesterAddressMapping[process.env.FUNDING_REQUESTER] = {
+//     taskManagerAddress: process.env.CAMPAIGN_ADDRESS,
+//     submissionAddress: process.env.FUNDING_ADDRESS,
+// };
+RequesterAddressMapping[
+    'B62qovNcjV7L6BQEZu8tHBocUZetcnuzKWLyjp2ZEMpkQeHMSUF5MWL'
+] = {
+    taskManagerAddress:
+        'B62qqcL3Uk8aTLj2Sr2ZWLnG9uUZLaAJ46EnLAhiXqYkDXtwsLJnwsx',
+    submissionAddress:
+        'B62qk4y3YGNT6sT23BeQihK7CwnKBLBe4NQ6mgUTaBZEBWgFjWEpxxi',
+};
+
+export function getFullDimensionEmptyGroupVector(): {
+    x: string;
+    y: string;
+}[] {
+    const FullDimensionEmptyGroupVector: { x: string; y: string }[] = [];
+    for (let i = 0; i < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION; i++) {
+        FullDimensionEmptyGroupVector.push({
+            x: '0',
+            y: '0',
+        });
+    }
+    return FullDimensionEmptyGroupVector;
+}
+export { RequesterAddressMapping };
