@@ -413,27 +413,30 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 {},
                 { sort: { actionId: 1 } },
             );
-            let nextRequestId = _.cloneDeep(this._dkgRequest.requesterCounter);
+            const latestRequest = await this.dkgRequestModel.findOne(
+                {},
+                {},
+                { sort: { requestId: -1 } },
+            );
+
+            let nextRequestId = latestRequest ? latestRequest.requestId + 1 : 0;
             for (let i = 0; i < notActiveActions.length; i++) {
-                const promises = [];
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
                 if (
                     notActiveAction.actionData.requestId ==
                     Number(Field(-1).toBigInt())
                 ) {
-                    promises.push(
-                        this.dkgRequestModel.create({
-                            requestId: nextRequestId,
-                            keyIndex: notActiveAction.actionData.keyIndex,
-                            taskId: notActiveAction.actionData.taskId,
-                            expirationTimestamp:
-                                notActiveAction.actionData.expirationTimestamp,
-                            accumulationRoot:
-                                notActiveAction.actionData.accumulationRoot,
-                            resultRoot: notActiveAction.actionData.resultRoot,
-                        }),
-                    );
+                    await this.dkgRequestModel.create({
+                        requestId: nextRequestId,
+                        keyIndex: notActiveAction.actionData.keyIndex,
+                        taskId: notActiveAction.actionData.taskId,
+                        expirationTimestamp:
+                            notActiveAction.actionData.expirationTimestamp,
+                        accumulationRoot:
+                            notActiveAction.actionData.accumulationRoot,
+                        resultRoot: notActiveAction.actionData.resultRoot,
+                    });
                     nextRequestId += 1;
                 } else {
                     const request = await this.dkgRequestModel.findOne({
@@ -444,11 +447,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         notActiveAction.actionData.resultRoot,
                     );
                     request.set('status', RequestStatusEnum.RESOLVED);
-                    promises.push(request.save());
+                    await request.save();
                 }
-                Promise.all(promises).then(async () => {
-                    await notActiveAction.save();
-                });
+
+                await notActiveAction.save();
             }
         }
 

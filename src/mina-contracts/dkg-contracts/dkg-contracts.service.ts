@@ -179,8 +179,6 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            Provable.log(await this.fetchRound2State());
-            Provable.log(this._round2.contributionStorage.root);
         } catch (err) {
             console.log(err);
         }
@@ -204,6 +202,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 await this.updateRound2Actions();
                 count = MaxRetries;
             } catch (err) {
+                console.log(err);
                 this.logger.error(err);
             }
         }
@@ -472,7 +471,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 {
                     eventId: eventId,
                     rawData: event.events[0].data,
-                    data: getRound2EventData(event.events[0].data.slice(1)),
+                    data: getRound2EventData(event.events[0].data),
                 },
                 { new: true, upsert: true },
             );
