@@ -577,10 +577,8 @@ export class DkgContractsService implements ContractServiceInterface {
                             break;
                         }
                     }
-
-                    Promise.all(promises).then(async () => {
-                        await notActiveAction.save();
-                    });
+                    await Promise.all(promises);
+                    await notActiveAction.save();
                 } else {
                     break;
                 }

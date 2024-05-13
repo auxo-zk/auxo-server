@@ -1,6 +1,6 @@
 import { Prop, raw, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { Field, PublicKey } from 'o1js';
+import { Field, Provable, PublicKey } from 'o1js';
 import {
     Constants,
     FinalizedDArrayEvent,
@@ -89,7 +89,6 @@ export function getResponseRespondedEventData(
     const data = RespondedDArrayEvent.fromFields(
         Utilities.stringArrayToFields(rawData),
     );
-
     return new ResponseRespondedEventData(
         Number(data.requestId.toBigInt()),
         Number(data.memberId.toBigInt()),
@@ -100,6 +99,9 @@ export function getResponseRespondedEventData(
 
 @Schema({ versionKey: false })
 export class ResponseProcessedEvent {
+    @Prop({ required: true, index: true })
+    batchId: number;
+
     @Prop({ required: true, unique: true, index: true, _id: true })
     eventId: number;
 
@@ -113,7 +115,11 @@ export class ResponseProcessedEvent {
     processed?: boolean;
 }
 
+@Schema({ versionKey: false })
 export class ResponseFinalizedEvent {
+    @Prop({ required: true, index: true })
+    batchId: number;
+
     @Prop({ required: true, unique: true, index: true, _id: true })
     eventId: number;
 
@@ -124,7 +130,11 @@ export class ResponseFinalizedEvent {
     data: ResponseFinalizedEventData;
 }
 
+@Schema({ versionKey: false })
 export class ResponseRespondedEvent {
+    @Prop({ required: true, index: true })
+    batchId: number;
+
     @Prop({ required: true, unique: true, index: true, _id: true })
     eventId: number;
 
@@ -147,8 +157,8 @@ export const ResponseFinalizedEventSchema = SchemaFactory.createForClass(
     ResponseFinalizedEvent,
 );
 
-export type ResponseRespondedEventDataDocument =
-    HydratedDocument<ResponseRespondedEventData>;
+export type ResponseRespondedEventDocument =
+    HydratedDocument<ResponseRespondedEvent>;
 export const ResponseRespondedEventSchema = SchemaFactory.createForClass(
-    ResponseRespondedEventData,
+    ResponseRespondedEvent,
 );

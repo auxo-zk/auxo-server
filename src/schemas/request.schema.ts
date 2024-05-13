@@ -13,7 +13,7 @@ export class DkgResponse {
     rootD: string;
 
     @Prop({ type: [{ x: String, y: String }] })
-    Di: { x: string; y: string }[];
+    D: { x: string; y: string }[];
 }
 @Schema({ versionKey: false })
 export class DkgRequest {
@@ -39,7 +39,7 @@ export class DkgRequest {
     responses: DkgResponse[];
 
     @Prop({ type: [{ x: String, y: String }], default: [] })
-    finalizedDi?: { x: string; y: string }[];
+    finalizedD?: { x: string; y: string }[];
 
     @Prop({ default: RequestStatusEnum.INITIALIZED, required: true })
     status?: RequestStatusEnum;

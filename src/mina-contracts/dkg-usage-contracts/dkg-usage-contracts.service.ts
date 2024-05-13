@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel, raw } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import {
     RequestAction,
     getRequestActionData,
@@ -37,7 +37,10 @@ import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
 import {
+    DArray,
     FinalizedEvent,
+    GroupVectorStorage,
+    ResponseContribution,
     ResponseContributionStorage,
     Storage,
     ZkApp,
@@ -156,6 +159,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            Provable.log(await this.fetchDkgResponseState());
+            Provable.log(this._dkgResponse.contributionStorage.root);
+            Provable.log(this._dkgResponse.responseStorage.root);
+            Provable.log(this._dkgResponse.processStorage.root);
         } catch (err) {
             console.log(err);
         }
@@ -312,23 +319,36 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             await this.responseProcessedEventModel.findOne(
                 {},
                 {},
-                { sort: { eventId: -1 } },
+                { sort: { batchId: -1, eventId: -1 } },
             );
         const lastFinalizedEvent =
             await this.responseFinalizedEventModel.findOne(
                 {},
                 {},
-                { sort: { eventId: -1 } },
+                { sort: { batchId: -1, eventId: -1 } },
             );
         const lastRespondedEvent =
             await this.responseProcessedEventModel.findOne(
                 {},
                 {},
-                { sort: { eventId: -1 } },
+                { sort: { batchId: -1, eventId: -1 } },
             );
+        let batchId: number = lastProcessedEvent
+            ? lastProcessedEvent.batchId
+            : -1;
+        batchId = lastFinalizedEvent
+            ? lastFinalizedEvent.batchId > batchId
+                ? lastFinalizedEvent.batchId
+                : batchId
+            : batchId;
+        batchId = lastRespondedEvent
+            ? lastRespondedEvent.batchId > batchId
+                ? lastRespondedEvent.batchId
+                : batchId
+            : batchId;
         let eventId: number = lastProcessedEvent
             ? lastProcessedEvent.eventId
-            : 0;
+            : -1;
         eventId = lastFinalizedEvent
             ? lastFinalizedEvent.eventId > eventId
                 ? lastFinalizedEvent.eventId
@@ -339,62 +359,67 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 ? lastRespondedEvent.eventId
                 : eventId
             : eventId;
-        let events: Event[] = await this.queryService.fetchEvents(
+        const events: Event[] = await this.queryService.fetchEvents(
             process.env.RESPONSE_ADDRESS,
         );
-        events = events.slice(eventId + 1);
+        batchId += 1;
         eventId += 1;
 
-        for (let i = 0; i < events.length; i++) {
-            const event = events[i];
-            // PROCESSED 0
-            // Finalized 1
-            // Responded 2
-            if (Number(event.events[0].data[0]) == 0) {
-                await this.responseProcessedEventModel.findOneAndUpdate(
-                    {
-                        eventId: eventId,
-                    },
-                    {
-                        eventId: eventId,
-                        rawData: event.events[0].data,
-                        data: getResponseProcessedEventData(
-                            event.events[0].data.slice(1),
-                        ),
-                    },
-                    { new: true, upsert: true },
-                );
-            } else if (Number(event.events[0].data[0]) == 1) {
-                await this.responseFinalizedEventModel.findOneAndUpdate(
-                    {
-                        eventId: eventId,
-                    },
-                    {
-                        eventId: eventId,
-                        rawData: event.events[0].data,
-                        data: getResponseFinalizedEventData(
-                            event.events[0].data.slice(1),
-                        ),
-                    },
-                    { new: true, upsert: true },
-                );
-            } else {
-                await this.responseRespondedEventModel.findOneAndUpdate(
-                    {
-                        eventId: eventId,
-                    },
-                    {
-                        eventId: eventId,
-                        rawData: event.events[0].data,
-                        data: getResponseRespondedEventData(
-                            event.events[0].data.slice(1),
-                        ),
-                    },
-                    { new: true, upsert: true },
-                );
-            }
+        for (; batchId < events.length; batchId++) {
+            for (let j = 0; j < events[batchId].events.length; j++) {
+                const event = events[batchId].events[j];
 
-            eventId += 1;
+                if (Number(event.data[0]) == 0) {
+                    await this.responseProcessedEventModel.findOneAndUpdate(
+                        {
+                            batchId: batchId,
+                            eventId: eventId,
+                        },
+                        {
+                            batchId: batchId,
+                            eventId: eventId,
+                            rawData: event.data,
+                            data: getResponseProcessedEventData(
+                                event.data.slice(1),
+                            ),
+                        },
+                        { new: true, upsert: true },
+                    );
+                } else if (Number(event.data[0]) == 1) {
+                    await this.responseFinalizedEventModel.findOneAndUpdate(
+                        {
+                            batchId: batchId,
+                            eventId: eventId,
+                        },
+                        {
+                            batchId: batchId,
+                            eventId: eventId,
+                            rawData: event.data,
+                            data: getResponseFinalizedEventData(
+                                event.data.slice(1),
+                            ),
+                        },
+                        { new: true, upsert: true },
+                    );
+                } else {
+                    await this.responseRespondedEventModel.findOneAndUpdate(
+                        {
+                            batchId: batchId,
+                            eventId: eventId,
+                        },
+                        {
+                            batchId: batchId,
+                            eventId: eventId,
+                            rawData: event.data,
+                            data: getResponseRespondedEventData(
+                                event.data.slice(1),
+                            ),
+                        },
+                        { new: true, upsert: true },
+                    );
+                }
+                eventId += 1;
+            }
         }
     }
 
@@ -499,7 +524,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 { sort: { 'data.dimensionIndex': 1 } },
             );
             finalizedEvents.map((event) => {
-                request.finalizedDi.push(event.data.Di);
+                request.finalizedD.push(event.data.Di);
             });
             for (let j = 0; j < responseActions.length; j++) {
                 const responseAction = responseActions[j];
@@ -515,25 +540,23 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         {},
                         { sort: { 'data.dimensionIndex': 1 } },
                     );
-                const Di: { x: string; y: string }[] = [];
+                const D: { x: string; y: string }[] = [];
                 respondedEvents.map((event) => {
-                    Di.push(event.data.Di);
+                    D.push(event.data.Di);
                 });
                 request.responses.push({
                     dimension: responseAction.actionData.dimension,
                     memberId: memberId,
                     rootD: responseAction.actionData.responseRootD,
-                    Di: Di,
+                    D: D,
                 });
 
                 promises.push(responseAction.save());
             }
             notProcessedEvent.set('processed', true);
-            request.save().then(() => {
-                Promise.all(promises).then(async () => {
-                    await notProcessedEvent.save();
-                });
-            });
+            await request.save();
+            await Promise.all(promises);
+            await notProcessedEvent.save();
         }
     }
 
@@ -574,8 +597,27 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const responses = request.responses.sort(
                     (a, b) => a.memberId - b.memberId,
                 );
+                const groupVectorStorage = new GroupVectorStorage();
+                request.finalizedD.map((Di, index) => {
+                    groupVectorStorage.updateRawLeaf(
+                        { level1Index: Field(index) },
+                        Group.from(Di.x, Di.y),
+                    );
+                });
+                this._dkgResponse.responseStorage.updateLeaf(
+                    { level1Index },
+                    groupVectorStorage.root,
+                );
                 for (let j = 0; j < responses.length; j++) {
                     const response = responses[j];
+                    const D = new DArray();
+                    response.D.map((Di) => {
+                        D.push(Group.from(Di.x, Di.y));
+                    });
+                    const responseContribution =
+                        ResponseContribution.fromFields(
+                            [Field(response.rootD), D.toFields()].flat(),
+                        ) as ResponseContribution;
                     const level2Index =
                         this._dkgResponse.contributionStorage.calculateLevel2Index(
                             Field(response.memberId),
@@ -583,15 +625,11 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
                     this._dkgResponse.contributionStorage.updateLeaf(
                         { level1Index, level2Index },
-                        Field(response.rootD),
-                    );
-                    this._dkgResponse.responseStorage.updateLeaf(
-                        { level1Index, level2Index },
-                        Field(response.rootD),
+                        responseContribution.hash(),
                     );
                 }
             }
-            // await this.updateProcessStorageForResponse();
+            await this.updateProcessStorageForResponse();
         } catch (err) {}
     }
 
@@ -613,6 +651,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             }
         }
 
+        // console.log(this._dkgResponse.processStorageMapping);
         const responseActions = await this.responseActionModel.find(
             { active: true },
             {},

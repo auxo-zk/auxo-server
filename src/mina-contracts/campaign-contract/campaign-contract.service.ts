@@ -288,24 +288,23 @@ export class CampaignContractService implements ContractServiceInterface {
                 const ipfsData = await this.ipfs.getData(
                     notActiveAction.actionData.ipfsHash,
                 );
-                await Promise.all([
-                    notActiveAction.save(),
-                    this.campaignModel.findOneAndUpdate(
-                        {
-                            campaignId: this._nextCampaignId,
-                        },
-                        {
-                            campaignId: this._nextCampaignId,
-                            ipfsHash: notActiveAction.actionData.ipfsHash,
-                            ipfsData: ipfsData,
-                            owner: notActiveAction.actionData.owner,
-                            timeline: notActiveAction.actionData.timeline,
-                            committeeId: notActiveAction.actionData.committeeId,
-                            keyId: notActiveAction.actionData.keyId,
-                        },
-                        { new: true, upsert: true },
-                    ),
-                ]);
+
+                await this.campaignModel.findOneAndUpdate(
+                    {
+                        campaignId: this._nextCampaignId,
+                    },
+                    {
+                        campaignId: this._nextCampaignId,
+                        ipfsHash: notActiveAction.actionData.ipfsHash,
+                        ipfsData: ipfsData,
+                        owner: notActiveAction.actionData.owner,
+                        timeline: notActiveAction.actionData.timeline,
+                        committeeId: notActiveAction.actionData.committeeId,
+                        keyId: notActiveAction.actionData.keyId,
+                    },
+                    { new: true, upsert: true },
+                );
+                await notActiveAction.save();
                 this._nextCampaignId += 1;
             }
         }
