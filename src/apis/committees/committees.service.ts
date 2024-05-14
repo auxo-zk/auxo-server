@@ -220,6 +220,20 @@ export class CommitteesService {
             },
             {
                 $lookup: {
+                    from: 'tasks',
+                    as: 'task',
+                    foreignField: 'task',
+                    localField: 'task',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$task',
+                    preserveNullAndEmptyArrays: true, // Optional: keep orders with no matching product
+                },
+            },
+            {
+                $lookup: {
                     from: 'keys',
                     as: 'key',
                     localField: 'keyIndex',
