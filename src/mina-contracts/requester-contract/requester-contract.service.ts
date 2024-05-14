@@ -20,6 +20,7 @@ import {
     Field,
     Group,
     Poseidon,
+    Provable,
     PublicKey,
     Reducer,
     UInt32,
@@ -37,42 +38,44 @@ import {
 import { Funding } from 'src/schemas/funding.schema';
 import { Utilities } from '../utilities';
 
+export class RequesterContractStorage {
+    zkAppStorage: Storage.AddressStorage.AddressStorage;
+    counters: Storage.RequesterStorage.RequesterCounters;
+    keyIndexStorage: Storage.RequesterStorage.RequesterKeyIndexStorage;
+    timestampStorage: Storage.RequesterStorage.TimestampStorage;
+    accumulationStorage: Storage.RequesterStorage.RequesterAccumulationStorage;
+    commitmentStorage: Storage.RequesterStorage.CommitmentStorage;
+    lastTimestamp: number;
+    actionState: string;
+    nextCommitmentIndex: number;
+    groupVectorStorageMapping: {
+        [key: number]: { R: GroupVectorStorage; M: GroupVectorStorage };
+    };
+
+    constructor(zkAppStorage: Storage.AddressStorage.AddressStorage) {
+        this.zkAppStorage = zkAppStorage;
+        this.counters = Storage.RequesterStorage.RequesterCounters.empty();
+        this.keyIndexStorage =
+            new Storage.RequesterStorage.RequesterKeyIndexStorage();
+        this.timestampStorage = new Storage.RequesterStorage.TimestampStorage();
+        this.accumulationStorage =
+            new Storage.RequesterStorage.RequesterAccumulationStorage();
+        this.commitmentStorage =
+            new Storage.RequesterStorage.CommitmentStorage();
+        this.lastTimestamp = 0;
+        this.actionState = '';
+        this.nextCommitmentIndex = 0;
+        this.groupVectorStorageMapping = {};
+    }
+}
 @Injectable()
 export class RequesterContractsService implements ContractServiceInterface {
     private readonly requesterAddresses: string[];
     private readonly logger = new Logger(RequesterContractsService.name);
-    private _storageMapping: {
-        [key: string]: {
-            zkAppStorage: Storage.AddressStorage.AddressStorage;
-            counters: Storage.RequesterStorage.RequesterCounters;
-            keyIndexStorage: Storage.RequesterStorage.RequesterKeyIndexStorage;
-            timestampStorage: Storage.RequesterStorage.TimestampStorage;
-            accumulationStorage: Storage.RequesterStorage.RequesterAccumulationStorage;
-            commitmentStorage: Storage.RequesterStorage.CommitmentStorage;
-            lastTimestamp: number;
-            actionState: string;
-            nextCommitmentIndex: number;
-            groupVectorStorageMapping: {
-                [key: number]: { R: GroupVectorStorage; M: GroupVectorStorage };
-            };
-        };
-    };
+    private _storageMapping: { [key: string]: RequesterContractStorage };
 
-    public storage(address: string): {
-        zkAppStorage: Storage.AddressStorage.AddressStorage;
-        counters: Storage.RequesterStorage.RequesterCounters;
-        keyIndexStorage: Storage.RequesterStorage.RequesterKeyIndexStorage;
-        timestampStorage: Storage.RequesterStorage.TimestampStorage;
-        accumulationStorage: Storage.RequesterStorage.RequesterAccumulationStorage;
-        commitmentStorage: Storage.RequesterStorage.CommitmentStorage;
-        lastTimestamp: number;
-        actionState: string;
-        nextCommitmentIndex: number;
-        groupVectorStorageMapping: {
-            [key: number]: { R: GroupVectorStorage; M: GroupVectorStorage };
-        };
-    } {
-        return this._storageMapping[address];
+    public storage(requesterAddress: string): RequesterContractStorage {
+        return this._storageMapping[requesterAddress];
     }
 
     constructor(
@@ -89,26 +92,15 @@ export class RequesterContractsService implements ContractServiceInterface {
         this._storageMapping = {};
         for (let i = 0; i < this.requesterAddresses.length; i++) {
             const requesterAddress = this.requesterAddresses[i];
-            this._storageMapping[requesterAddress] = {
-                zkAppStorage: Utilities.getZkAppStorageForRequester(
-                    RequesterAddressMapping[requesterAddress]
-                        .taskManagerAddress,
-                    RequesterAddressMapping[requesterAddress].submissionAddress,
-                ),
-                counters: Storage.RequesterStorage.RequesterCounters.empty(),
-                keyIndexStorage:
-                    new Storage.RequesterStorage.RequesterKeyIndexStorage(),
-                timestampStorage:
-                    new Storage.RequesterStorage.TimestampStorage(),
-                accumulationStorage:
-                    new Storage.RequesterStorage.RequesterAccumulationStorage(),
-                commitmentStorage:
-                    new Storage.RequesterStorage.CommitmentStorage(),
-                lastTimestamp: 0,
-                actionState: '',
-                nextCommitmentIndex: 0,
-                groupVectorStorageMapping: {},
-            };
+            this._storageMapping[requesterAddress] =
+                new RequesterContractStorage(
+                    Utilities.getZkAppStorageForRequester(
+                        RequesterAddressMapping[requesterAddress]
+                            .taskManagerAddress,
+                        RequesterAddressMapping[requesterAddress]
+                            .submissionAddress,
+                    ),
+                );
         }
     }
 
@@ -117,6 +109,7 @@ export class RequesterContractsService implements ContractServiceInterface {
             try {
                 await this.fetchRequesterActions();
                 await this.updateRequesterActions();
+                count = MaxRetries;
             } catch (err) {
                 console.log(err);
                 this.logger.error(err);
@@ -278,7 +271,8 @@ export class RequesterContractsService implements ContractServiceInterface {
                             notActiveAction.actionData.commitments,
                         );
                         task.encryptions.push(encryption);
-                        task.commitmentCounter += 1;
+                        task.commitmentCounter +=
+                            Constants.ENCRYPTION_LIMITS.DIMENSION;
                         const newTotalR: { x: string; y: string }[] =
                             getFullDimensionEmptyGroupVector();
                         const newTotalM: { x: string; y: string }[] =
@@ -329,9 +323,7 @@ export class RequesterContractsService implements ContractServiceInterface {
             let nextCommitmentIndex = 0;
             for (let i = 0; i < tasks.length; i++) {
                 const task = tasks[i];
-                const level1Index = this._storageMapping[
-                    requesterAddress
-                ].keyIndexStorage.calculateLevel1Index(Field(task.taskId));
+                const level1Index = Field(task.taskId);
                 this._storageMapping[
                     requesterAddress
                 ].keyIndexStorage.updateLeaf(
@@ -352,18 +344,26 @@ export class RequesterContractsService implements ContractServiceInterface {
                     j++
                 ) {
                     const level2Index = Field(j);
-                    groupVectorStorageR.updateLeaf(
-                        { level1Index: level2Index },
-                        groupVectorStorageR.calculateLeaf(
-                            Group.from(task.totalR[j].x, task.totalR[j].y),
-                        ),
+                    const totalR = Group.from(
+                        task.totalR[j].x,
+                        task.totalR[j].y,
                     );
-                    groupVectorStorageM.updateLeaf(
-                        { level1Index: level2Index },
-                        groupVectorStorageM.calculateLeaf(
-                            Group.from(task.totalM[j].x, task.totalM[j].y),
-                        ),
+                    totalR.equals(Group.zero).toBoolean()
+                        ? 0
+                        : groupVectorStorageR.updateLeaf(
+                              { level1Index: level2Index },
+                              groupVectorStorageR.calculateLeaf(totalR),
+                          );
+                    const totalM = Group.from(
+                        task.totalM[j].x,
+                        task.totalM[j].y,
                     );
+                    totalM.equals(Group.zero).toBoolean()
+                        ? 0
+                        : groupVectorStorageM.updateLeaf(
+                              { level1Index: level2Index },
+                              groupVectorStorageM.calculateLeaf(totalM),
+                          );
                 }
                 this._storageMapping[
                     requesterAddress
