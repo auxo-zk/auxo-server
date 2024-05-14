@@ -22,6 +22,17 @@ import { FundingAction } from './schemas/actions/funding-action.schema';
 import { Funding } from './schemas/funding.schema';
 import { FundingResult } from './schemas/funding-result.schema';
 import { TreasuryManagerAction } from './schemas/actions/treasury-manager-action.schema';
+import { Round1Event } from './schemas/actions/round-1-event.schema';
+import { Round2Event } from './schemas/actions/round-2-event.schema';
+import {
+    ResponseFinalizedEvent,
+    ResponseProcessedEvent,
+    ResponseRespondedEvent,
+} from './schemas/actions/response-event.schema';
+import { DkgEvent } from './schemas/actions/dkg-event.schema';
+import { RequesterAction } from '@auxo-dev/dkg';
+import { Task } from './schemas/funding-task.schema';
+import { RollupAction } from './schemas/actions/rollup-action.schema';
 
 @Controller()
 export class AppController {
@@ -33,10 +44,16 @@ export class AppController {
         private readonly committeeModel: Model<Committee>,
         @InjectModel(DkgAction.name)
         private readonly dkgActionModel: Model<DkgAction>,
+        @InjectModel(DkgEvent.name)
+        private readonly dkgEventModel: Model<DkgEvent>,
         @InjectModel(Round1Action.name)
         private readonly round1ActionModel: Model<Round1Action>,
+        @InjectModel(Round1Event.name)
+        private readonly round1EventModel: Model<Round1Event>,
         @InjectModel(Round2Action.name)
         private readonly round2ActionModel: Model<Round2Action>,
+        @InjectModel(Round2Event.name)
+        private readonly round2EventModel: Model<Round2Event>,
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
         @InjectModel(RequestAction.name)
@@ -45,6 +62,18 @@ export class AppController {
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(ResponseAction.name)
         private readonly responseActionModel: Model<ResponseAction>,
+        @InjectModel(ResponseProcessedEvent.name)
+        private readonly responseProcessedEventModel: Model<ResponseProcessedEvent>,
+        @InjectModel(ResponseRespondedEvent.name)
+        private readonly responseRespondedEventModel: Model<ResponseRespondedEvent>,
+        @InjectModel(ResponseFinalizedEvent.name)
+        private readonly responseFinalizedEventModel: Model<ResponseFinalizedEvent>,
+        @InjectModel(RequesterAction.name)
+        private readonly requesterActionModel: Model<RequesterAction>,
+        @InjectModel(Task.name)
+        private readonly taskModel: Model<Task>,
+        @InjectModel(RollupAction.name)
+        private readonly rollupActionModel: Model<RollupAction>,
         @InjectModel(ProjectAction.name)
         private readonly projectActionModel: Model<ProjectAction>,
         @InjectModel(Project.name)
@@ -77,12 +106,21 @@ export class AppController {
         await this.committeeActionModel.deleteMany({});
         await this.committeeModel.deleteMany({});
         await this.dkgActionModel.deleteMany({});
+        await this.dkgEventModel.deleteMany({});
         await this.round1ActionModel.deleteMany({});
+        await this.round1EventModel.deleteMany({});
         await this.round2ActionModel.deleteMany({});
+        await this.round2EventModel.deleteMany({});
         await this.keyModel.deleteMany({});
         await this.requestActionModel.deleteMany({});
         await this.dkgRequestModel.deleteMany({});
         await this.responseActionModel.deleteMany({});
+        await this.responseProcessedEventModel.deleteMany({});
+        await this.responseRespondedEventModel.deleteMany({});
+        await this.responseFinalizedEventModel.deleteMany({});
+        await this.requesterActionModel.deleteMany({});
+        await this.taskModel.deleteMany({});
+        await this.rollupActionModel.deleteMany({});
         await this.projectActionModel.deleteMany({});
         await this.projectModel.deleteMany({});
         await this.campaignActionModel.deleteMany({});

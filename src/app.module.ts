@@ -85,7 +85,7 @@ import {
 import {
     RequesterAction,
     RequesterActionSchema,
-} from './schemas/actions/funding-requester-action.schema';
+} from './schemas/actions/requester-action.schema';
 import {
     RollupAction,
     RollupActionSchema,
