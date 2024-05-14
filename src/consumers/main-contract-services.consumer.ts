@@ -10,6 +10,7 @@ import { DkgUsageContractsService } from '../mina-contracts/dkg-usage-contracts/
 // import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
 // import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
+import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
 
 @Processor('main-contract-services')
 export class MainContractServicesConsumer {
@@ -18,6 +19,7 @@ export class MainContractServicesConsumer {
         private readonly committeeContractService: CommitteeContractService,
         private readonly dkgContractsService: DkgContractsService,
         private readonly dkgUsageContractsService: DkgUsageContractsService,
+        private readonly requesterContractsService: RequesterContractsService,
         private readonly rollupContractService: RollupContractService,
         // private readonly campaignContractService: CampaignContractService,
         // private readonly participationContractService: ParticipationContractService,
@@ -30,10 +32,11 @@ export class MainContractServicesConsumer {
     async updateContractTrees(job: Job<unknown>) {
         try {
             Promise.all([
+                this.rollupContractService.updateMerkleTrees(),
                 this.committeeContractService.updateMerkleTrees(),
                 this.dkgContractsService.updateMerkleTrees(),
                 this.dkgUsageContractsService.updateMerkleTrees(),
-                this.dkgUsageContractsService.updateMerkleTrees(),
+                this.requesterContractsService.updateMerkleTrees(),
             ]).then(async () => {
                 this.logger.log('All contract trees updated successfully');
                 await job.progress();
@@ -56,6 +59,7 @@ export class MainContractServicesConsumer {
                     this.committeeContractService.update(),
                     this.dkgContractsService.update(),
                     this.dkgUsageContractsService.update(),
+                    this.requesterContractsService.update(),
                 ]).then(async () => {
                     this.logger.log('All contracts updated successfully');
                     await job.progress();
