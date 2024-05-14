@@ -8,6 +8,7 @@ import { CommitteeContractService } from 'src/mina-contracts/committee-contract/
 import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
 import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
+import { Committee } from 'src/schemas/committee.schema';
 import { Task } from 'src/schemas/funding-task.schema';
 import { DkgRequest } from 'src/schemas/request.schema';
 
@@ -22,6 +23,8 @@ export class MethodInputsService {
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(Task.name)
         private readonly taskModel: Model<Task>,
+        @InjectModel(Committee.name)
+        private readonly committeeModel: Model<Committee>,
     ) {}
 
     getDkgContractGenerateKey(committeeId: number, memberId: number) {
@@ -266,6 +269,9 @@ export class MethodInputsService {
                 requestId: requestId,
             });
             const task = await this.taskModel.findOne({ task: request.task });
+            const committee = await this.committeeModel.findOne({
+                committeeId: committeeId,
+            });
             const accumulationRootM = this.requesterContractService
                 .storage(task.requester)
                 .groupVectorStorageMapping[task.taskId].M.root.toString();
@@ -292,15 +298,23 @@ export class MethodInputsService {
                     Field(committeeId),
                     Field(memberId),
                 );
-            const publicKeyWitness =
-                this.dkgContractService.dkg.keyStorage.getWitness(
-                    this.dkgContractService.dkg.keyStorage.calculateLevel1Index(
-                        {
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
-                        },
+            const publicKeyWitness = [];
+            for (let i = 0; i < committee.numberOfMembers; i++) {
+                publicKeyWitness.push(
+                    this.dkgContractService.round1.publicKeyStorage.getWitness(
+                        this.dkgContractService.round1.publicKeyStorage.calculateLevel1Index(
+                            {
+                                committeeId: Field(committeeId),
+                                keyId: Field(keyId),
+                            },
+                        ),
+                        this.dkgContractService.round1.publicKeyStorage.calculateLevel2Index(
+                            Field(i),
+                        ),
                     ),
                 );
+            }
+
             const encryptionWitness =
                 this.dkgContractService.round2.encryptionStorage.getWitness(
                     this.dkgContractService.round2.encryptionStorage.calculateLevel1Index(
