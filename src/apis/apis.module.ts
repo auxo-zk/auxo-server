@@ -39,6 +39,8 @@ import {
 import { MethodInputsService } from './method-inputs/method-inputs.service';
 import { MethodInputsController } from './method-inputs/method-inputs.controller';
 import { Task, TaskSchema } from 'src/schemas/funding-task.schema';
+import { RequestsController } from './requests/requests.controller';
+import { RequestsService } from './requests/requests.service';
 
 @Module({
     imports: [
@@ -73,6 +75,7 @@ import { Task, TaskSchema } from 'src/schemas/funding-task.schema';
         OrganizersController,
         CampaignsController,
         MethodInputsController,
+        RequestsController,
     ],
     providers: [
         Ipfs,
@@ -85,6 +88,7 @@ import { Task, TaskSchema } from 'src/schemas/funding-task.schema';
         ObjectStorageService,
         CampaignsService,
         MethodInputsService,
+        RequestsService,
     ],
 })
 export class ApisModule {}
