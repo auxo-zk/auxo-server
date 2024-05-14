@@ -5,7 +5,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import {
     getRequesterActionData,
     RequesterAction,
-} from 'src/schemas/actions/funding-requester-action.schema';
+} from 'src/schemas/actions/requester-action.schema';
 import { Model } from 'mongoose';
 import {
     calculateKeyIndex,

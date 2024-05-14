@@ -82,7 +82,7 @@ import { RequesterContractsService } from './requester-contract/requester-contra
 import {
     RequesterAction,
     RequesterActionSchema,
-} from 'src/schemas/actions/funding-requester-action.schema';
+} from 'src/schemas/actions/requester-action.schema';
 import { Task, TaskSchema } from 'src/schemas/funding-task.schema';
 import { DkgEvent, DkgEventSchema } from 'src/schemas/actions/dkg-event.schema';
 import {
