@@ -190,20 +190,53 @@ export class CommitteesService {
     }
 
     async getKeys(committeeId: number): Promise<Key[]> {
-        return this.keyModel.find(
-            { committeeId: committeeId },
-            {},
-            { sort: { keyId: 1 } },
-        );
+        return await this.keyModel.aggregate([
+            { $match: { committeeId: committeeId } },
+            {
+                $lookup: {
+                    from: 'dkgrequests',
+                    as: 'dkgrequests',
+                    localField: 'keyIndex',
+                    foreignField: 'keyIndex',
+                },
+            },
+            {
+                $addFields: {
+                    numRequest: { $size: '$dkgrequests' },
+                },
+            },
+            {
+                $project: {
+                    dkgrequests: 0,
+                },
+            },
+        ]);
     }
 
     async getKey(committeeId: number, keyId: number): Promise<Key> {
-        const result = this.keyModel.findOne({
-            committeeId: committeeId,
-            keyId: keyId,
-        });
-        if (result) {
-            return result;
+        const result = await this.keyModel.aggregate([
+            { $match: { committeeId: committeeId, keyId: keyId } },
+            {
+                $lookup: {
+                    from: 'dkgrequests',
+                    as: 'dkgrequests',
+                    localField: 'keyIndex',
+                    foreignField: 'keyIndex',
+                },
+            },
+            {
+                $addFields: {
+                    numRequest: { $size: '$dkgrequests' },
+                },
+            },
+            {
+                $project: {
+                    dkgrequests: 0,
+                },
+            },
+        ]);
+        if (result.length > 0) {
+            return result[0];
         } else {
             throw new NotFoundException();
         }
