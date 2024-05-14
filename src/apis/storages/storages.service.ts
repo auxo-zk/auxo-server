@@ -13,6 +13,7 @@ import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts
 import { FundingContractService } from 'src/mina-contracts/funding-contract/funding-contract.service';
 import { ParticipationContractService } from 'src/mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from 'src/mina-contracts/project-contract/project-contract.service';
+import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
 import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
 import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 
@@ -25,6 +26,7 @@ export class StoragesService {
         private readonly committeeContractsService: CommitteeContractService,
         private readonly dkgContractService: DkgContractsService,
         private readonly dkgUsageContractService: DkgUsageContractsService,
+        private readonly requesterContractsService: RequesterContractsService,
     ) {}
 
     getRollupZkAppStorage(): MerkleLeaf[] {
@@ -534,474 +536,348 @@ export class StoragesService {
         return this.dkgUsageContractService.dkgRequest.zkAppStorage.addresses;
     }
 
-    // getRequesterTreeLevel1(): { [key: string]: MerkleLeaf } {
-    //     const indexes = this.dkgUsageContractService.requestIds;
-    //     const result: { [key: string]: MerkleLeaf } = {};
-    //     for (let i = 0; i < indexes.length; i++) {
-    //         result[indexes[i].toString()] =
-    //             this.dkgUsageContractService.dkgRequest.requester
-    //                 .getWitness(Field(indexes[i]))
-    //                 .toJSON();
-    //     }
-    //     return result;
-    // }
+    getRequestKeyIndexStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.keyIndexStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getRequesterTreeLeafs(): { [key: string]: any } {
-    //     return this.dkgUsageContractService.dkgRequest.requester.leafs;
-    // }
+    getRequestKeyIndexStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.keyIndexStorage.leafs;
+    }
 
-    // getRequestStatusTreeLevel1(): { [key: string]: MerkleLeaf } {
-    //     const indexes = this.dkgUsageContractService.requestIds;
-    //     const result: { [key: string]: MerkleLeaf } = {};
-    //     for (let i = 0; i < indexes.length; i++) {
-    //         result[indexes[i].toString()] =
-    //             this.dkgUsageContractService.dkgRequest.requestStatus
-    //                 .getWitness(Field(indexes[i]))
-    //                 .toJSON();
-    //     }
-    //     return result;
-    // }
+    getRequestTaskIdStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.taskIdStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getRequestStatusTreeLeafs(): { [key: string]: any } {
-    //     return this.dkgUsageContractService.dkgRequest.requestStatus.leafs;
-    // }
+    getRequestTaskIdStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.taskIdStorage.leafs;
+    }
 
-    // getRequestStatusLeavesLevel1(): { [key: string]: string } {
-    //     const indexes = this.dkgUsageContractService.requestIds;
-    //     const result: { [key: string]: string } = {};
-    //     for (let i = 0; i < indexes.length; i++) {
-    //         result[indexes[i].toString()] =
-    //             this.dkgUsageContractService.dkgRequest.requestStatus.level1
-    //                 .get(Field(indexes[i]))
-    //                 .toJSON();
-    //     }
-    //     return result;
-    // }
+    getRequestAccumulationStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.accumulationStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getResponseZkAppTree(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.dkgUsageContractService.dkgResponse.zkApp.addressMap.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.dkgUsageContractService.dkgResponse.zkApp
-    //                 .getWitness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getRequestAccumulationStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.accumulationStorage
+            .leafs;
+    }
 
-    // getResponseZkAppTreeLeafs(): { [key: string]: any } {
-    //     return this.dkgUsageContractService.dkgResponse.zkApp.addresses;
-    // }
+    getRequestExpirationStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.expirationStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getResponseReduceTree(): { [key: string]: MerkleLeaf } {
-    //     const indexes = this.dkgUsageContractService.dkgResponse.reducedActions;
-    //     const result: { [key: string]: MerkleLeaf } = {};
-    //     for (let i = 0; i < indexes.length; i++) {
-    //         result[indexes[i].toString()] =
-    //             this.dkgUsageContractService.dkgResponse.reduceState
-    //                 .getWitness(indexes[i])
-    //                 .toJSON();
-    //     }
-    //     return result;
-    // }
+    getRequestExpirationStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.expirationStorage.leafs;
+    }
 
-    // getResponseReduceTreeLeafs(): { [key: string]: any } {
-    //     return this.dkgUsageContractService.dkgResponse.reduceState.actions;
-    // }
+    getRequestResultStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.resultStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getResponseContributionTreeLevel1(): { [key: string]: MerkleLeaf } {
-    //     const indexes = this.dkgUsageContractService.requestIds;
-    //     const result: { [key: string]: MerkleLeaf } = {};
-    //     for (let i = 0; i < indexes.length; i++) {
-    //         result[indexes[i].toString()] =
-    //             this.dkgUsageContractService.dkgResponse.contribution
-    //                 .getLevel1Witness(Field(indexes[i]))
-    //                 .toJSON();
-    //     }
-    //     return result;
-    // }
+    getRequestResultStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.resultStorage.leafs;
+    }
 
-    // getResponseContributionTreeLeafs(): { [key: string]: any } {
-    //     return this.dkgUsageContractService.dkgResponse.contribution.leafs;
-    // }
+    getResponseZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgResponse.zkAppStorage.addressMap
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgUsageContractService.dkgRequest.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getResponseContributionTreeLevel2(level1Index: string): MerkleLeaf[] {
-    //     try {
-    //         const result: MerkleLeaf[] = [];
-    //         const index = Field(level1Index);
-    //         if (
-    //             this.dkgUsageContractService.dkgResponse.contribution.level2s[
-    //                 level1Index
-    //             ]
-    //         ) {
-    //             const leafCount =
-    //                 this.dkgUsageContractService.dkgResponse.contribution
-    //                     .level2s[level1Index].leafCount;
-    //             for (let i = 0; i < leafCount; i++) {
-    //                 result.push(
-    //                     this.dkgUsageContractService.dkgResponse.contribution
-    //                         .getLevel2Witness(index, Field(i))
-    //                         .toJSON(),
-    //                 );
-    //             }
-    //             return result;
-    //         } else {
-    //             throw new NotFoundException();
-    //         }
-    //     } catch (err) {
-    //         throw new BadRequestException();
-    //     }
-    // }
+    getResponseZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgResponse.zkAppStorage.addresses;
+    }
 
-    // getCampaignInfoTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.campaignContractService.info.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.campaignContractService.info
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getResponseContributionStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgResponse.contributionStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getCampaignInfoTreeLeafs(): { [key: string]: any } {
-    //     return this.campaignContractService.info.leafs;
-    // }
+    getResponseContributionStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgResponse.contributionStorage
+            .leafs;
+    }
 
-    // getCampaignOwnerTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.campaignContractService.owner.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.campaignContractService.owner
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getResponseResponseStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgResponse.responseStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getCampaignOwnerTreeLeafs(): { [key: string]: any } {
-    //     return this.campaignContractService.owner.leafs;
-    // }
+    getResponseResponseStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgResponse.responseStorage.leafs;
+    }
 
-    // getCampaignStatusTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.campaignContractService.status.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.campaignContractService.status
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getResponseProcessStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgResponse.processStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
 
-    // getCampaignStatusTreeLeafs(): { [key: string]: any } {
-    //     return this.campaignContractService.status.leafs;
-    // }
+    getResponseProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgResponse.processStorage.leafs;
+    }
 
-    // getCampaignConfigTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.campaignContractService.config.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.campaignContractService.config
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getRequesterZkAppStorage(requesterAddress: string): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .zkAppStorage.addressMap.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgUsageContractService.dkgRequest.zkAppStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 
-    // getCampaignConfigTreeLeafs(): { [key: string]: any } {
-    //     return this.campaignContractService.config.leafs;
-    // }
+    getRequesterZkAppStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .zkAppStorage.addresses;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 
-    // getCampaignZkAppTree(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.campaignContractService.zkApp.addressMap.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.campaignContractService.zkApp
-    //                 .getWitness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getRequesterKeyIndexStorageLevel1(requesterAddress: string): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .keyIndexStorage.level1.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.processStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 
-    // getCampaignZkAppTreeLeafs(): { [key: string]: any } {
-    //     return this.campaignContractService.zkApp.addresses;
-    // }
+    getRequesterKeyIndexStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .keyIndexStorage.leafs;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 
-    // getParticipationCounterTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.participationContractService.counter.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.participationContractService.counter
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getRequesterTimestampStorageLevel1(requesterAddress: string): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .timestampStorage.level1.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.processStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } catch (err) {
+            throw new BadRequestException();
+        }
+    }
 
-    // getParticipationCounterTreeLeafs(): { [key: string]: any } {
-    //     return this.participationContractService.counter.leafs;
-    // }
+    getRequesterTimestampStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .timestampStorage.leafs;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 
-    // getParticipationIndexTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.participationContractService.index.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.participationContractService.index
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getRequesterAccumulationStorageLevel1(
+        requesterAddress: string,
+    ): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .accumulationStorage.level1.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.processStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 
-    // getParticipationIndexTreeLeafs(): { [key: string]: any } {
-    //     return this.participationContractService.index.leafs;
-    // }
+    getRequesterAccumulationStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .accumulationStorage.leafs;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 
-    // getParticipationInfoTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.participationContractService.info.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.participationContractService.info
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
+    getRequesterCommitmentStorageLevel1(
+        requesterAddress: string,
+    ): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .commitmentStorage.level1.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.processStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 
-    // getParticipationInfoTreeLeafs(): { [key: string]: any } {
-    //     return this.participationContractService.info.leafs;
-    // }
-
-    // getParticipationZkAppTree(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.participationContractService.zkApp.addressMap.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.participationContractService.zkApp
-    //                 .getWitness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getParticipationZkAppTreeLeafs(): { [key: string]: any } {
-    //     return this.participationContractService.zkApp.addresses;
-    // }
-
-    // getProjectInfoTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.projectContractService.info.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.projectContractService.info
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getProjectInfoTreeLeafs(): { [key: string]: any } {
-    //     return this.projectContractService.info.leafs;
-    // }
-
-    // getProjectMemberTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.projectContractService.member.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.projectContractService.member
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getProjectMemberTreeLeafs(): { [key: string]: any } {
-    //     return this.projectContractService.member.leafs;
-    // }
-
-    // getProjectMemberTreeLevel2(level1Index: number): MerkleLeaf[] {
-    //     const result: MerkleLeaf[] = [];
-    //     if (this.projectContractService.member.level2s[level1Index]) {
-    //         const leafCount =
-    //             this.projectContractService.member.level2s[level1Index]
-    //                 .leafCount;
-    //         for (let i = 0; i < leafCount; i++) {
-    //             result.push(
-    //                 this.projectContractService.member
-    //                     .getLevel2Witness(Field(level1Index), Field(i))
-    //                     .toJSON(),
-    //             );
-    //         }
-    //         return result;
-    //     } else {
-    //         throw new NotFoundException();
-    //     }
-    // }
-
-    // getProjectPayeeTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.projectContractService.payee.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.projectContractService.payee
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-    // getProjectPayeeTreeLeafs(): { [key: string]: any } {
-    //     return this.projectContractService.payee.leafs;
-    // }
-
-    // getFundingTotalMTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.fundingContractService.totalM.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.fundingContractService.totalM
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getFundingTotalMTreeLeafs(): { [key: string]: any } {
-    //     return this.fundingContractService.totalM.leafs;
-    // }
-
-    // getFundingTotalRTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount = this.fundingContractService.totalR.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.fundingContractService.totalR
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getFundingTotalRTreeLeafs(): { [key: string]: any } {
-    //     return this.fundingContractService.totalR.leafs;
-    // }
-
-    // getFundingRequestIdTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.fundingContractService.requestId.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.fundingContractService.requestId
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getFundingRequestIdTreeLeafs(): { [key: string]: any } {
-    //     return this.fundingContractService.requestId.leafs;
-    // }
-
-    // getFundingZkAppTree(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.fundingContractService.zkApp.addressMap.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.fundingContractService.zkApp.getWitness(Field(i)).toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getFundingZkAppTreeLeafs(): { [key: string]: any } {
-    //     return this.fundingContractService.zkApp.addresses;
-    // }
-
-    // getFundingReduceTree(): { [key: string]: MerkleLeaf } {
-    //     const indexes = this.fundingContractService.reduceActions;
-    //     const result: { [key: string]: MerkleLeaf } = {};
-    //     for (let i = 0; i < indexes.length; i++) {
-    //         result[indexes[i].toString()] =
-    //             this.fundingContractService.reduceState
-    //                 .getWitness(indexes[i])
-    //                 .toJSON();
-    //     }
-    //     return result;
-    // }
-
-    // getFundingReduceTreeLeafs(): {
-    //     [key: string]: any;
-    // } {
-    //     return this.fundingContractService.reduceState.actions;
-    // }
-
-    // getTreasuryClaimedTreeLevel1(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.treasuryManagerContractService.claimed.level1.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.treasuryManagerContractService.claimed
-    //                 .getLevel1Witness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getTreasuryClaimedTreeLeafs(): { [key: string]: any } {
-    //     return this.treasuryManagerContractService.claimed.leafs;
-    // }
-
-    // getTreasuryZkAppTree(): MerkleLeaf[] {
-    //     const leafCount =
-    //         this.treasuryManagerContractService.zkApp.addressMap.leafCount;
-    //     const result: MerkleLeaf[] = [];
-    //     for (let i = 0; i < leafCount; i++) {
-    //         result.push(
-    //             this.treasuryManagerContractService.zkApp
-    //                 .getWitness(Field(i))
-    //                 .toJSON(),
-    //         );
-    //     }
-    //     return result;
-    // }
-
-    // getTreasuryZkAppTreeLeafs(): { [key: string]: any } {
-    //     return this.treasuryManagerContractService.zkApp.addresses;
-    // }
+    getRequesterCommitmentStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .commitmentStorage.leafs;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
 }

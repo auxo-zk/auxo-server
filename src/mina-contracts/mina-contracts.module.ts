@@ -78,7 +78,7 @@ import {
     RollupAction,
     RollupActionSchema,
 } from 'src/schemas/actions/rollup-action.schema';
-import { FundingRequesterContractService } from './requester-contract/requester-contract.service';
+import { RequesterContractsService } from './requester-contract/requester-contract.service';
 import {
     RequesterAction,
     RequesterActionSchema,
@@ -177,7 +177,7 @@ import {
         ParticipationContractService,
         FundingContractService,
         TreasuryManagerContractService,
-        FundingRequesterContractService,
+        RequesterContractsService,
     ],
     exports: [
         CommitteeContractService,
@@ -189,6 +189,7 @@ import {
         ProjectContractService,
         FundingContractService,
         TreasuryManagerContractService,
+        RequesterContractsService,
     ],
     controllers: [],
 })

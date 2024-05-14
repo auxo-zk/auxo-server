@@ -38,6 +38,7 @@ import {
 } from 'src/schemas/funding-result.schema';
 import { MethodInputsService } from './method-inputs/method-inputs.service';
 import { MethodInputsController } from './method-inputs/method-inputs.controller';
+import { Task, TaskSchema } from 'src/schemas/funding-task.schema';
 
 @Module({
     imports: [
@@ -53,6 +54,7 @@ import { MethodInputsController } from './method-inputs/method-inputs.controller
             { name: Campaign.name, schema: CampaignSchema },
             { name: Participation.name, schema: ParticipationSchema },
             { name: FundingResult.name, schema: FundingResultSchema },
+            { name: Task.name, schema: TaskSchema },
         ]),
         HttpModule,
         CacheModule.register(),

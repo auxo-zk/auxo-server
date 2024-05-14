@@ -326,219 +326,209 @@ export class StoragesController {
         return this.storagesService.getRequestZkAppStorageLeafs();
     }
 
-    // @Get('request/requester/level1')
-    // @ApiTags('Storage Request')
-    // getRequestRequesterStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRequestRequesterStorageLevel1();
-    // }
+    @Get('request/keyIndex/level1')
+    @ApiTags('Storage Response')
+    getRequestKeyIndexStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRequestKeyIndexStorageLevel1();
+    }
 
-    // @Get('request/requester/leafs')
-    // @ApiTags('Storage Request')
-    // getRequestRequesterStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRequestRequesterStorageLeafs();
-    // }
+    @Get('request/keyIndex/leafs')
+    @ApiTags('Storage Response')
+    getRequestKeyIndexStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequestKeyIndexStorageLeafs();
+    }
 
-    // @Get('request/keyIndex/level1')
-    // @ApiTags('Storage Response')
-    // getRequestKeyIndexStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRequestKeyIndexStorageLevel1();
-    // }
+    @Get('request/task-id/level1')
+    @ApiTags('Storage Response')
+    getRequestTaskIdStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRequestTaskIdStorageLevel1();
+    }
 
-    // @Get('request/keyIndex/leafs')
-    // @ApiTags('Storage Response')
-    // getRequestKeyIndexStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRequestKeyIndexStorageLeafs();
-    // }
+    @Get('request/task-id/leafs')
+    @ApiTags('Storage Response')
+    getRequestTaskIdStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequestTaskIdStorageLeafs();
+    }
 
-    // @Get('request/task-id/level1')
-    // @ApiTags('Storage Response')
-    // getRequestTaskIdStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRequestTaskIdStorageLevel1();
-    // }
+    @Get('request/accumulation/level1')
+    @ApiTags('Storage Response')
+    getRequestAccumulationStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRequestAccumulationStorageLevel1();
+    }
 
-    // @Get('request/task-id/leafs')
-    // @ApiTags('Storage Response')
-    // getRequestTaskIdStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRequestTaskIdStorageLeafs();
-    // }
+    @Get('request/accumulation/leafs')
+    @ApiTags('Storage Response')
+    getRequestAccumulationStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequestAccumulationStorageLeafs();
+    }
 
-    // @Get('request/accumulation/level1')
-    // @ApiTags('Storage Response')
-    // getRequestAccumulationStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRequestAccumulationStorageLevel1();
-    // }
+    @Get('request/expiration/level1')
+    @ApiTags('Storage Response')
+    getRequestExpirationStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRequestExpirationStorageLevel1();
+    }
 
-    // @Get('request/accumulation/leafs')
-    // @ApiTags('Storage Response')
-    // getRequestAccumulationStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRequestAccumulationStorageLeafs();
-    // }
+    @Get('request/accumulation/leafs')
+    @ApiTags('Storage Response')
+    getRequestExpirationStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequestExpirationStorageLeafs();
+    }
 
-    // @Get('request/expiration/level1')
-    // @ApiTags('Storage Response')
-    // getRequestExpirationStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRequestExpirationStorageLevel1();
-    // }
+    @Get('request/result/level1')
+    @ApiTags('Storage Response')
+    getRequestResultStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRequestResultStorageLevel1();
+    }
 
-    // @Get('request/accumulation/leafs')
-    // @ApiTags('Storage Response')
-    // getRequestExpirationStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRequestExpirationStorageLeafs();
-    // }
+    @Get('request/result/leafs')
+    @ApiTags('Storage Response')
+    getRequestResultStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequestResultStorageLeafs();
+    }
 
-    // @Get('request/result/level1')
-    // @ApiTags('Storage Response')
-    // getRequestResultStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getRequestExpirationStorageLevel1();
-    // }
+    @Get('response/zkapp')
+    @ApiTags('Storage Response')
+    getResponseZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getResponseZkAppStorage();
+    }
 
-    // @Get('request/result/leafs')
-    // @ApiTags('Storage Response')
-    // getRequestResultStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getRequestExpirationStorageLeafs();
-    // }
+    @Get('response/zkapp/leafs')
+    @ApiTags('Storage Response')
+    getResponseZkAppStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getResponseZkAppStorageLeafs();
+    }
 
-    // @Get('response/zkapp')
-    // @ApiTags('Storage Response')
-    // getResponseZkAppStorage(): MerkleLeaf[] {
-    //     return this.storagesService.getResponseZkAppStorage();
-    // }
+    @Get('response/contribution/level1')
+    @ApiTags('Storage Response')
+    getResponseContributionStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getResponseContributionStorageLevel1();
+    }
 
-    // @Get('response/zkapp/leafs')
-    // @ApiTags('Storage Response')
-    // getResponseZkAppStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getResponseZkAppStorageLeafs();
-    // }
+    @Get('response/contribution/leafs')
+    @ApiTags('Storage Response')
+    getResponseContributionStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getResponseContributionStorageLeafs();
+    }
 
-    // @Get('response/contribution/level1')
-    // @ApiTags('Storage Response')
-    // getResponseContributionStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getResponseContributionStorageLevel1();
-    // }
+    @Get('response/response/level1')
+    @ApiTags('Storage Response')
+    getResponseResponseStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getResponseResponseStorageLevel1();
+    }
 
-    // @Get('response/contribution/leafs')
-    // @ApiTags('Storage Response')
-    // getResponseContributionStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getResponseContributionStorageLeafs();
-    // }
+    @Get('response/response/leafs')
+    @ApiTags('Storage Response')
+    getResponseResponseStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getResponseResponseStorageLeafs();
+    }
 
-    // @Get('response/response/level1')
-    // @ApiTags('Storage Response')
-    // getResponseResponseStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getResponseResponseStorageLevel1();
-    // }
+    @Get('response/process/level1')
+    @ApiTags('Storage Response')
+    getResponseProcessStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getResponseProcessStorageLevel1();
+    }
 
-    // @Get('response/response/leafs')
-    // @ApiTags('Storage Response')
-    // getResponseResponseStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getResponseResponseStorageLeafs();
-    // }
+    @Get('response/process/leafs')
+    @ApiTags('Storage Response')
+    getResponseProcessStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getResponseProcessStorageLeafs();
+    }
 
-    // @Get('response/process/level1')
-    // @ApiTags('Storage Response')
-    // getResponseProcessStorageLevel1(): MerkleLeaf[] {
-    //     return this.storagesService.getResponseProcessStorageLevel1();
-    // }
+    @Get('requester/:requesterAddress/zkapp')
+    @ApiTags('Storage Requester')
+    getRequesterZkAppStorage(
+        @Param('requesterAddress') requesterAddress: string,
+    ): MerkleLeaf[] {
+        return this.storagesService.getRequesterZkAppStorage(requesterAddress);
+    }
 
-    // @Get('response/process/leafs')
-    // @ApiTags('Storage Response')
-    // getResponseProcessStorageLeafs(): { [key: string]: any } {
-    //     return this.storagesService.getResponseProcessStorageLeafs();
-    // }
+    @Get('requester/:requesterAddress/zkapp/leafs')
+    @ApiTags('Storage Requester')
+    getRequesterZkAppStorageLeafs(
+        @Param('requesterAddress') requesterAddress: string,
+    ): { [key: string]: any } {
+        return this.storagesService.getRequesterZkAppStorageLeafs(
+            requesterAddress,
+        );
+    }
 
-    // @Get('requester/:requesterAddress/zkapp')
-    // @ApiTags('Storage Requester')
-    // getRequesterZkAppStorage(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): MerkleLeaf[] {
-    //     return this.storagesService.getRequesterZkAppStorage(requesterAddress);
-    // }
+    @Get('requester/:requesterAddress/keyIndex/level1')
+    @ApiTags('Storage Requester')
+    getRequesterKeyIndexStorageLevel1(
+        @Param('requesterAddress') requesterAddress: string,
+    ): MerkleLeaf[] {
+        return this.storagesService.getRequesterKeyIndexStorageLevel1(
+            requesterAddress,
+        );
+    }
 
-    // @Get('requester/:requesterAddress/zkapp/leafs')
-    // @ApiTags('Storage Requester')
-    // getRequesterZkAppStorageLeafs(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): { [key: string]: any } {
-    //     return this.storagesService.getRequesterZkAppStorageLeafs();
-    // }
+    @Get('requester/:requesterAddress/keyIndex/leafs')
+    @ApiTags('Storage Requester')
+    getRequesterKeyIndexStorageLeafs(
+        @Param('requesterAddress') requesterAddress: string,
+    ): { [key: string]: any } {
+        return this.storagesService.getRequesterKeyIndexStorageLeafs(
+            requesterAddress,
+        );
+    }
 
-    // @Get('requester/:requesterAddress/keyIndex/level1')
-    // @ApiTags('Storage Requester')
-    // getRequesterKeyIndexStorageLevel1(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): MerkleLeaf[] {
-    //     return this.storagesService.getRequesterKeyIndexStorageLevel1(
-    //         requesterAddress,
-    //     );
-    // }
+    @Get('requester/:requesterAddress/timestamp/level1')
+    @ApiTags('Storage Requester')
+    getRequesterTimestampStorageLevel1(
+        @Param('requesterAddress') requesterAddress: string,
+    ): MerkleLeaf[] {
+        return this.storagesService.getRequesterTimestampStorageLevel1(
+            requesterAddress,
+        );
+    }
 
-    // @Get('requester/:requesterAddress/keyIndex/leafs')
-    // @ApiTags('Storage Requester')
-    // getRequesterKeyIndexStorageLeafs(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): { [key: string]: any } {
-    //     return this.storagesService.getRequesterKeyIndexStorageLeafs(
-    //         requesterAddress,
-    //     );
-    // }
+    @Get('requester/:requesterAddress/timestamp/leafs')
+    @ApiTags('Storage Requester')
+    getRequesterTimestampStorageLeafs(
+        @Param('requesterAddress') requesterAddress: string,
+    ): { [key: string]: any } {
+        return this.storagesService.getRequesterTimestampStorageLeafs(
+            requesterAddress,
+        );
+    }
 
-    // @Get('requester/:requesterAddress/timestamp/level1')
-    // @ApiTags('Storage Requester')
-    // getRequesterTimestampStorageLevel1(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): MerkleLeaf[] {
-    //     return this.storagesService.getRequesterTimestampStorageLevel1(
-    //         requesterAddress,
-    //     );
-    // }
+    @Get('requester/:requesterAddress/timestamp/level1')
+    @ApiTags('Storage Requester')
+    getRequesterAccumulationStorageLevel1(
+        @Param('requesterAddress') requesterAddress: string,
+    ): MerkleLeaf[] {
+        return this.storagesService.getRequesterAccumulationStorageLevel1(
+            requesterAddress,
+        );
+    }
 
-    // @Get('requester/:requesterAddress/timestamp/leafs')
-    // @ApiTags('Storage Requester')
-    // getRequesterTimestampStorageLeafs(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): { [key: string]: any } {
-    //     return this.storagesService.getRequesterTimestampStorageLeafs(
-    //         requesterAddress,
-    //     );
-    // }
+    @Get('requester/:requesterAddress/timestamp/leafs')
+    @ApiTags('Storage Requester')
+    getRequesterAccumulationStorageLeafs(
+        @Param('requesterAddress') requesterAddress: string,
+    ): { [key: string]: any } {
+        return this.storagesService.getRequesterAccumulationStorageLeafs(
+            requesterAddress,
+        );
+    }
 
-    // @Get('requester/:requesterAddress/timestamp/level1')
-    // @ApiTags('Storage Requester')
-    // getRequesterAccumulationStorageLevel1(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): MerkleLeaf[] {
-    //     return this.storagesService.getRequesterTimestampStorageLevel1(
-    //         requesterAddress,
-    //     );
-    // }
+    @Get('requester/:requesterAddress/commitment/level1')
+    @ApiTags('Storage Requester')
+    getRequesterCommitmentStorageLevel1(
+        @Param('requesterAddress') requesterAddress: string,
+    ): MerkleLeaf[] {
+        return this.storagesService.getRequesterCommitmentStorageLevel1(
+            requesterAddress,
+        );
+    }
 
-    // @Get('requester/:requesterAddress/timestamp/leafs')
-    // @ApiTags('Storage Requester')
-    // getRequesterAccumulationStorageLeafs(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): { [key: string]: any } {
-    //     return this.storagesService.getRequesterTimestampStorageLeafs(
-    //         requesterAddress,
-    //     );
-    // }
-
-    // @Get('requester/:requesterAddress/commitment/level1')
-    // @ApiTags('Storage Requester')
-    // getRequesterCommitmentStorageLevel1(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): MerkleLeaf[] {
-    //     return this.storagesService.getRequesterCommitmentStorageLevel1(
-    //         requesterAddress,
-    //     );
-    // }
-
-    // @Get('requester/:requesterAddress/commitment/leafs')
-    // @ApiTags('Storage Requester')
-    // getRequesterCommitmentStorageLeafs(
-    //     @Param('requesterAddress') requesterAddress: string,
-    // ): { [key: string]: any } {
-    //     return this.storagesService.getRequesterCommitmentStorageLeafs(
-    //         requesterAddress,
-    //     );
-    // }
+    @Get('requester/:requesterAddress/commitment/leafs')
+    @ApiTags('Storage Requester')
+    getRequesterCommitmentStorageLeafs(
+        @Param('requesterAddress') requesterAddress: string,
+    ): { [key: string]: any } {
+        return this.storagesService.getRequesterCommitmentStorageLeafs(
+            requesterAddress,
+        );
+    }
 }

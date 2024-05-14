@@ -38,11 +38,9 @@ import { Funding } from 'src/schemas/funding.schema';
 import { Utilities } from '../utilities';
 
 @Injectable()
-export class FundingRequesterContractService
-    implements ContractServiceInterface
-{
+export class RequesterContractsService implements ContractServiceInterface {
     private readonly requesterAddresses: string[];
-    private readonly logger = new Logger(FundingRequesterContractService.name);
+    private readonly logger = new Logger(RequesterContractsService.name);
     private _storageMapping: {
         [key: string]: {
             zkAppStorage: Storage.AddressStorage.AddressStorage;
@@ -54,6 +52,9 @@ export class FundingRequesterContractService
             lastTimestamp: number;
             actionState: string;
             nextCommitmentIndex: number;
+            groupVectorStorageMapping: {
+                [key: number]: { R: GroupVectorStorage; M: GroupVectorStorage };
+            };
         };
     };
 
@@ -67,6 +68,9 @@ export class FundingRequesterContractService
         lastTimestamp: number;
         actionState: string;
         nextCommitmentIndex: number;
+        groupVectorStorageMapping: {
+            [key: number]: { R: GroupVectorStorage; M: GroupVectorStorage };
+        };
     } {
         return this._storageMapping[address];
     }
@@ -103,6 +107,7 @@ export class FundingRequesterContractService
                 lastTimestamp: 0,
                 actionState: '',
                 nextCommitmentIndex: 0,
+                groupVectorStorageMapping: {},
             };
         }
     }
@@ -343,22 +348,29 @@ export class FundingRequesterContractService
                 const groupVectorStorageM = new GroupVectorStorage();
                 for (
                     let j = 0;
-                    j < Constants.ENCRYPTION_LIMITS.DIMENSION;
+                    j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
                     j++
                 ) {
+                    const level2Index = Field(j);
                     groupVectorStorageR.updateLeaf(
-                        { level1Index: Field(j) },
+                        { level1Index: level2Index },
                         groupVectorStorageR.calculateLeaf(
                             Group.from(task.totalR[j].x, task.totalR[j].y),
                         ),
                     );
                     groupVectorStorageM.updateLeaf(
-                        { level1Index: Field(j) },
+                        { level1Index: level2Index },
                         groupVectorStorageM.calculateLeaf(
                             Group.from(task.totalM[j].x, task.totalM[j].y),
                         ),
                     );
                 }
+                this._storageMapping[
+                    requesterAddress
+                ].groupVectorStorageMapping[Number(level1Index.toBigInt())] = {
+                    R: groupVectorStorageR,
+                    M: groupVectorStorageM,
+                };
                 this._storageMapping[
                     requesterAddress
                 ].accumulationStorage.updateLeaf(

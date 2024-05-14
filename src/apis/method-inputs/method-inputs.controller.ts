@@ -76,7 +76,7 @@ export class MethodInputsController {
         @Query('keyId', new ParseIntPipe()) keyId: number,
         @Query('requestId', new ParseIntPipe()) requestId: number,
     ) {
-        return this.methodInputsService.getResponseContractContribute(
+        return await this.methodInputsService.getResponseContractContribute(
             committeeId,
             memberId,
             keyId,

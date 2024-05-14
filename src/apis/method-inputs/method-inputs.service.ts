@@ -1,10 +1,15 @@
 import { Constants } from '@auxo-dev/dkg';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { Field, PublicKey } from 'o1js';
 import { ZkAppIndex } from 'src/constants';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
 import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
+import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
+import { Task } from 'src/schemas/funding-task.schema';
+import { DkgRequest } from 'src/schemas/request.schema';
 
 @Injectable()
 export class MethodInputsService {
@@ -12,6 +17,11 @@ export class MethodInputsService {
         private readonly committeeContractService: CommitteeContractService,
         private readonly dkgContractService: DkgContractsService,
         private readonly dkgUsageContractsService: DkgUsageContractsService,
+        private readonly requesterContractService: RequesterContractsService,
+        @InjectModel(DkgRequest.name)
+        private readonly dkgRequestModel: Model<DkgRequest>,
+        @InjectModel(Task.name)
+        private readonly taskModel: Model<Task>,
     ) {}
 
     getDkgContractGenerateKey(committeeId: number, memberId: number) {
@@ -245,13 +255,35 @@ export class MethodInputsService {
         }
     }
 
-    getResponseContractContribute(
+    async getResponseContractContribute(
         committeeId: number,
         memberId: number,
         keyId: number,
         requestId: number,
     ) {
         try {
+            const request = await this.dkgRequestModel.findOne({
+                requestId: requestId,
+            });
+            const task = await this.taskModel.findOne({ task: request.task });
+            const accumulationRootM = this.requesterContractService
+                .storage(task.requester)
+                .groupVectorStorageMapping[task.taskId].M.root.toString();
+            const accumulationWitnessesR = [];
+            for (
+                let i = 0;
+                i < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
+                i++
+            ) {
+                accumulationWitnessesR.push(
+                    this.requesterContractService
+                        .storage(task.requester)
+                        .groupVectorStorageMapping[
+                            task.taskId
+                        ].R.getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
             const memberWitness =
                 this.committeeContractService.memberStorage.getWitness(
                     Field(committeeId),
@@ -317,6 +349,8 @@ export class MethodInputsService {
                 );
 
             return {
+                accumulationRootM,
+                accumulationWitnessesR,
                 memberWitness,
                 publicKeyWitness,
                 encryptionWitness,
