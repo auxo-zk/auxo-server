@@ -8,7 +8,7 @@ import { RequestActionEnum } from 'src/constants';
 export class RequestActionData {
     requestId: number;
     keyIndex: number;
-    taskId: string;
+    task: string;
     expirationTimestamp: number;
     accumulationRoot: string;
     resultRoot: string;
@@ -16,14 +16,14 @@ export class RequestActionData {
     constructor(
         requestId: number,
         keyIndex: number,
-        taskId: string,
+        task: string,
         expirationTimestamp: number,
         accumulationRoot: string,
         resultRoot: string,
     ) {
         this.requestId = requestId;
         this.keyIndex = keyIndex;
-        this.taskId = taskId;
+        this.task = task;
         this.expirationTimestamp = expirationTimestamp;
         this.accumulationRoot = accumulationRoot;
         this.resultRoot = resultRoot;
@@ -33,7 +33,7 @@ export class RequestActionData {
         return new RequestActionData(
             Number(action.requestId.toBigInt()),
             Number(action.keyIndex.toBigInt()),
-            action.taskId.toString(),
+            action.task.toString(),
             Number(action.expirationTimestamp.toBigInt()),
             action.accumulationRoot.toString(),
             action.resultRoot.toString(),

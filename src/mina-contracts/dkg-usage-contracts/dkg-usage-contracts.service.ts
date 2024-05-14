@@ -74,7 +74,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         zkAppStorage: Storage.AddressStorage.AddressStorage;
         requesterCounter: number;
         keyIndexStorage: Storage.RequestStorage.RequestKeyIndexStorage;
-        taskIdStorage: Storage.RequestStorage.TaskIdStorage;
+        taskIdStorage: Storage.RequestStorage.TaskStorage;
         accumulationStorage: Storage.RequestStorage.RequestAccumulationStorage;
         expirationStorage: Storage.RequestStorage.ExpirationStorage;
         resultStorage: Storage.RequestStorage.ResultStorage;
@@ -93,7 +93,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         zkAppStorage: Storage.AddressStorage.AddressStorage;
         requesterCounter: number;
         keyIndexStorage: Storage.RequestStorage.RequestKeyIndexStorage;
-        taskIdStorage: Storage.RequestStorage.TaskIdStorage;
+        taskIdStorage: Storage.RequestStorage.TaskStorage;
         accumulationStorage: Storage.RequestStorage.RequestAccumulationStorage;
         expirationStorage: Storage.RequestStorage.ExpirationStorage;
         resultStorage: Storage.RequestStorage.ResultStorage;
@@ -138,7 +138,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             requesterCounter: 0,
             keyIndexStorage:
                 new Storage.RequestStorage.RequestKeyIndexStorage(),
-            taskIdStorage: new Storage.RequestStorage.TaskIdStorage(),
+            taskIdStorage: new Storage.RequestStorage.TaskStorage(),
             accumulationStorage:
                 new Storage.RequestStorage.RequestAccumulationStorage(),
             expirationStorage: new Storage.RequestStorage.ExpirationStorage(),
@@ -453,7 +453,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     await this.dkgRequestModel.create({
                         requestId: nextRequestId,
                         keyIndex: notActiveAction.actionData.keyIndex,
-                        task: notActiveAction.actionData.taskId,
+                        task: notActiveAction.actionData.task,
                         expirationTimestamp:
                             notActiveAction.actionData.expirationTimestamp,
                         accumulationRoot:
