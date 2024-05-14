@@ -11,19 +11,48 @@ export class RequestsService {
     ) {}
 
     async getRequests(): Promise<DkgRequest[]> {
-        return await this.dkgRequestModel.find(
-            {},
-            {},
-            { sort: { requestId: 1 } },
-        );
+        return await this.dkgRequestModel.aggregate([
+            {
+                $lookup: {
+                    from: 'tasks',
+                    as: 'task',
+                    foreignField: 'task',
+                    localField: 'task',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$task',
+                    preserveNullAndEmptyArrays: true, // Optional: keep orders with no matching product
+                },
+            },
+        ]);
     }
 
     async getRequest(requestId: number): Promise<DkgRequest> {
-        const exist = await this.dkgRequestModel.exists({
-            requestId: requestId,
-        });
-        if (exist) {
-            return await this.dkgRequestModel.findOne({ requestId: requestId });
+        const result = await this.dkgRequestModel.aggregate([
+            {
+                $match: {
+                    requestId: requestId,
+                },
+            },
+            {
+                $lookup: {
+                    from: 'tasks',
+                    as: 'task',
+                    foreignField: 'task',
+                    localField: 'task',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$task',
+                    preserveNullAndEmptyArrays: true, // Optional: keep orders with no matching product
+                },
+            },
+        ]);
+        if (result.length > 0) {
+            return result[0];
         } else {
             throw new NotFoundException();
         }
