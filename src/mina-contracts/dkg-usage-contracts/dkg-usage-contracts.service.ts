@@ -37,6 +37,7 @@ import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
 import {
+    Constants,
     DArray,
     FinalizedEvent,
     GroupVectorStorage,
@@ -219,7 +220,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             zkAppRoot: Field(state[0]),
             contributionRoot: Field(state[1]),
             responseRoot: Field(state[2]),
-            processRoot: Field(state[2]),
+            processRoot: Field(state[3]),
         };
         return result;
     }
@@ -360,11 +361,12 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         );
         batchId += 1;
         eventId += 1;
-
         for (; batchId < events.length; batchId++) {
             for (let j = 0; j < events[batchId].events.length; j++) {
-                const event = events[batchId].events[j];
-
+                const event =
+                    events[batchId].events[
+                        events[batchId].events.length - 1 - j
+                    ];
                 if (Number(event.data[0]) == 0) {
                     await this.responseProcessedEventModel.findOneAndUpdate(
                         {
@@ -610,17 +612,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         groupVectorStorage.root,
                     );
                 }
-
                 for (let j = 0; j < responses.length; j++) {
                     const response = responses[j];
-                    const D = new DArray();
-                    response.D.map((Di) => {
-                        D.push(Group.from(Di.x, Di.y));
-                    });
-                    const responseContribution =
-                        ResponseContribution.fromFields(
-                            [Field(response.rootD), D.toFields()].flat(),
-                        ) as ResponseContribution;
                     const level2Index =
                         this._dkgResponse.contributionStorage.calculateLevel2Index(
                             Field(response.memberId),
@@ -628,7 +621,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
                     this._dkgResponse.contributionStorage.updateLeaf(
                         { level1Index, level2Index },
-                        responseContribution.hash(),
+                        Field(response.rootD),
                     );
                 }
             }
@@ -647,9 +640,11 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             for (let j = 0; j < responseEvent.data.actions.length; j++) {
                 const actionState = responseEvent.data.actions[j];
                 if (!this._dkgResponse.processStorageMapping[actionState]) {
-                    this._dkgResponse.processStorageMapping[actionState] = 0;
+                    this._dkgResponse.processStorageMapping[actionState] =
+                        Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
                 } else {
-                    this._dkgResponse.processStorageMapping[actionState] += 1;
+                    this._dkgResponse.processStorageMapping[actionState] +=
+                        Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
                 }
             }
         }
@@ -665,7 +660,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     responseAction.currentActionState
                 ] != undefined
             ) {
-                console.log('here');
                 this._dkgResponse.processStorage.updateAction(
                     Field(responseAction.actionId),
                     {

@@ -95,6 +95,14 @@ import {
     CampaignResultSchema,
 } from './schemas/campaign-result.schema';
 import { Task, TaskSchema } from './schemas/funding-task.schema';
+import {
+    ResponseFinalizedEvent,
+    ResponseFinalizedEventSchema,
+    ResponseProcessedEvent,
+    ResponseProcessedEventSchema,
+    ResponseRespondedEvent,
+    ResponseRespondedEventSchema,
+} from './schemas/actions/response-event.schema';
 
 @Module({
     imports: [
@@ -103,7 +111,6 @@ import { Task, TaskSchema } from './schemas/funding-task.schema';
             socketTimeoutMS: 10000,
         }),
         MongooseModule.forFeature([
-            { name: CampaignAction.name, schema: CampaignActionSchema },
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
             { name: DkgAction.name, schema: DkgActionSchema },
             { name: DkgEvent.name, schema: DkgEventSchema },
@@ -116,9 +123,21 @@ import { Task, TaskSchema } from './schemas/funding-task.schema';
                 name: ParticipationAction.name,
                 schema: ParticipationActionSchema,
             },
-            { name: ProjectAction.name, schema: ProjectActionSchema },
             { name: RequestAction.name, schema: RequestActionSchema },
+            { name: DkgRequest.name, schema: DkgRequestSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
+            {
+                name: ResponseProcessedEvent.name,
+                schema: ResponseProcessedEventSchema,
+            },
+            {
+                name: ResponseRespondedEvent.name,
+                schema: ResponseRespondedEventSchema,
+            },
+            {
+                name: ResponseFinalizedEvent.name,
+                schema: ResponseFinalizedEventSchema,
+            },
             { name: RollupAction.name, schema: RollupActionSchema },
             { name: Round1Action.name, schema: Round1ActionSchema },
             { name: Round1Event.name, schema: Round1EventSchema },
@@ -128,8 +147,11 @@ import { Task, TaskSchema } from './schemas/funding-task.schema';
                 name: TreasuryManagerAction.name,
                 schema: TreasuryManagerActionSchema,
             },
-            { name: CampaignResult.name, schema: CampaignResultSchema },
+            { name: ProjectAction.name, schema: ProjectActionSchema },
+            { name: Project.name, schema: ProjectSchema },
+            { name: CampaignAction.name, schema: CampaignActionSchema },
             { name: Campaign.name, schema: CampaignSchema },
+            { name: CampaignResult.name, schema: CampaignResultSchema },
             { name: Committee.name, schema: CommitteeSchema },
             { name: FundingResult.name, schema: FundingResultSchema },
             { name: Task.name, schema: TaskSchema },
@@ -139,8 +161,6 @@ import { Task, TaskSchema } from './schemas/funding-task.schema';
                 name: Participation.name,
                 schema: ParticipationSchema,
             },
-            { name: Project.name, schema: ProjectSchema },
-            { name: DkgRequest.name, schema: DkgRequestSchema },
         ]),
         MongooseModule.forFeature([]),
         MinaContractsModule,

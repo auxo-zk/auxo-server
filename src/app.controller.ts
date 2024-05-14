@@ -30,9 +30,9 @@ import {
     ResponseRespondedEvent,
 } from './schemas/actions/response-event.schema';
 import { DkgEvent } from './schemas/actions/dkg-event.schema';
-import { RequesterAction } from '@auxo-dev/dkg';
 import { Task } from './schemas/funding-task.schema';
 import { RollupAction } from './schemas/actions/rollup-action.schema';
+import { RequesterAction } from './schemas/actions/requester-action.schema';
 
 @Controller()
 export class AppController {
