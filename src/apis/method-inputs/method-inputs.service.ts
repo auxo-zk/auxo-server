@@ -269,6 +269,9 @@ export class MethodInputsService {
             const accumulationRootM = this.requesterContractService
                 .storage(task.requester)
                 .groupVectorStorageMapping[task.taskId].M.root.toString();
+            const accumulationRootR = this.requesterContractService
+                .storage(task.requester)
+                .groupVectorStorageMapping[task.taskId].R.root.toString();
             const accumulationWitnessesR = [];
             for (
                 let i = 0;
@@ -350,6 +353,7 @@ export class MethodInputsService {
 
             return {
                 accumulationRootM,
+                accumulationRootR,
                 accumulationWitnessesR,
                 memberWitness,
                 publicKeyWitness,
