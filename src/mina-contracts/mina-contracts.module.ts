@@ -105,6 +105,10 @@ import {
     CampaignResult,
     CampaignResultSchema,
 } from 'src/schemas/campaign-result.schema';
+import {
+    RequestEvent,
+    RequestEventSchema,
+} from 'src/schemas/actions/request-event.schema';
 
 @Module({
     imports: [
@@ -125,6 +129,7 @@ import {
             },
             { name: ProjectAction.name, schema: ProjectActionSchema },
             { name: RequestAction.name, schema: RequestActionSchema },
+            { name: RequestEvent.name, schema: RequestEventSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
             {
                 name: ResponseProcessedEvent.name,

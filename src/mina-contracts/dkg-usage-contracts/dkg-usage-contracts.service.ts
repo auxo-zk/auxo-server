@@ -65,6 +65,10 @@ import {
     getResponseFinalizedEventData,
     getResponseRespondedEventData,
 } from 'src/schemas/actions/response-event.schema';
+import {
+    getRequestEventData,
+    RequestEvent,
+} from 'src/schemas/actions/request-event.schema';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
@@ -118,6 +122,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly committeeContractService: CommitteeContractService,
         @InjectModel(RequestAction.name)
         private readonly requestActionModel: Model<RequestAction>,
+        @InjectModel(RequestEvent.name)
+        private readonly requestEventModel: Model<RequestEvent>,
         @InjectModel(DkgRequest.name)
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(ResponseAction.name)
@@ -421,8 +427,44 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         }
     }
 
+    private async fetchRequestEvents() {
+        const lastEvent = await this.requestEventModel.findOne(
+            {},
+            {},
+            { sort: { eventId: -1 } },
+        );
+        const events: Event[] = await this.queryService.fetchEvents(
+            process.env.REQUEST_ADDRESS,
+        );
+        let batchId: number = lastEvent ? lastEvent.batchId + 1 : 0;
+        let eventId: number = lastEvent ? lastEvent.eventId + 1 : 0;
+        for (; batchId < events.length; batchId++) {
+            for (let j = 0; j < events[batchId].events.length; j++) {
+                const event =
+                    events[batchId].events[
+                        events[batchId].events.length - 1 - j
+                    ];
+                await this.requestEventModel.findOneAndUpdate(
+                    {
+                        batchId: batchId,
+                        eventId: eventId,
+                    },
+                    {
+                        batchId: batchId,
+                        eventId: eventId,
+                        rawData: event.data,
+                        data: getRequestEventData(event.data),
+                    },
+                    { new: true, upsert: true },
+                );
+                eventId += 1;
+            }
+        }
+    }
+
     private async updateRequestActions() {
         await this.fetchDkgRequestState();
+        await this.fetchRequestEvents();
 
         const currentAction = await this.requestActionModel.findOne({
             currentActionState: this._dkgRequest.actionState,
@@ -465,10 +507,23 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     const request = await this.dkgRequestModel.findOne({
                         requestId: notActiveAction.actionData.requestId,
                     });
+                    const requestEvents = await this.requestEventModel.find(
+                        {
+                            'data.requestId':
+                                notActiveAction.actionData.requestId,
+                        },
+                        {},
+                        { sort: { 'data.dimensionIndex': 1 } },
+                    );
+                    const result: string[] = [];
+                    requestEvents.map((event) => {
+                        result.push(event.data.result);
+                    });
                     request.set(
                         'resultRoot',
                         notActiveAction.actionData.resultRoot,
                     );
+                    request.set('result', result);
                     request.set('status', RequestStatusEnum.RESOLVED);
                     await request.save();
                 }

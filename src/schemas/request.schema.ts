@@ -41,6 +41,9 @@ export class DkgRequest {
     @Prop({ type: [{ x: String, y: String }], default: [] })
     finalizedD?: { x: string; y: string }[];
 
+    @Prop({ type: [String] })
+    result?: string[];
+
     @Prop({ default: RequestStatusEnum.INITIALIZED, required: true })
     status?: RequestStatusEnum;
 }
