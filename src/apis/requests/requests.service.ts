@@ -26,6 +26,20 @@ export class RequestsService {
                     preserveNullAndEmptyArrays: true, // Optional: keep orders with no matching product
                 },
             },
+            {
+                $lookup: {
+                    from: 'keys',
+                    as: 'key',
+                    localField: 'keyIndex',
+                    foreignField: 'keyIndex',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$key',
+                    preserveNullAndEmptyArrays: true, // Optional: keep orders with no matching product
+                },
+            },
         ]);
     }
 
@@ -47,6 +61,20 @@ export class RequestsService {
             {
                 $unwind: {
                     path: '$task',
+                    preserveNullAndEmptyArrays: true, // Optional: keep orders with no matching product
+                },
+            },
+            {
+                $lookup: {
+                    from: 'keys',
+                    as: 'key',
+                    localField: 'keyIndex',
+                    foreignField: 'keyIndex',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$key',
                     preserveNullAndEmptyArrays: true, // Optional: keep orders with no matching product
                 },
             },

@@ -227,7 +227,10 @@ export class CommitteesService {
                 },
             },
             {
-                $unwind: '$key',
+                $unwind: {
+                    path: '$key',
+                    preserveNullAndEmptyArrays: true, // Optional: keep orders with no matching product
+                },
             },
         ]);
         return result;
