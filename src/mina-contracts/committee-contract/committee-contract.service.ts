@@ -25,10 +25,15 @@ import {
     CommitteeAction,
     getCommitteeActionData,
 } from 'src/schemas/actions/committee-action.schema';
-import { Storage, ZkApp } from '@auxo-dev/dkg';
+import {
+    CommitteeContract,
+    Storage,
+    UpdateCommittee,
+    ZkApp,
+} from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { MaxRetries, zkAppCache } from 'src/constants';
+import { MaxRetries, ZkAppCache } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
 import { CommitteeState } from 'src/interfaces/zkapp-state.interface';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
@@ -101,10 +106,108 @@ export class CommitteeContractService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
+        const cache = ZkAppCache;
+        await UpdateCommittee.compile({ cache });
+        await CommitteeContract.compile({ cache });
     }
 
-    async fetchCommitteeState(): Promise<CommitteeState> {
+    async rollup() {
+        try {
+            const notActiveActions = await this.committeeActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                const state = await this.fetchCommitteeState();
+                let proof = await UpdateCommittee.init(
+                    state.actionState,
+                    state.memberRoot,
+                    state.settingRoot,
+                    state.nextCommitteeId,
+                );
+                const memberStorage = _.cloneDeep(this._memberStorage);
+                const settingStorage = _.cloneDeep(this._settingStorage);
+                let nextCommitteeId = state.nextCommitteeId;
+                for (let i = 0; i < notActiveActions.length; i++) {
+                    const notActiveAction = notActiveActions[i];
+                    proof = await UpdateCommittee.update(
+                        proof,
+                        ZkApp.Committee.CommitteeAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notActiveAction.actions,
+                            ),
+                        ),
+                        memberStorage.getLevel1Witness(nextCommitteeId),
+                        settingStorage.getLevel1Witness(nextCommitteeId),
+                    );
+                    memberStorage.updateInternal(
+                        nextCommitteeId,
+                        Storage.CommitteeStorage.COMMITTEE_LEVEL_2_TREE(),
+                    );
+                    settingStorage.updateRawLeaf(
+                        {
+                            level1Index: nextCommitteeId,
+                        },
+                        {
+                            T: Field(notActiveAction.actionData.threshold),
+                            N: Field(
+                                notActiveAction.actionData.addresses.length,
+                            ),
+                        },
+                    );
+                    for (
+                        let j = 0;
+                        j < notActiveAction.actionData.addresses.length;
+                        j++
+                    ) {
+                        const level2Index = memberStorage.calculateLevel2Index(
+                            Field(j),
+                        );
+                        memberStorage.updateRawLeaf(
+                            {
+                                level1Index: nextCommitteeId,
+                                level2Index: level2Index,
+                            },
+                            PublicKey.fromBase58(
+                                notActiveAction.actionData.addresses[j],
+                            ),
+                        );
+                    }
+                    nextCommitteeId = nextCommitteeId.add(1);
+                }
+                const committeeContract = new CommitteeContract(
+                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    async () => {
+                        await committeeContract.update(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+                return true;
+            }
+        } catch (err) {}
+    }
+
+    // ============ PRIVATE FUNCTIONS ============
+
+    private async fetchCommitteeState(): Promise<CommitteeState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.COMMITTEE_ADDRESS,
         );
@@ -121,8 +224,6 @@ export class CommitteeContractService implements ContractServiceInterface {
         this._actionState = result.actionState.toString();
         return result;
     }
-
-    // ============ PRIVATE FUNCTIONS ============
 
     private async fetchCommitteeActions(): Promise<void> {
         const lastAction = await this.committeeActionModel.findOne(

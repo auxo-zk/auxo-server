@@ -36,7 +36,7 @@ export interface DkgRequestState {
     zkAppRoot: Field;
     requestCounter: Field;
     keyIndexRoot: Field;
-    taskIdRoot: Field;
+    taskRoot: Field;
     accumulationRoot: Field;
     expirationRoot: Field;
     resultRoot: Field;

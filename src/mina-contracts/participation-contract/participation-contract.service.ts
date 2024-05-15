@@ -13,7 +13,7 @@ import { Ipfs } from 'src/ipfs/ipfs';
 import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
-import { MaxRetries, zkAppCache } from 'src/constants';
+import { MaxRetries, ZkAppCache } from 'src/constants';
 import { Utilities } from '../utilities';
 import { ParticipationState } from 'src/interfaces/zkapp-state.interface';
 import * as _ from 'lodash';
@@ -87,7 +87,7 @@ export class ParticipationContractService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
+        const cache = ZkAppCache;
     }
 
     async fetchParticipationState(): Promise<ParticipationState> {

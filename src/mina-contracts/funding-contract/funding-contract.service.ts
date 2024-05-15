@@ -22,7 +22,7 @@ import {
     FundingEventEnum,
     FundingStateEnum,
     MaxRetries,
-    zkAppCache,
+    ZkAppCache,
 } from 'src/constants';
 import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
 import { ZkApp as DkgZkApp } from '@auxo-dev/dkg';
@@ -95,7 +95,7 @@ export class FundingContractService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
+        const cache = ZkAppCache;
     }
 
     async fetchFundingState(): Promise<FundingState> {

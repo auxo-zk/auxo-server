@@ -1,7 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { FinalizeResponse, Storage } from '@auxo-dev/dkg';
+import {
+    FinalizeResponse,
+    Rollup,
+    RollupContract,
+    Storage,
+    ZkApp,
+} from '@auxo-dev/dkg';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -10,11 +16,12 @@ import {
 } from 'src/schemas/actions/rollup-action.schema';
 import { Model } from 'mongoose';
 import { RollupState } from 'src/interfaces/zkapp-state.interface';
-import { Field, Provable, Reducer } from 'o1js';
+import { Field, Mina, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
 import { Action } from 'src/interfaces/action.interface';
-import { MaxRetries, ZkAppIndex } from 'src/constants';
+import { MaxRetries, ZkAppCache, ZkAppIndex } from 'src/constants';
 import { Network } from '../network/network';
 import { Utilities } from '../utilities';
+import * as _ from 'lodash';
 
 @Injectable()
 export class RollupContractService implements ContractServiceInterface {
@@ -80,6 +87,160 @@ export class RollupContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+        } catch (err) {}
+    }
+
+    async compile() {
+        const cache = ZkAppCache;
+        await Rollup.compile({ cache });
+        await RollupContract.compile({ cache });
+    }
+
+    async rollup() {
+        try {
+            const notActiveActions = await this.rollupActionModel.find(
+                {
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                const state = await this.fetchRollupState();
+                let proof = await Rollup.init(
+                    ZkApp.Rollup.RollupAction.empty(),
+                    state.counterRoot,
+                    state.rollupRoot,
+                    state.actionState,
+                );
+                const counterStorage = _.cloneDeep(this._counterStorage);
+                const rollupStorage = _.cloneDeep(this._rollupStorage);
+                let dkgActionCounter = await this.rollupActionModel.count({
+                    active: true,
+                    'actionData.zkAppIndex': ZkAppIndex.DKG,
+                });
+                let round1ActionCounter = await this.rollupActionModel.count({
+                    active: true,
+                    'actionData.zkAppIndex': ZkAppIndex.ROUND1,
+                });
+                let round2ActionCounter = await this.rollupActionModel.count({
+                    active: true,
+                    'actionData.zkAppIndex': ZkAppIndex.ROUND2,
+                });
+                let responseActionCounter = await this.rollupActionModel.count({
+                    active: true,
+                    'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
+                });
+                for (let i = 0; i < notActiveActions.length; i++) {
+                    const notActiveAction = notActiveActions[i];
+                    proof = await Rollup.rollup(
+                        ZkApp.Rollup.RollupAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notActiveAction.actions,
+                            ),
+                        ),
+                        proof,
+                        Field(notActiveAction.actionId),
+                        counterStorage.getWitness(
+                            Field(notActiveAction.actionData.zkAppIndex),
+                        ),
+                        rollupStorage.getWitness(
+                            rollupStorage.calculateLevel1Index({
+                                zkAppIndex: Field(
+                                    notActiveAction.actionData.zkAppIndex,
+                                ),
+                                actionId: Field(notActiveAction.actionId),
+                            }),
+                        ),
+                    );
+                    switch (notActiveAction.actionData.zkAppIndex) {
+                        case ZkAppIndex.DKG:
+                            dkgActionCounter += 1;
+                            counterStorage.updateRawLeaf(
+                                {
+                                    level1Index:
+                                        counterStorage.calculateLevel1Index(
+                                            Field(ZkAppIndex.DKG),
+                                        ),
+                                },
+                                Field(dkgActionCounter),
+                            );
+                            break;
+                        case ZkAppIndex.ROUND1:
+                            round1ActionCounter += 1;
+                            counterStorage.updateRawLeaf(
+                                {
+                                    level1Index:
+                                        counterStorage.calculateLevel1Index(
+                                            Field(ZkAppIndex.ROUND1),
+                                        ),
+                                },
+                                Field(round1ActionCounter),
+                            );
+                            break;
+                        case ZkAppIndex.ROUND2:
+                            round2ActionCounter += 1;
+                            counterStorage.updateRawLeaf(
+                                {
+                                    level1Index:
+                                        counterStorage.calculateLevel1Index(
+                                            Field(ZkAppIndex.ROUND2),
+                                        ),
+                                },
+                                Field(round2ActionCounter),
+                            );
+                            break;
+                        case ZkAppIndex.RESPONSE:
+                            responseActionCounter += 1;
+                            counterStorage.updateRawLeaf(
+                                {
+                                    level1Index:
+                                        counterStorage.calculateLevel1Index(
+                                            Field(ZkAppIndex.RESPONSE),
+                                        ),
+                                },
+                                Field(responseActionCounter),
+                            );
+                            break;
+                    }
+                    rollupStorage.updateRawLeaf(
+                        {
+                            level1Index: rollupStorage.calculateLevel1Index({
+                                zkAppIndex: Field(
+                                    notActiveAction.actionData.zkAppIndex,
+                                ),
+                                actionId: Field(notActiveAction.actionId),
+                            }),
+                        },
+                        Field(notActiveAction.actionData.actionHash),
+                    );
+                }
+                const rollupContract = new RollupContract(
+                    PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    async () => {
+                        await rollupContract.rollup(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+                return true;
+            }
         } catch (err) {}
     }
 

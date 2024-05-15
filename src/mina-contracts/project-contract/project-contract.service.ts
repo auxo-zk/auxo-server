@@ -9,7 +9,7 @@ import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
 import { Field, Mina, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
 import { Project } from 'src/schemas/project.schema';
-import { MaxRetries, ProjectActionEnum, zkAppCache } from 'src/constants';
+import { MaxRetries, ProjectActionEnum, ZkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Storage, ZkApp } from '@auxo-dev/platform';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
@@ -83,7 +83,7 @@ export class ProjectContractService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
+        const cache = ZkAppCache;
     }
 
     async fetchProjectState(): Promise<ProjectState> {

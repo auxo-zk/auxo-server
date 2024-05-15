@@ -44,7 +44,7 @@ import {
     EventEnum,
     KeyStatusEnum,
     MaxRetries,
-    zkAppCache,
+    ZkAppCache,
     ZkAppIndex,
 } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
@@ -209,7 +209,7 @@ export class DkgContractsService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
+        const cache = ZkAppCache;
     }
 
     async fetchDkgState(): Promise<DkgState> {

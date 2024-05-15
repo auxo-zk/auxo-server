@@ -106,7 +106,7 @@ export enum CommitteeMemberRoleEnum {
     NONE,
 }
 
-export const zkAppCache = Cache.FileSystem(process.env.CACHE_DIR);
+export const ZkAppCache = Cache.FileSystem(process.env.CACHE_DIR);
 
 export enum ZkAppIndex {
     ROLLUP,

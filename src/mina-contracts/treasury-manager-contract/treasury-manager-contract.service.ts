@@ -19,7 +19,7 @@ import {
 } from 'o1js';
 import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
-import { MaxRetries, zkAppCache } from 'src/constants';
+import { MaxRetries, ZkAppCache } from 'src/constants';
 import { Utilities } from '../utilities';
 import { TreasuryManagerState } from 'src/interfaces/zkapp-state.interface';
 import * as _ from 'lodash';
@@ -91,7 +91,7 @@ export class TreasuryManagerContractService
     }
 
     async compile() {
-        const cache = zkAppCache;
+        const cache = ZkAppCache;
     }
 
     async fetchTreasuryManagerState(): Promise<TreasuryManagerState> {
@@ -170,7 +170,7 @@ export class TreasuryManagerContractService
                                     campaignId,
                                 ),
                             );
-                        campaignStateStorage.updateRawLeaf(
+                        campaignStateStorage.updateLeaf(
                             campaignId,
                             campaignStateStorage.calculateLeaf(
                                 Storage.TreasuryManagerStorage.CampaignStateEnum

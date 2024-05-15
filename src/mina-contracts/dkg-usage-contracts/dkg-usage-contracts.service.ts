@@ -31,19 +31,22 @@ import {
     RequestEventEnum,
     RequestStatusEnum,
     ZkAppIndex,
-    zkAppCache,
+    ZkAppCache,
 } from 'src/constants';
 import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
 import {
+    calculateKeyIndex,
     Constants,
     DArray,
     FinalizedEvent,
     GroupVectorStorage,
+    RequestContract,
     ResponseContribution,
     ResponseContributionStorage,
     Storage,
+    UpdateRequest,
     ZkApp,
 } from '@auxo-dev/dkg';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
@@ -78,7 +81,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         zkAppStorage: Storage.AddressStorage.AddressStorage;
         requesterCounter: number;
         keyIndexStorage: Storage.RequestStorage.RequestKeyIndexStorage;
-        taskIdStorage: Storage.RequestStorage.TaskStorage;
+        taskStorage: Storage.RequestStorage.TaskStorage;
         accumulationStorage: Storage.RequestStorage.RequestAccumulationStorage;
         expirationStorage: Storage.RequestStorage.ExpirationStorage;
         resultStorage: Storage.RequestStorage.ResultStorage;
@@ -97,7 +100,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         zkAppStorage: Storage.AddressStorage.AddressStorage;
         requesterCounter: number;
         keyIndexStorage: Storage.RequestStorage.RequestKeyIndexStorage;
-        taskIdStorage: Storage.RequestStorage.TaskStorage;
+        taskStorage: Storage.RequestStorage.TaskStorage;
         accumulationStorage: Storage.RequestStorage.RequestAccumulationStorage;
         expirationStorage: Storage.RequestStorage.ExpirationStorage;
         resultStorage: Storage.RequestStorage.ResultStorage;
@@ -144,7 +147,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             requesterCounter: 0,
             keyIndexStorage:
                 new Storage.RequestStorage.RequestKeyIndexStorage(),
-            taskIdStorage: new Storage.RequestStorage.TaskStorage(),
+            taskStorage: new Storage.RequestStorage.TaskStorage(),
             accumulationStorage:
                 new Storage.RequestStorage.RequestAccumulationStorage(),
             expirationStorage: new Storage.RequestStorage.ExpirationStorage(),
@@ -194,10 +197,138 @@ export class DkgUsageContractsService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
+        const cache = ZkAppCache;
+        await UpdateRequest.compile({ cache });
+        await RequestContract.compile({ cache });
     }
 
-    async fetchDkgRequestState(): Promise<DkgRequestState> {
+    async rollupRequest() {
+        try {
+            const notActiveActions = await this.requestActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                const state = await this.fetchDkgRequestState();
+                let proof = await UpdateRequest.init(
+                    ZkApp.Request.RequestAction.empty(),
+                    state.requestCounter,
+                    state.keyIndexRoot,
+                    state.taskRoot,
+                    state.accumulationRoot,
+                    state.expirationRoot,
+                    state.resultRoot,
+                    state.actionState,
+                );
+                const keyIndexStorage = _.cloneDeep(
+                    this._dkgRequest.keyIndexStorage,
+                );
+                const taskStorage = _.cloneDeep(this._dkgRequest.taskStorage);
+                const accumulationStorage = _.cloneDeep(
+                    this._dkgRequest.accumulationStorage,
+                );
+                const expirationStorage = _.cloneDeep(
+                    this._dkgRequest.expirationStorage,
+                );
+                const resultStorage = _.cloneDeep(
+                    this._dkgRequest.resultStorage,
+                );
+
+                let nextRequestId = state.requestCounter;
+                for (let i = 0; i < notActiveActions.length; i++) {
+                    const notActiveAction = notActiveActions[i];
+                    if (
+                        notActiveAction.actionData.requestId ==
+                        Number(Field(-1).toBigInt())
+                    ) {
+                        proof = await UpdateRequest.initialize(
+                            ZkApp.Request.RequestAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
+                                ),
+                            ),
+                            proof,
+                            keyIndexStorage.getLevel1Witness(nextRequestId),
+                            taskStorage.getLevel1Witness(nextRequestId),
+                            accumulationStorage.getLevel1Witness(nextRequestId),
+                            expirationStorage.getLevel1Witness(nextRequestId),
+                        );
+                        keyIndexStorage.updateLeaf(
+                            { level1Index: nextRequestId },
+                            Field(notActiveAction.actionData.keyIndex),
+                        );
+                        taskStorage.updateLeaf(
+                            { level1Index: nextRequestId },
+                            Field(notActiveAction.actionData.task),
+                        );
+                        accumulationStorage.updateLeaf(
+                            { level1Index: nextRequestId },
+                            Field(notActiveAction.actionData.accumulationRoot),
+                        );
+                        expirationStorage.updateLeaf(
+                            { level1Index: nextRequestId },
+                            expirationStorage.calculateLeaf(
+                                new UInt64(
+                                    notActiveAction.actionData.expirationTimestamp,
+                                ),
+                            ),
+                        );
+                        nextRequestId = nextRequestId.add(1);
+                    } else {
+                        proof = await UpdateRequest.resolve(
+                            ZkApp.Request.RequestAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
+                                ),
+                            ),
+                            proof,
+                            resultStorage.getLevel1Witness(
+                                Field(notActiveAction.actionData.requestId),
+                            ),
+                        );
+                        resultStorage.updateLeaf(
+                            {
+                                level1Index: Field(
+                                    notActiveAction.actionData.requestId,
+                                ),
+                            },
+                            Field(notActiveAction.actionData.resultRoot),
+                        );
+                    }
+                }
+                const requestContract = new RequestContract(
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                );
+                const feePayerPrivateKey = PrivateKey.fromBase58(
+                    process.env.FEE_PAYER_PRIVATE_KEY,
+                );
+                const tx = await Mina.transaction(
+                    {
+                        sender: feePayerPrivateKey.toPublicKey(),
+                        fee: process.env.FEE,
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    async () => {
+                        await requestContract.update(proof);
+                    },
+                );
+                await Utilities.proveAndSend(
+                    tx,
+                    feePayerPrivateKey,
+                    false,
+                    this.logger,
+                );
+                return true;
+            }
+        } catch (err) {}
+    }
+
+    // ===== PRIVATE FUNCTIONS
+
+    private async fetchDkgRequestState(): Promise<DkgRequestState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.REQUEST_ADDRESS,
         );
@@ -205,7 +336,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             zkAppRoot: Field(state[0]),
             requestCounter: Field(state[1]),
             keyIndexRoot: Field(state[2]),
-            taskIdRoot: Field(state[3]),
+            taskRoot: Field(state[3]),
             accumulationRoot: Field(state[4]),
             expirationRoot: Field(state[5]),
             resultRoot: Field(state[6]),
@@ -231,9 +362,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         return result;
     }
 
-    // ===== PRIVATE FUNCTIONS
-
-    async fetchRequestActions() {
+    private async fetchRequestActions() {
         const lastAction = await this.requestActionModel.findOne(
             {},
             {},
@@ -630,7 +759,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     { level1Index },
                     Field(request.keyIndex),
                 );
-                this._dkgRequest.taskIdStorage.updateLeaf(
+                this._dkgRequest.taskStorage.updateLeaf(
                     { level1Index },
                     Field(request.task),
                 );

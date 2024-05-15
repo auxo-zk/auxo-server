@@ -557,9 +557,9 @@ export class StoragesService {
         return this.dkgUsageContractService.dkgRequest.keyIndexStorage.leafs;
     }
 
-    getRequestTaskIdStorageLevel1(): MerkleLeaf[] {
+    getRequestTaskStorageLevel1(): MerkleLeaf[] {
         const leafCount =
-            this.dkgUsageContractService.dkgRequest.taskIdStorage.level1
+            this.dkgUsageContractService.dkgRequest.taskStorage.level1
                 .leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
@@ -572,10 +572,10 @@ export class StoragesService {
         return result;
     }
 
-    getRequestTaskIdStorageLeafs(): {
+    getRequestTaskStorageLeafs(): {
         [key: string]: any;
     } {
-        return this.dkgUsageContractService.dkgRequest.taskIdStorage.leafs;
+        return this.dkgUsageContractService.dkgRequest.taskStorage.leafs;
     }
 
     getRequestAccumulationStorageLevel1(): MerkleLeaf[] {

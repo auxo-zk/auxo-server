@@ -338,16 +338,16 @@ export class StoragesController {
         return this.storagesService.getRequestKeyIndexStorageLeafs();
     }
 
-    @Get('request/task-id/level1')
+    @Get('request/task/level1')
     @ApiTags('Storage Response')
-    getRequestTaskIdStorageLevel1(): MerkleLeaf[] {
-        return this.storagesService.getRequestTaskIdStorageLevel1();
+    getRequestTaskStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getRequestTaskStorageLevel1();
     }
 
-    @Get('request/task-id/leafs')
+    @Get('request/task/leafs')
     @ApiTags('Storage Response')
-    getRequestTaskIdStorageLeafs(): { [key: string]: any } {
-        return this.storagesService.getRequestTaskIdStorageLeafs();
+    getRequestTaskStorageLeafs(): { [key: string]: any } {
+        return this.storagesService.getRequestTaskStorageLeafs();
     }
 
     @Get('request/accumulation/level1')

@@ -17,7 +17,7 @@ import {
     getCampaignActionData,
 } from 'src/schemas/actions/campaign-action.schema';
 import { Campaign } from 'src/schemas/campaign.schema';
-import { MaxRetries, zkAppCache } from 'src/constants';
+import { MaxRetries, ZkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
 import { IpfsHash } from '@auxo-dev/auxo-libs';
@@ -95,7 +95,7 @@ export class CampaignContractService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
+        const cache = ZkAppCache;
         await Utilities.compile(
             ZkApp.Campaign.RollupCampaign,
             cache,
