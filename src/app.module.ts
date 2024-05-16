@@ -94,7 +94,7 @@ import {
     CampaignResult,
     CampaignResultSchema,
 } from './schemas/campaign-result.schema';
-import { Task, TaskSchema } from './schemas/funding-task.schema';
+import { Task, TaskSchema } from './schemas/task.schema';
 import {
     ResponseFinalizedEvent,
     ResponseFinalizedEventSchema,

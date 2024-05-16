@@ -38,7 +38,7 @@ import {
 } from 'src/schemas/funding-result.schema';
 import { MethodInputsService } from './method-inputs/method-inputs.service';
 import { MethodInputsController } from './method-inputs/method-inputs.controller';
-import { Task, TaskSchema } from 'src/schemas/funding-task.schema';
+import { Task, TaskSchema } from 'src/schemas/task.schema';
 import { RequestsController } from './requests/requests.controller';
 import { RequestsService } from './requests/requests.service';
 

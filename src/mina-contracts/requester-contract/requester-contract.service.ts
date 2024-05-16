@@ -9,17 +9,25 @@ import {
 import { Model } from 'mongoose';
 import {
     calculateKeyIndex,
+    CommitmentWitnesses,
     Constants,
+    GroupVector,
     GroupVectorStorage,
+    GroupVectorWitnesses,
     Libs,
+    RequesterContract,
     Storage,
+    UpdateTask,
+    ZkApp,
 } from '@auxo-dev/dkg';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { RequesterState } from 'src/interfaces/zkapp-state.interface';
 import {
     Field,
     Group,
+    Mina,
     Poseidon,
+    PrivateKey,
     Provable,
     PublicKey,
     Reducer,
@@ -28,12 +36,13 @@ import {
 } from 'o1js';
 import { Action } from 'src/interfaces/action.interface';
 import _, { last } from 'lodash';
-import { Encryption, Task } from 'src/schemas/funding-task.schema';
+import { Encryption, Task } from 'src/schemas/task.schema';
 import {
     getFullDimensionEmptyGroupVector,
     MaxRetries,
     RequesterAddresses,
     RequesterAddressMapping,
+    ZkAppCache,
 } from 'src/constants';
 import { Funding } from 'src/schemas/funding.schema';
 import { Utilities } from '../utilities';
@@ -131,6 +140,348 @@ export class RequesterContractsService implements ContractServiceInterface {
         } catch (err) {
             console.log(err);
         }
+    }
+
+    async compile() {
+        const cache = ZkAppCache;
+        await UpdateTask.compile({ cache });
+        await RequesterContract.compile({ cache });
+    }
+
+    async rollup() {
+        try {
+            this.requesterAddresses.map(async (requesterAddress) => {
+                const notActiveActions = await this.requesterActionModel.find(
+                    { active: false, requester: requesterAddress },
+                    {},
+                    { sort: { actionId: 1 } },
+                );
+                if (notActiveActions.length > 0) {
+                    const state =
+                        await this.fetchRequesterState(requesterAddress);
+                    let proof = await UpdateTask.init(
+                        ZkApp.Requester.RequesterAction.empty(),
+                        state.actionState,
+                        UInt32.fromFields(state.counters.toFields()),
+                        state.keyIndexRoot,
+                        state.timestampRoot,
+                        state.accumulationRoot,
+                        this._storageMapping[requesterAddress].counters
+                            .commitmentCounter,
+                        state.commitmentRoot,
+                    );
+                    const counters = _.cloneDeep(
+                        this._storageMapping[requesterAddress].counters,
+                    );
+                    const keyIndexStorage = _.cloneDeep(
+                        this._storageMapping[requesterAddress].keyIndexStorage,
+                    );
+                    const timestampStorage = _.cloneDeep(
+                        this._storageMapping[requesterAddress].timestampStorage,
+                    );
+                    const accumulationStorage = _.cloneDeep(
+                        this._storageMapping[requesterAddress]
+                            .accumulationStorage,
+                    );
+                    const commitmentStorage = _.cloneDeep(
+                        this._storageMapping[requesterAddress]
+                            .commitmentStorage,
+                    );
+                    const groupVectorStorageMapping = _.cloneDeep(
+                        this._storageMapping[requesterAddress]
+                            .groupVectorStorageMapping,
+                    );
+                    let nextTaskId = Field.fromFields(
+                        counters.taskCounter.toFields(),
+                    );
+                    let nextCommitmentIndex = Field.fromFields(
+                        counters.commitmentCounter.toFields(),
+                    );
+                    for (let i = 0; i < notActiveActions.length; i++) {
+                        const notActiveAction = notActiveActions[i];
+                        if (
+                            notActiveAction.actionData.taskId ==
+                            Number(UInt32.MAXINT().toBigint())
+                        ) {
+                            proof = await UpdateTask.create(
+                                ZkApp.Requester.RequesterAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                proof,
+                                keyIndexStorage.getLevel1Witness(nextTaskId),
+                                timestampStorage.getLevel1Witness(nextTaskId),
+                                accumulationStorage.getLevel1Witness(
+                                    nextTaskId,
+                                ),
+                            );
+                            keyIndexStorage.updateLeaf(
+                                { level1Index: nextTaskId },
+                                Field(notActiveAction.actionData.keyIndex),
+                            );
+                            timestampStorage.updateLeaf(
+                                { level1Index: nextTaskId },
+                                Field(notActiveAction.actionData.timestamp),
+                            );
+                            const groupVectorStorageR =
+                                new GroupVectorStorage();
+                            const groupVectorStorageM =
+                                new GroupVectorStorage();
+                            accumulationStorage.updateLeaf(
+                                { level1Index: nextTaskId },
+                                accumulationStorage.calculateLeaf({
+                                    accumulationRootR: groupVectorStorageR.root,
+                                    accumulationRootM: groupVectorStorageM.root,
+                                }),
+                            );
+                            groupVectorStorageMapping[
+                                Number(nextTaskId.toBigInt())
+                            ] = {
+                                R: groupVectorStorageR,
+                                M: groupVectorStorageM,
+                            };
+                            // GroupVectorStorage.
+                            nextTaskId = nextTaskId.add(1);
+                        } else {
+                            if (
+                                groupVectorStorageMapping[
+                                    notActiveAction.actionData.taskId
+                                ] == undefined
+                            ) {
+                                groupVectorStorageMapping[
+                                    notActiveAction.actionData.taskId
+                                ] = {
+                                    R: new GroupVectorStorage(),
+                                    M: new GroupVectorStorage(),
+                                };
+                            }
+                            const oldSumR: Group[] = [];
+                            const oldSumM: Group[] = [];
+                            for (
+                                let j = 0;
+                                j < Constants.ENCRYPTION_LIMITS.DIMENSION;
+                                j++
+                            ) {
+                                const dimensionIndex = Number(
+                                    Field.fromBits(
+                                        Field(
+                                            notActiveAction.actionData.indices,
+                                        )
+                                            .toBits()
+                                            .slice(j * 8, (j + 1) * 8),
+                                    ).toBigInt(),
+                                );
+                                if (
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.leafs[dimensionIndex.toString()] ==
+                                    undefined
+                                ) {
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.updateRawLeaf(
+                                        {
+                                            level1Index: Field(dimensionIndex),
+                                        },
+                                        Group.from(
+                                            notActiveAction.actionData.R[j].x,
+                                            notActiveAction.actionData.R[j].y,
+                                        ),
+                                    );
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].M.updateRawLeaf(
+                                        {
+                                            level1Index: Field(dimensionIndex),
+                                        },
+                                        Group.from(
+                                            notActiveAction.actionData.M[j].x,
+                                            notActiveAction.actionData.M[j].y,
+                                        ),
+                                    );
+                                    oldSumR.push(Group.zero);
+                                    oldSumM.push(Group.zero);
+                                } else {
+                                    oldSumR.push(
+                                        groupVectorStorageMapping[
+                                            notActiveAction.actionData.taskId
+                                        ].R.leafs[dimensionIndex.toString()]
+                                            .raw,
+                                    );
+                                    oldSumM.push(
+                                        groupVectorStorageMapping[
+                                            notActiveAction.actionData.taskId
+                                        ].M.leafs[dimensionIndex.toString()]
+                                            .raw,
+                                    );
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.updateRawLeaf(
+                                        {
+                                            level1Index: Field(dimensionIndex),
+                                        },
+                                        Group.from(
+                                            notActiveAction.actionData.R[j].x,
+                                            notActiveAction.actionData.R[j].y,
+                                        ).add(
+                                            groupVectorStorageMapping[
+                                                notActiveAction.actionData
+                                                    .taskId
+                                            ].R.leafs[dimensionIndex.toString()]
+                                                .raw,
+                                        ),
+                                    );
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].M.updateRawLeaf(
+                                        {
+                                            level1Index: Field(dimensionIndex),
+                                        },
+                                        Group.from(
+                                            notActiveAction.actionData.M[j].x,
+                                            notActiveAction.actionData.M[j].y,
+                                        ).add(
+                                            groupVectorStorageMapping[
+                                                notActiveAction.actionData
+                                                    .taskId
+                                            ].M.leafs[dimensionIndex.toString()]
+                                                .raw,
+                                        ),
+                                    );
+                                }
+                            }
+                            const groupVectorOldSumR: GroupVector =
+                                new GroupVector(oldSumR);
+                            const groupVectorOldSumM: GroupVector =
+                                new GroupVector(oldSumM);
+                            const accumulationWitnessesR = [
+                                ...Array(
+                                    Constants.ENCRYPTION_LIMITS.DIMENSION,
+                                ).keys(),
+                            ].map((index) => {
+                                const dimensionIndex = Number(
+                                    Field.fromBits(
+                                        Field(
+                                            notActiveAction.actionData.indices,
+                                        )
+                                            .toBits()
+                                            .slice(index * 8, (index + 1) * 8),
+                                    ).toBigInt(),
+                                );
+                                return groupVectorStorageMapping[
+                                    notActiveAction.actionData.taskId
+                                ].R.getLevel1Witness(Field(dimensionIndex));
+                            });
+                            const accumulationWitnessesM = [
+                                ...Array(
+                                    Constants.ENCRYPTION_LIMITS.DIMENSION,
+                                ).keys(),
+                            ].map((index) => {
+                                const dimensionIndex = Number(
+                                    Field.fromBits(
+                                        Field(
+                                            notActiveAction.actionData.indices,
+                                        )
+                                            .toBits()
+                                            .slice(index * 8, (index + 1) * 8),
+                                    ).toBigInt(),
+                                );
+                                return groupVectorStorageMapping[
+                                    notActiveAction.actionData.taskId
+                                ].M.getLevel1Witness(Field(dimensionIndex));
+                            });
+                            const commitmentWitnesses = [
+                                commitmentStorage.getLevel1Witness(
+                                    nextCommitmentIndex,
+                                ),
+                                commitmentStorage.getLevel1Witness(
+                                    nextCommitmentIndex.add(1),
+                                ),
+                            ];
+                            proof = await UpdateTask.accumulate(
+                                ZkApp.Requester.RequesterAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                proof,
+                                groupVectorOldSumR,
+                                groupVectorOldSumM,
+                                accumulationStorage.getLevel1Witness(
+                                    Field(notActiveAction.actionData.taskId),
+                                ),
+                                new GroupVectorWitnesses(
+                                    accumulationWitnessesR,
+                                ),
+                                new GroupVectorWitnesses(
+                                    accumulationWitnessesM,
+                                ),
+                                new CommitmentWitnesses(commitmentWitnesses),
+                            );
+                            accumulationStorage.updateLeaf(
+                                {
+                                    level1Index: Field(
+                                        notActiveAction.actionData.taskId,
+                                    ),
+                                },
+                                this._storageMapping[
+                                    requesterAddress
+                                ].accumulationStorage.calculateLeaf({
+                                    accumulationRootR:
+                                        groupVectorStorageMapping[
+                                            notActiveAction.actionData.taskId
+                                        ].R.root,
+                                    accumulationRootM:
+                                        groupVectorStorageMapping[
+                                            notActiveAction.actionData.taskId
+                                        ].M.root,
+                                }),
+                            );
+                            commitmentStorage.updateLeaf(
+                                { level1Index: nextCommitmentIndex },
+                                Field(
+                                    notActiveAction.actionData.commitments[0],
+                                ),
+                            );
+                            nextCommitmentIndex = nextCommitmentIndex.add(1);
+                            commitmentStorage.updateLeaf(
+                                { level1Index: nextCommitmentIndex },
+                                Field(
+                                    notActiveAction.actionData.commitments[1],
+                                ),
+                            );
+                            nextCommitmentIndex = nextCommitmentIndex.add(1);
+                        }
+                    }
+                    const requesterContract = new RequesterContract(
+                        PublicKey.fromBase58(requesterAddress),
+                    );
+                    const feePayerPrivateKey = PrivateKey.fromBase58(
+                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    );
+                    const tx = await Mina.transaction(
+                        {
+                            sender: feePayerPrivateKey.toPublicKey(),
+                            fee: process.env.FEE,
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
+                        },
+                        async () => {
+                            await requesterContract.updateTasks(proof);
+                        },
+                    );
+                    await Utilities.proveAndSend(
+                        tx,
+                        feePayerPrivateKey,
+                        false,
+                        this.logger,
+                    );
+                    return true;
+                }
+            });
+        } catch (err) {}
     }
 
     private async fetchRequesterState(
@@ -350,9 +701,9 @@ export class RequesterContractsService implements ContractServiceInterface {
                     );
                     totalR.equals(Group.zero).toBoolean()
                         ? 0
-                        : groupVectorStorageR.updateLeaf(
+                        : groupVectorStorageR.updateRawLeaf(
                               { level1Index: level2Index },
-                              groupVectorStorageR.calculateLeaf(totalR),
+                              totalR,
                           );
                     const totalM = Group.from(
                         task.totalM[j].x,
@@ -360,9 +711,9 @@ export class RequesterContractsService implements ContractServiceInterface {
                     );
                     totalM.equals(Group.zero).toBoolean()
                         ? 0
-                        : groupVectorStorageM.updateLeaf(
+                        : groupVectorStorageM.updateRawLeaf(
                               { level1Index: level2Index },
-                              groupVectorStorageM.calculateLeaf(totalM),
+                              totalM,
                           );
                 }
                 this._storageMapping[

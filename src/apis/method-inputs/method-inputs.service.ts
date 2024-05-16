@@ -9,7 +9,7 @@ import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contra
 import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
 import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
 import { Committee } from 'src/schemas/committee.schema';
-import { Task } from 'src/schemas/funding-task.schema';
+import { Task } from 'src/schemas/task.schema';
 import { DkgRequest } from 'src/schemas/request.schema';
 
 @Injectable()

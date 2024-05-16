@@ -83,7 +83,7 @@ import {
     RequesterAction,
     RequesterActionSchema,
 } from 'src/schemas/actions/requester-action.schema';
-import { Task, TaskSchema } from 'src/schemas/funding-task.schema';
+import { Task, TaskSchema } from 'src/schemas/task.schema';
 import { DkgEvent, DkgEventSchema } from 'src/schemas/actions/dkg-event.schema';
 import {
     Round1Event,
