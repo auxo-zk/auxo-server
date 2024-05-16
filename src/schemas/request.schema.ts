@@ -20,7 +20,7 @@ export class DkgRequest {
     @Prop({ required: true, unique: true, index: true })
     requestId: number;
 
-    @Prop()
+    @Prop({ required: true, index: true })
     keyIndex: number;
 
     @Prop({ unique: true, index: true })

@@ -4,10 +4,12 @@ import { IsNumber, IsOptional } from 'class-validator';
 
 export class GetRequestsDto {
     @Type(() => Number)
+    @IsNumber()
     @IsOptional()
     committeeId?: number;
 
     @Type(() => Number)
+    @IsNumber()
     @IsOptional()
-    keyId?: number;
+    keyIndex?: number;
 }

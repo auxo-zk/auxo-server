@@ -3,12 +3,14 @@ import {
     Get,
     Param,
     ParseIntPipe,
+    Query,
     UseInterceptors,
 } from '@nestjs/common';
 import { RequestsService } from './requests.service';
 import { ApiTags } from '@nestjs/swagger';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { DkgRequest } from 'src/schemas/request.schema';
+import { GetRequestsDto } from 'src/dtos/get-requests.dto';
 
 @Controller('requests')
 export class RequestsController {
@@ -18,8 +20,10 @@ export class RequestsController {
     @ApiTags('Request')
     @CacheTTL(30000)
     @UseInterceptors(CacheInterceptor)
-    async getRequests(): Promise<DkgRequest[]> {
-        return await this.requestsService.getRequests();
+    async getRequests(
+        @Query() getRequestsDto: GetRequestsDto,
+    ): Promise<DkgRequest[]> {
+        return await this.requestsService.getRequests(getRequestsDto);
     }
 
     @Get(':requestId')
