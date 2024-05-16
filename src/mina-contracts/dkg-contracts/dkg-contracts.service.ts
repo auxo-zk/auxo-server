@@ -29,9 +29,12 @@ import { Key } from 'src/schemas/key.schema';
 import {
     calculatePublicKey,
     Constants,
+    DkgContract,
     Libs,
     Round1Contribution,
     Storage,
+    UpdateKey,
+    UpdateKeyInput,
     ZkApp,
 } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
@@ -70,6 +73,7 @@ import {
     getRound2EventData,
     Round2Event,
 } from 'src/schemas/actions/round-2-event.schema';
+import { RollupContractService } from '../rollup-contract/rollup-contract.service';
 
 @Injectable()
 export class DkgContractsService implements ContractServiceInterface {
@@ -130,6 +134,7 @@ export class DkgContractsService implements ContractServiceInterface {
     constructor(
         private readonly queryService: QueryService,
         private readonly committeeContractService: CommitteeContractService,
+        private readonly rollupContractService: RollupContractService,
         @InjectModel(DkgAction.name)
         private readonly dkgActionModel: Model<DkgAction>,
         @InjectModel(DkgEvent.name)
@@ -210,9 +215,279 @@ export class DkgContractsService implements ContractServiceInterface {
 
     async compile() {
         const cache = ZkAppCache;
+        await UpdateKey.compile({ cache });
+        await DkgContract.compile({ cache });
     }
 
-    async fetchDkgState(): Promise<DkgState> {
+    async rollupDkg() {
+        try {
+            const notActiveActions = await this.dkgActionModel.find({});
+            if (notActiveActions.length > 0) {
+                const state = await this.fetchDkgState();
+                let proof = await UpdateKey.init(
+                    UpdateKeyInput.empty(),
+                    this.rollupContractService.rollupStorage.root,
+                    state.keyCounterRoot,
+                    state.keyStatusRoot,
+                    state.keyRoot,
+                    state.processRoot,
+                );
+                const keyCounterStorage = _.cloneDeep(
+                    this._dkg.keyCounterStorage,
+                );
+                const keyStatusStorage = _.cloneDeep(
+                    this._dkg.keyStatusStorage,
+                );
+                const keyStorage = _.cloneDeep(this._dkg.keyStorage);
+                const processStorage = _.cloneDeep(this._dkg.processStorage);
+                const processStorageMapping = _.cloneDeep(
+                    this._dkg.processStorageMapping,
+                );
+                const rollupStorage = _.cloneDeep(
+                    this.rollupContractService.rollupStorage,
+                );
+                const nextKeyIdMapping: {
+                    [committeeId: number]: number;
+                } = {};
+                for (let i = 0; i < notActiveActions.length; i++) {
+                    const notActiveAction = notActiveActions[i];
+                    const committeeId = notActiveAction.actionData.committeeId;
+                    if (nextKeyIdMapping[committeeId] == undefined) {
+                        const lastKeyByCommitteeId =
+                            await this.keyModel.findOne(
+                                {
+                                    committeeId: committeeId,
+                                },
+                                {},
+                                { sort: { keyId: -1 } },
+                            );
+                        if (lastKeyByCommitteeId != undefined) {
+                            nextKeyIdMapping[committeeId] =
+                                lastKeyByCommitteeId.keyId + 1;
+                        } else {
+                            nextKeyIdMapping[committeeId] = 0;
+                        }
+                    }
+                    const dkgAction = ZkApp.DKG.DkgAction.fromFields(
+                        Utilities.stringArrayToFields(notActiveAction.actions),
+                    );
+                    switch (notActiveAction.actionData.actionEnum) {
+                        case DkgActionEnum.GENERATE_KEY:
+                            const nextKeyId = Field(
+                                nextKeyIdMapping[
+                                    notActiveAction.actionData.committeeId
+                                ],
+                            );
+
+                            proof = await UpdateKey.generate(
+                                {
+                                    previousActionState: Field(
+                                        notActiveAction.previousActionState,
+                                    ),
+                                    action: dkgAction,
+                                    actionId: Field(notActiveAction.actionId),
+                                },
+                                proof,
+                                nextKeyId,
+                                keyCounterStorage.getLevel1Witness(
+                                    Field(committeeId),
+                                ),
+                                keyStatusStorage.getLevel1Witness(
+                                    keyStatusStorage.calculateLevel1Index({
+                                        committeeId: Field(committeeId),
+                                        keyId: nextKeyId,
+                                    }),
+                                ),
+                                rollupStorage.getWitness(
+                                    rollupStorage.calculateLevel1Index({
+                                        zkAppIndex: Field(ZkAppIndex.DKG),
+                                        actionId: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    }),
+                                ),
+                                processStorage.getWitness(
+                                    Field(notActiveAction.actionId),
+                                ),
+                            );
+                            keyCounterStorage.updateLeaf(
+                                { level1Index: Field(committeeId) },
+                                nextKeyId,
+                            );
+                            keyStatusStorage.updateLeaf(
+                                {
+                                    level1Index:
+                                        keyStatusStorage.calculateLevel1Index({
+                                            committeeId: Field(committeeId),
+                                            keyId: nextKeyId,
+                                        }),
+                                },
+                                Field(KeyStatusEnum.ROUND_1_CONTRIBUTION),
+                            );
+                            nextKeyIdMapping[
+                                notActiveAction.actionData.committeeId
+                            ] += 1;
+                            break;
+                        case DkgActionEnum.FINALIZE_ROUND_1:
+                            await UpdateKey.update(
+                                {
+                                    previousActionState: Field(
+                                        notActiveAction.previousActionState,
+                                    ),
+                                    action: dkgAction,
+                                    actionId: Field(notActiveAction.actionId),
+                                },
+                                proof,
+                                keyStatusStorage.getLevel1Witness(
+                                    keyStatusStorage.calculateLevel1Index({
+                                        committeeId: Field(committeeId),
+                                        keyId: Field(
+                                            notActiveAction.actionData.keyId,
+                                        ),
+                                    }),
+                                ),
+                                keyStorage.getLevel1Witness(
+                                    keyStorage.calculateLevel1Index({
+                                        committeeId: Field(committeeId),
+                                        keyId: Field(
+                                            notActiveAction.actionData.keyId,
+                                        ),
+                                    }),
+                                ),
+                                rollupStorage.getWitness(
+                                    rollupStorage.calculateLevel1Index({
+                                        zkAppIndex: Field(ZkAppIndex.DKG),
+                                        actionId: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    }),
+                                ),
+                                processStorage.getWitness(
+                                    Field(notActiveAction.actionId),
+                                ),
+                            );
+                            keyStatusStorage.updateLeaf(
+                                {
+                                    level1Index:
+                                        keyStatusStorage.calculateLevel1Index({
+                                            committeeId: Field(committeeId),
+                                            keyId: nextKeyId,
+                                        }),
+                                },
+                                Field(KeyStatusEnum.ROUND_2_CONTRIBUTION),
+                            );
+                            keyStorage.updateLeaf(
+                                {
+                                    level1Index:
+                                        keyStorage.calculateLevel1Index({
+                                            committeeId: Field(committeeId),
+                                            keyId: nextKeyId,
+                                        }),
+                                },
+                                keyStorage.calculateLeaf(
+                                    PublicKey.fromBase58(
+                                        notActiveAction.actionData.key,
+                                    ).toGroup(),
+                                ),
+                            );
+                            break;
+                        case DkgActionEnum.FINALIZE_ROUND_2:
+                            await UpdateKey.update(
+                                {
+                                    previousActionState: Field(
+                                        notActiveAction.previousActionState,
+                                    ),
+                                    action: dkgAction,
+                                    actionId: Field(notActiveAction.actionId),
+                                },
+                                proof,
+                                keyStatusStorage.getLevel1Witness(
+                                    keyStatusStorage.calculateLevel1Index({
+                                        committeeId: Field(committeeId),
+                                        keyId: Field(
+                                            notActiveAction.actionData.keyId,
+                                        ),
+                                    }),
+                                ),
+                                keyStorage.getLevel1Witness(
+                                    keyStorage.calculateLevel1Index({
+                                        committeeId: Field(committeeId),
+                                        keyId: Field(
+                                            notActiveAction.actionData.keyId,
+                                        ),
+                                    }),
+                                ),
+                                rollupStorage.getWitness(
+                                    rollupStorage.calculateLevel1Index({
+                                        zkAppIndex: Field(ZkAppIndex.DKG),
+                                        actionId: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    }),
+                                ),
+                                processStorage.getWitness(
+                                    Field(notActiveAction.actionId),
+                                ),
+                            );
+                            keyStatusStorage.updateLeaf(
+                                {
+                                    level1Index:
+                                        keyStatusStorage.calculateLevel1Index({
+                                            committeeId: Field(committeeId),
+                                            keyId: nextKeyId,
+                                        }),
+                                },
+                                Field(KeyStatusEnum.ACTIVE),
+                            );
+
+                            break;
+                        case DkgActionEnum.DEPRECATE_KEY:
+                            break;
+                    }
+                    rollupStorage.updateLeaf(
+                        {
+                            level1Index: rollupStorage.calculateLevel1Index({
+                                zkAppIndex: Field(ZkAppIndex.DKG),
+                                actionId: Field(notActiveAction.actionId),
+                            }),
+                        },
+                        dkgAction.hash(),
+                    );
+                    if (
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ]
+                    ) {
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ] = 0;
+                    } else {
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ] += 1;
+                    }
+                    processStorage.updateLeaf(
+                        {
+                            level1Index: Field(notActiveAction.actionId),
+                        },
+                        processStorage.calculateLeaf({
+                            actionState: Field(
+                                notActiveAction.currentActionState,
+                            ),
+                            processCounter: new UInt8(
+                                processStorageMapping[
+                                    notActiveAction.currentActionState
+                                ],
+                            ),
+                        }),
+                    );
+                }
+            }
+        } catch (err) {}
+    }
+
+    // ============ PRIVATE FUNCTIONS ============
+    private async fetchDkgState(): Promise<DkgState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.DKG_ADDRESS,
         );
@@ -226,7 +501,7 @@ export class DkgContractsService implements ContractServiceInterface {
         return result;
     }
 
-    async fetchRound1State(): Promise<Round1State> {
+    private async fetchRound1State(): Promise<Round1State> {
         const state = await this.queryService.fetchZkAppState(
             process.env.ROUND_1_ADDRESS,
         );
@@ -239,7 +514,7 @@ export class DkgContractsService implements ContractServiceInterface {
         return result;
     }
 
-    async fetchRound2State(): Promise<Round2State> {
+    private async fetchRound2State(): Promise<Round2State> {
         const state = await this.queryService.fetchZkAppState(
             process.env.ROUND_2_ADDRESS,
         );
@@ -251,8 +526,6 @@ export class DkgContractsService implements ContractServiceInterface {
         };
         return result;
     }
-
-    // ============ PRIVATE FUNCTIONS ============
 
     private async fetchDkgActions() {
         const lastAction = await this.dkgActionModel.findOne(
