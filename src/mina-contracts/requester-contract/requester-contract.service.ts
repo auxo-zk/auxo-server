@@ -87,6 +87,14 @@ export class RequesterContractsService implements ContractServiceInterface {
         return this._storageMapping[requesterAddress];
     }
 
+    public getTaskManager(requesterAddress: string): string {
+        return RequesterAddressMapping[requesterAddress].taskManagerAddress;
+    }
+
+    public getSubmission(requesterAddress: string): string {
+        return RequesterAddressMapping[requesterAddress].submissionAddress;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,

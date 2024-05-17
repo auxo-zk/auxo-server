@@ -1,4 +1,4 @@
-import { Constants } from '@auxo-dev/dkg';
+import { Constants, ZkApp } from '@auxo-dev/dkg';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -379,6 +379,102 @@ export class MethodInputsService {
                 requestRef,
                 rollupRef,
                 selfRef,
+            };
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    async getRequesterContractCreateTask(requesterAddress: string) {
+        try {
+            const taskManagerAddress =
+                this.requesterContractService.getTaskManager(requesterAddress);
+            const taskManagerRef = this.requesterContractService
+                .storage(requesterAddress)
+                .zkAppStorage.getZkAppRef(
+                    ZkApp.Requester.RequesterAddressBook.TASK_MANAGER,
+                    PublicKey.fromBase58(taskManagerAddress),
+                );
+            return { taskManagerRef };
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    async getRequesterContractSubmitEncryption(
+        requesterAddress: string,
+        taskId: number,
+    ) {
+        try {
+            const task = await this.taskModel.findOne({
+                requester: requesterAddress,
+                taskId: taskId,
+            });
+            const keyWitness =
+                this.dkgContractService.dkg.keyStorage.getLevel1Witness(
+                    Field(task.keyIndex),
+                );
+            const keyIndexWitness = this.requesterContractService
+                .storage(requesterAddress)
+                .keyIndexStorage.getLevel1Witness(Field(taskId));
+            const submissionAddress =
+                this.requesterContractService.getSubmission(requesterAddress);
+            const submissionRef = this.requesterContractService
+                .storage(requesterAddress)
+                .zkAppStorage.getZkAppRef(
+                    ZkApp.Requester.RequesterAddressBook.SUBMISSION,
+                    PublicKey.fromBase58(submissionAddress),
+                );
+            const dkgRef = this.requesterContractService
+                .storage(requesterAddress)
+                .zkAppStorage.getZkAppRef(
+                    ZkApp.Requester.RequesterAddressBook.DKG,
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                );
+            return {
+                keyWitness,
+                keyIndexWitness,
+                submissionRef,
+                dkgRef,
+            };
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    async getRequesterContractFinalize(
+        requesterAddress: string,
+        taskId: number,
+    ) {
+        try {
+            const task = await this.taskModel.findOne({
+                requester: requesterAddress,
+                taskId: taskId,
+            });
+            const accumulationRootR = this.requesterContractService
+                .storage(requesterAddress)
+                .groupVectorStorageMapping[taskId].R.root.toString();
+            const accumulationRootM = this.requesterContractService
+                .storage(requesterAddress)
+                .groupVectorStorageMapping[taskId].M.root.toString();
+            const keyIndexWitness = this.requesterContractService
+                .storage(requesterAddress)
+                .keyIndexStorage.getLevel1Witness(Field(taskId));
+            const accumulationWitness = this.requesterContractService
+                .storage(requesterAddress)
+                .accumulationStorage.getLevel1Witness(Field(taskId));
+            const requestRef = this.requesterContractService
+                .storage(requesterAddress)
+                .zkAppStorage.getZkAppRef(
+                    ZkApp.Requester.RequesterAddressBook.REQUEST,
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                );
+            return {
+                accumulationRootR,
+                accumulationRootM,
+                keyIndexWitness,
+                accumulationWitness,
+                requestRef,
             };
         } catch (err) {
             throw new BadRequestException(err);

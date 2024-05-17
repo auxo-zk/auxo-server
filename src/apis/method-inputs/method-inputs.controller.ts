@@ -83,4 +83,38 @@ export class MethodInputsController {
             requestId,
         );
     }
+
+    @Get('requester-contract/create-task')
+    @ApiTags('Method Inputs')
+    async getRequesterContractCreateTask(
+        @Query('requesterAddress') requesterAddress: string,
+    ) {
+        return await this.methodInputsService.getRequesterContractCreateTask(
+            requesterAddress,
+        );
+    }
+
+    @Get('requester-contract/submit-encryption')
+    @ApiTags('Method Inputs')
+    async getRequesterContractSubmitEncryption(
+        @Query('requesterAddress') requesterAddress: string,
+        @Query('taskId', new ParseIntPipe()) taskId: number,
+    ) {
+        return await this.methodInputsService.getRequesterContractSubmitEncryption(
+            requesterAddress,
+            taskId,
+        );
+    }
+
+    @Get('requester-contract/finalize')
+    @ApiTags('Method Inputs')
+    async getRequesterContractFinalize(
+        @Query('requesterAddress') requesterAddress: string,
+        @Query('taskId', new ParseIntPipe()) taskId: number,
+    ) {
+        return await this.methodInputsService.getRequesterContractFinalize(
+            requesterAddress,
+            taskId,
+        );
+    }
 }
