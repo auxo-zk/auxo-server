@@ -40,6 +40,7 @@ import { ContractServiceInterface } from 'src/interfaces/contract-service.interf
 import { error } from 'console';
 import * as _ from 'lodash';
 import { Constants } from '@auxo-dev/platform';
+import { Utils } from '@auxo-dev/auxo-libs';
 
 @Injectable()
 export class CommitteeContractService implements ContractServiceInterface {
@@ -81,6 +82,8 @@ export class CommitteeContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            // await this.compile();
+            // await this.rollup();
         } catch (err) {
             console.log(err);
         }
@@ -182,27 +185,32 @@ export class CommitteeContractService implements ContractServiceInterface {
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
+                await Utils.proveAndSendTx(
+                    CommitteeContract.name,
+                    'update',
+                    async () => {
+                        await committeeContract.update(proof);
+                    },
                     {
-                        sender: feePayerPrivateKey.toPublicKey(),
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
                         fee: process.env.FEE,
+                        memo: '',
                         nonce: await this.queryService.fetchAccountNonce(
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    async () => {
-                        await committeeContract.update(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 return true;
             }
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     // ============ PRIVATE FUNCTIONS ============

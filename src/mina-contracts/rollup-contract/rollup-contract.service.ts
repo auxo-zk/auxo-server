@@ -22,6 +22,7 @@ import { MaxRetries, ZkAppCache, ZkAppIndex } from 'src/constants';
 import { Network } from '../network/network';
 import { Utilities } from '../utilities';
 import * as _ from 'lodash';
+import { Utils } from '@auxo-dev/auxo-libs';
 
 @Injectable()
 export class RollupContractService implements ContractServiceInterface {
@@ -87,7 +88,11 @@ export class RollupContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-        } catch (err) {}
+            // await this.compile();
+            // await this.rollup();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     async compile() {
@@ -115,22 +120,28 @@ export class RollupContractService implements ContractServiceInterface {
                 );
                 const counterStorage = _.cloneDeep(this._counterStorage);
                 const rollupStorage = _.cloneDeep(this._rollupStorage);
-                let dkgActionCounter = await this.rollupActionModel.count({
+                const actionCounter = {};
+                const dkgActionCounter = await this.rollupActionModel.count({
                     active: true,
                     'actionData.zkAppIndex': ZkAppIndex.DKG,
                 });
-                let round1ActionCounter = await this.rollupActionModel.count({
+                actionCounter[ZkAppIndex.DKG] = dkgActionCounter;
+                const round1ActionCounter = await this.rollupActionModel.count({
                     active: true,
                     'actionData.zkAppIndex': ZkAppIndex.ROUND1,
                 });
-                let round2ActionCounter = await this.rollupActionModel.count({
+                actionCounter[ZkAppIndex.ROUND1] = round1ActionCounter;
+                const round2ActionCounter = await this.rollupActionModel.count({
                     active: true,
                     'actionData.zkAppIndex': ZkAppIndex.ROUND2,
                 });
-                let responseActionCounter = await this.rollupActionModel.count({
-                    active: true,
-                    'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
-                });
+                actionCounter[ZkAppIndex.ROUND2] = round2ActionCounter;
+                const responseActionCounter =
+                    await this.rollupActionModel.count({
+                        active: true,
+                        'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
+                    });
+                actionCounter[ZkAppIndex.RESPONSE] = responseActionCounter;
                 for (let i = 0; i < notActiveActions.length; i++) {
                     const notActiveAction = notActiveActions[i];
                     proof = await Rollup.rollup(
@@ -140,7 +151,11 @@ export class RollupContractService implements ContractServiceInterface {
                             ),
                         ),
                         proof,
-                        Field(notActiveAction.actionId),
+                        Field(
+                            actionCounter[
+                                notActiveAction.actionData.zkAppIndex
+                            ],
+                        ),
                         counterStorage.getWitness(
                             Field(notActiveAction.actionData.zkAppIndex),
                         ),
@@ -149,13 +164,32 @@ export class RollupContractService implements ContractServiceInterface {
                                 zkAppIndex: Field(
                                     notActiveAction.actionData.zkAppIndex,
                                 ),
-                                actionId: Field(notActiveAction.actionId),
+                                actionId: Field(
+                                    actionCounter[
+                                        notActiveAction.actionData.zkAppIndex
+                                    ],
+                                ),
                             }),
                         ),
                     );
+                    rollupStorage.updateRawLeaf(
+                        {
+                            level1Index: rollupStorage.calculateLevel1Index({
+                                zkAppIndex: Field(
+                                    notActiveAction.actionData.zkAppIndex,
+                                ),
+                                actionId: Field(
+                                    actionCounter[
+                                        notActiveAction.actionData.zkAppIndex
+                                    ],
+                                ),
+                            }),
+                        },
+                        Field(notActiveAction.actionData.actionHash),
+                    );
                     switch (notActiveAction.actionData.zkAppIndex) {
                         case ZkAppIndex.DKG:
-                            dkgActionCounter += 1;
+                            actionCounter[ZkAppIndex.DKG] += 1;
                             counterStorage.updateRawLeaf(
                                 {
                                     level1Index:
@@ -167,7 +201,7 @@ export class RollupContractService implements ContractServiceInterface {
                             );
                             break;
                         case ZkAppIndex.ROUND1:
-                            round1ActionCounter += 1;
+                            actionCounter[ZkAppIndex.ROUND1] += 1;
                             counterStorage.updateRawLeaf(
                                 {
                                     level1Index:
@@ -179,7 +213,7 @@ export class RollupContractService implements ContractServiceInterface {
                             );
                             break;
                         case ZkAppIndex.ROUND2:
-                            round2ActionCounter += 1;
+                            actionCounter[ZkAppIndex.ROUND2] += 1;
                             counterStorage.updateRawLeaf(
                                 {
                                     level1Index:
@@ -191,7 +225,7 @@ export class RollupContractService implements ContractServiceInterface {
                             );
                             break;
                         case ZkAppIndex.RESPONSE:
-                            responseActionCounter += 1;
+                            actionCounter[ZkAppIndex.RESPONSE] += 1;
                             counterStorage.updateRawLeaf(
                                 {
                                     level1Index:
@@ -203,17 +237,6 @@ export class RollupContractService implements ContractServiceInterface {
                             );
                             break;
                     }
-                    rollupStorage.updateRawLeaf(
-                        {
-                            level1Index: rollupStorage.calculateLevel1Index({
-                                zkAppIndex: Field(
-                                    notActiveAction.actionData.zkAppIndex,
-                                ),
-                                actionId: Field(notActiveAction.actionId),
-                            }),
-                        },
-                        Field(notActiveAction.actionData.actionHash),
-                    );
                 }
                 const rollupContract = new RollupContract(
                     PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
@@ -221,27 +244,32 @@ export class RollupContractService implements ContractServiceInterface {
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
+                await Utils.proveAndSendTx(
+                    RollupContract.name,
+                    'rollup',
+                    async () => {
+                        await rollupContract.rollup(proof);
+                    },
                     {
-                        sender: feePayerPrivateKey.toPublicKey(),
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
                         fee: process.env.FEE,
+                        memo: '',
                         nonce: await this.queryService.fetchAccountNonce(
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    async () => {
-                        await rollupContract.rollup(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 return true;
             }
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     private async fetchRollupState(): Promise<RollupState> {

@@ -27,9 +27,11 @@ import {
 } from 'src/schemas/actions/round-2-action.schema';
 import { Key } from 'src/schemas/key.schema';
 import {
+    BatchEncryption,
     calculateKeyIndex,
     calculatePublicKey,
     Constants,
+    DKG_LEVEL_2_TREE,
     DkgContract,
     EncryptionHashArray,
     FinalizeRound1,
@@ -46,7 +48,7 @@ import {
     ZkApp,
 } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-import { Bit255 } from '@auxo-dev/auxo-libs';
+import { Bit255, Utils } from '@auxo-dev/auxo-libs';
 import { Committee } from 'src/schemas/committee.schema';
 import {
     ActionReduceStatusEnum,
@@ -192,6 +194,9 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            // await this.compile();
+            // await this.rollupDkg();
+            // await this.rollupRound1();
         } catch (err) {
             console.log(err);
         }
@@ -227,8 +232,9 @@ export class DkgContractsService implements ContractServiceInterface {
         await DkgContract.compile({ cache });
         await FinalizeRound1.compile({ cache });
         await Round1Contract.compile({ cache });
-        await FinalizeRound2.compile({ cache });
-        await Round2Contract.compile({ cache });
+        // await FinalizeRound2.compile({ cache });
+        // await BatchEncryption.compile({ cache });
+        // await Round2Contract.compile({ cache });
     }
 
     async rollupDkg() {
@@ -295,7 +301,7 @@ export class DkgContractsService implements ContractServiceInterface {
                                     notActiveAction.actionData.committeeId
                                 ],
                             );
-
+                            console.log('here');
                             proof = await UpdateKey.generate(
                                 {
                                     previousActionState: Field(
@@ -473,7 +479,7 @@ export class DkgContractsService implements ContractServiceInterface {
                     if (
                         processStorageMapping[
                             notActiveAction.currentActionState
-                        ]
+                        ] == undefined
                     ) {
                         processStorageMapping[
                             notActiveAction.currentActionState
@@ -505,14 +511,9 @@ export class DkgContractsService implements ContractServiceInterface {
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
-                    {
-                        sender: feePayerPrivateKey.toPublicKey(),
-                        fee: process.env.FEE,
-                        nonce: await this.queryService.fetchAccountNonce(
-                            feePayerPrivateKey.toPublicKey().toBase58(),
-                        ),
-                    },
+                await Utils.proveAndSendTx(
+                    DkgContract.name,
+                    'update',
                     async () => {
                         await dkgContract.update(
                             proof,
@@ -524,16 +525,26 @@ export class DkgContractsService implements ContractServiceInterface {
                             ),
                         );
                     },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                    {
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
+                        fee: process.env.FEE,
+                        memo: '',
+                        nonce: await this.queryService.fetchAccountNonce(
+                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        ),
+                    },
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 return true;
             }
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     async rollupRound1() {
@@ -585,6 +596,14 @@ export class DkgContractsService implements ContractServiceInterface {
                             Field(key.keyIndex),
                         ),
                         publicKeyStorage.getLevel1Witness(Field(key.keyIndex)),
+                    );
+                    contributionStorage.updateInternal(
+                        Field(key.keyIndex),
+                        DKG_LEVEL_2_TREE(),
+                    );
+                    publicKeyStorage.updateInternal(
+                        Field(key.keyIndex),
+                        DKG_LEVEL_2_TREE(),
                     );
                     for (let j = 0; j < notActiveActions.length; j++) {
                         const notActiveAction = notActiveActions[j];
@@ -662,7 +681,7 @@ export class DkgContractsService implements ContractServiceInterface {
                         if (
                             processStorageMapping[
                                 notActiveAction.currentActionState
-                            ]
+                            ] == undefined
                         ) {
                             processStorageMapping[
                                 notActiveAction.currentActionState
@@ -694,14 +713,9 @@ export class DkgContractsService implements ContractServiceInterface {
                     const feePayerPrivateKey = PrivateKey.fromBase58(
                         process.env.FEE_PAYER_PRIVATE_KEY,
                     );
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
-                        },
+                    await Utils.proveAndSendTx(
+                        Round1Contract.name,
+                        'finalize',
                         async () => {
                             await round1Contract.finalize(
                                 proof,
@@ -737,17 +751,27 @@ export class DkgContractsService implements ContractServiceInterface {
                                 ),
                             );
                         },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
+                        {
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
+                            },
+                            fee: process.env.FEE,
+                            memo: '',
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
+                        },
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
                     );
                     return true;
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     async rollupRound2() {
@@ -880,7 +904,7 @@ export class DkgContractsService implements ContractServiceInterface {
                         if (
                             processStorageMapping[
                                 notActiveAction.currentActionState
-                            ]
+                            ] == undefined
                         ) {
                             processStorageMapping[
                                 notActiveAction.currentActionState
@@ -1118,7 +1142,7 @@ export class DkgContractsService implements ContractServiceInterface {
                     actionId: actionId,
                     currentActionState: currentActionState,
                     previousActionState: previousActionState,
-                    actions: action.actions[0].slice(1),
+                    actions: action.actions[0],
                     actionData: actionData,
                 },
                 { new: true, upsert: true },
