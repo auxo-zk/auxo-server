@@ -41,6 +41,8 @@ import { MethodInputsController } from './method-inputs/method-inputs.controller
 import { Task, TaskSchema } from 'src/schemas/task.schema';
 import { RequestsController } from './requests/requests.controller';
 import { RequestsService } from './requests/requests.service';
+import { TasksService } from './tasks/tasks.service';
+import { TasksController } from './tasks/tasks.controller';
 
 @Module({
     imports: [
@@ -76,6 +78,7 @@ import { RequestsService } from './requests/requests.service';
         CampaignsController,
         MethodInputsController,
         RequestsController,
+        TasksController,
     ],
     providers: [
         Ipfs,
@@ -89,6 +92,7 @@ import { RequestsService } from './requests/requests.service';
         CampaignsService,
         MethodInputsService,
         RequestsService,
+        TasksService,
     ],
 })
 export class ApisModule {}
