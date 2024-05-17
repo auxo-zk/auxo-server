@@ -8,10 +8,19 @@ import {
 } from 'src/constants';
 
 export class Encryption {
+    @Prop()
     timestamp: number;
+
+    @Prop()
     indices: string;
+
+    @Prop({ type: [{ x: String, y: String }] })
     R: { x: string; y: string }[];
+
+    @Prop({ type: [{ x: String, y: String }] })
     M: { x: string; y: string }[];
+
+    @Prop({ type: [String] })
     commitments: string[];
 
     constructor(
