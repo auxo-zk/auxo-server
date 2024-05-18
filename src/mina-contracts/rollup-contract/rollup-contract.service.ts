@@ -88,6 +88,10 @@ export class RollupContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            // Provable.log(await this.fetchRollupState());
+            // Provable.log(this.rollupStorage.root);
+            // await this.compile();
+            // await this.rollup();
         } catch (err) {
             console.log(err);
         }

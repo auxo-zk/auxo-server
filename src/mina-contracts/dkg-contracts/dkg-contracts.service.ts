@@ -198,6 +198,7 @@ export class DkgContractsService implements ContractServiceInterface {
             // await this.compile();
             // await this.rollupDkg();
             // await this.rollupRound1();
+            await this.rollupRound2();
         } catch (err) {
             console.log(err);
         }
@@ -233,9 +234,9 @@ export class DkgContractsService implements ContractServiceInterface {
         await DkgContract.compile({ cache });
         await FinalizeRound1.compile({ cache });
         await Round1Contract.compile({ cache });
-        // await FinalizeRound2.compile({ cache });
-        // await BatchEncryption.compile({ cache });
-        // await Round2Contract.compile({ cache });
+        await FinalizeRound2.compile({ cache });
+        await BatchEncryption.compile({ cache });
+        await Round2Contract.compile({ cache });
     }
 
     async rollupDkg() {
@@ -476,15 +477,6 @@ export class DkgContractsService implements ContractServiceInterface {
                         case DkgActionEnum.DEPRECATE_KEY:
                             break;
                     }
-                    rollupStorage.updateLeaf(
-                        {
-                            level1Index: rollupStorage.calculateLevel1Index({
-                                zkAppIndex: Field(ZkAppIndex.DKG),
-                                actionId: Field(notActiveAction.actionId),
-                            }),
-                        },
-                        dkgAction.hash(),
-                    );
                     if (
                         processStorageMapping[
                             notActiveAction.currentActionState
@@ -676,19 +668,6 @@ export class DkgContractsService implements ContractServiceInterface {
                             },
                             contribution[0],
                         );
-                        rollupStorage.updateLeaf(
-                            {
-                                level1Index: rollupStorage.calculateLevel1Index(
-                                    {
-                                        zkAppIndex: Field(ZkAppIndex.ROUND1),
-                                        actionId: Field(
-                                            notActiveAction.actionId,
-                                        ),
-                                    },
-                                ),
-                            },
-                            round1Action.hash(),
-                        );
                         if (
                             processStorageMapping[
                                 notActiveAction.currentActionState
@@ -838,10 +817,6 @@ export class DkgContractsService implements ContractServiceInterface {
                             Field(key.keyIndex),
                         ),
                     );
-                    const contributionsRaw = notActiveActions.map(
-                        (notActiveAction) =>
-                            notActiveAction.actionData.contribution,
-                    );
                     const contributions: Libs.Committee.Round2Contribution[] =
                         [];
                     for (let j = 0; j < notActiveActions.length; j++) {
@@ -859,6 +834,10 @@ export class DkgContractsService implements ContractServiceInterface {
                             }),
                         );
                     }
+                    contributionStorage.updateInternal(
+                        Field(key.keyIndex),
+                        DKG_LEVEL_2_TREE(),
+                    );
                     for (let j = 0; j < notActiveActions.length; j++) {
                         const notActiveAction = notActiveActions[j];
                         const round2Action =
@@ -899,19 +878,6 @@ export class DkgContractsService implements ContractServiceInterface {
                             },
                             contributions[j],
                         );
-                        rollupStorage.updateLeaf(
-                            {
-                                level1Index: rollupStorage.calculateLevel1Index(
-                                    {
-                                        zkAppIndex: Field(ZkAppIndex.ROUND2),
-                                        actionId: Field(
-                                            notActiveAction.actionId,
-                                        ),
-                                    },
-                                ),
-                            },
-                            round2Action.hash(),
-                        );
                         if (
                             processStorageMapping[
                                 notActiveAction.currentActionState
@@ -947,14 +913,9 @@ export class DkgContractsService implements ContractServiceInterface {
                     const feePayerPrivateKey = PrivateKey.fromBase58(
                         process.env.FEE_PAYER_PRIVATE_KEY,
                     );
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
-                        },
+                    await Utils.proveAndSendTx(
+                        Round2Contract.name,
+                        'finalize',
                         async () => {
                             await round2Contract.finalize(
                                 proof,
@@ -993,17 +954,28 @@ export class DkgContractsService implements ContractServiceInterface {
                                 ),
                             );
                         },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
+                        {
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
+                            },
+                            fee: process.env.FEE,
+                            memo: '',
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
+                        },
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
                     );
                     return true;
                 }
+                return false;
             }
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     // ============ PRIVATE FUNCTIONS ============
