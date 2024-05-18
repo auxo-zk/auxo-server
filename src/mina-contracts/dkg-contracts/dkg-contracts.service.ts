@@ -352,7 +352,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             ] += 1;
                             break;
                         case DkgActionEnum.FINALIZE_ROUND_1:
-                            await UpdateKey.update(
+                            proof = await UpdateKey.update(
                                 {
                                     previousActionState: Field(
                                         notActiveAction.previousActionState,
@@ -394,7 +394,10 @@ export class DkgContractsService implements ContractServiceInterface {
                                     level1Index:
                                         keyStatusStorage.calculateLevel1Index({
                                             committeeId: Field(committeeId),
-                                            keyId: nextKeyId,
+                                            keyId: Field(
+                                                notActiveAction.actionData
+                                                    .keyId,
+                                            ),
                                         }),
                                 },
                                 Field(KeyStatusEnum.ROUND_2_CONTRIBUTION),
@@ -404,7 +407,10 @@ export class DkgContractsService implements ContractServiceInterface {
                                     level1Index:
                                         keyStorage.calculateLevel1Index({
                                             committeeId: Field(committeeId),
-                                            keyId: nextKeyId,
+                                            keyId: Field(
+                                                notActiveAction.actionData
+                                                    .keyId,
+                                            ),
                                         }),
                                 },
                                 keyStorage.calculateLeaf(
@@ -415,7 +421,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             );
                             break;
                         case DkgActionEnum.FINALIZE_ROUND_2:
-                            await UpdateKey.update(
+                            proof = await UpdateKey.update(
                                 {
                                     previousActionState: Field(
                                         notActiveAction.previousActionState,
@@ -457,7 +463,10 @@ export class DkgContractsService implements ContractServiceInterface {
                                     level1Index:
                                         keyStatusStorage.calculateLevel1Index({
                                             committeeId: Field(committeeId),
-                                            keyId: nextKeyId,
+                                            keyId: Field(
+                                                notActiveAction.actionData
+                                                    .keyId,
+                                            ),
                                         }),
                                 },
                                 Field(KeyStatusEnum.ACTIVE),
