@@ -38,6 +38,7 @@ import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
 import {
     calculateKeyIndex,
+    ComputeResult,
     Constants,
     DArray,
     FinalizedEvent,
@@ -199,6 +200,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
     async compile() {
         const cache = ZkAppCache;
         await UpdateRequest.compile({ cache });
+        await ComputeResult.compile({ cache });
         await RequestContract.compile({ cache });
     }
 

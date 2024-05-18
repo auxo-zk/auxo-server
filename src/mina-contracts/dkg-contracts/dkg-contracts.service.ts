@@ -542,8 +542,10 @@ export class DkgContractsService implements ContractServiceInterface {
                 );
                 return true;
             }
+            return false;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
 

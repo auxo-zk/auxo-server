@@ -20,15 +20,16 @@ export class DkgContractCronTasksService implements OnModuleInit {
     }
 
     // 6 minutes
-    // @Interval(360000)
+    // @Interval(120000)
     // async handleUpdateContracts() {
     //     this.logger.log('Register updateContracts task at ' + process.pid);
+    //     console.log(await this.contractServices.getJobCounts());
     //     this.contractServices.add('updateContracts', {
     //         date: Date.now(),
     //     });
     // }
 
-    @Cron('0,14,28,42 * * * *')
+    @Cron('*/10 * * * *')
     async handleRollupContractsFirstOrder() {
         this.logger.log(
             'Register rollupContracts for the first order task at ' +
@@ -39,7 +40,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
         });
     }
 
-    @Cron('7,21,35,49 * * * *')
+    @Cron('5,15,25,35,45 * * * *')
     async handleRollupContractsSecondOrder() {
         this.logger.log(
             'Register rollupContracts for the second order task at ' +

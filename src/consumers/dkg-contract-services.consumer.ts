@@ -9,6 +9,8 @@ import { ParticipationContractService } from '../mina-contracts/participation-co
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
 import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
+import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
+import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
 
 @Processor('dkg-contract-services')
 export class DkgContractServicesConsumer {
@@ -17,25 +19,24 @@ export class DkgContractServicesConsumer {
         private readonly committeeContractService: CommitteeContractService,
         private readonly dkgContractsService: DkgContractsService,
         private readonly dkgUsageContractsService: DkgUsageContractsService,
-        private readonly campaignContractService: CampaignContractService,
-        private readonly participationContractService: ParticipationContractService,
-        private readonly projectContractService: ProjectContractService,
-        private readonly fundingContractService: FundingContractService,
-        private readonly treasuryManagerContractService: TreasuryManagerContractService,
+        private readonly rollupContractService: RollupContractService,
+        private readonly requesterContractsService: RequesterContractsService,
+        // private readonly campaignContractService: CampaignContractService,
+        // private readonly participationContractService: ParticipationContractService,
+        // private readonly projectContractService: ProjectContractService,
+        // private readonly fundingContractService: FundingContractService,
+        // private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
     @Process('updateContractMerkleTrees')
     async updateContractTrees(job: Job<unknown>) {
         try {
             Promise.all([
+                this.rollupContractService.updateMerkleTrees(),
                 this.committeeContractService.updateMerkleTrees(),
                 this.dkgContractsService.updateMerkleTrees(),
                 this.dkgUsageContractsService.updateMerkleTrees(),
-                this.campaignContractService.updateMerkleTrees(),
-                this.participationContractService.updateMerkleTrees(),
-                this.projectContractService.updateMerkleTrees(),
-                this.fundingContractService.updateMerkleTrees(),
-                this.treasuryManagerContractService.updateMerkleTrees(),
+                this.requesterContractsService.updateMerkleTrees(),
             ]).then(async () => {
                 this.logger.log('All contract trees updated successfully');
                 await job.progress();
@@ -50,15 +51,12 @@ export class DkgContractServicesConsumer {
     @Process('updateContracts')
     async updateContracts(job: Job<unknown>) {
         try {
+            await this.rollupContractService.update();
             Promise.all([
                 this.committeeContractService.update(),
                 this.dkgContractsService.update(),
                 this.dkgUsageContractsService.update(),
-                this.campaignContractService.update(),
-                this.participationContractService.update(),
-                this.projectContractService.update(),
-                this.fundingContractService.update(),
-                this.treasuryManagerContractService.update(),
+                this.requesterContractsService.update(),
             ]).then(async () => {
                 this.logger.log('All contracts updated successfully');
                 await job.progress();
@@ -73,11 +71,21 @@ export class DkgContractServicesConsumer {
     @Process('rollupContractsFirstOrder')
     async rollupContractsFirstOrder(job: Job<unknown>) {
         try {
+            await this.rollupContractService.update();
             Promise.all([
                 this.committeeContractService.update(),
                 this.dkgContractsService.update(),
                 this.dkgUsageContractsService.update(),
+                this.requesterContractsService.update(),
             ]).then(async () => {
+                const result = [];
+                result.push(await this.committeeContractService.rollup());
+                result.push(await this.rollupContractService.rollup());
+                if (!result.includes(true)) {
+                    await this.dkgContractsService.rollupRound2();
+                    await this.dkgContractsService.rollupRound1();
+                    await this.dkgContractsService.rollupDkg();
+                }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
                 return {};
@@ -90,11 +98,22 @@ export class DkgContractServicesConsumer {
     @Process('rollupContractsSecondOrder')
     async rollupContractsSecondOrder(job: Job<unknown>) {
         try {
+            await this.rollupContractService.update();
             Promise.all([
                 this.committeeContractService.update(),
                 this.dkgContractsService.update(),
                 this.dkgUsageContractsService.update(),
+                this.requesterContractsService.update(),
             ]).then(async () => {
+                const result = [];
+                result.push(await this.dkgContractsService.rollupRound2());
+                result.push(await this.dkgContractsService.rollupRound1());
+                result.push(await this.dkgContractsService.rollupDkg());
+
+                if (!result.includes(true)) {
+                    await this.committeeContractService.rollup();
+                    await this.rollupContractService.rollup();
+                }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
                 return {};
@@ -108,15 +127,14 @@ export class DkgContractServicesConsumer {
     @Process('compileContracts')
     async compileContracts(job: Job<unknown>) {
         try {
-            Promise.all([
-                this.committeeContractService.compile(),
-                this.dkgContractsService.compile(),
-                this.dkgUsageContractsService.compile(),
-            ]).then(async () => {
-                this.logger.log('All contracts compiled successfully');
-                await job.progress();
-                return {};
-            });
+            await this.rollupContractService.compile();
+            await this.committeeContractService.compile();
+            await this.dkgContractsService.compile();
+            await this.dkgUsageContractsService.compile();
+            await this.requesterContractsService.compile();
+            this.logger.log('All contracts compiled successfully');
+            await job.progress();
+            return {};
         } catch (err) {
             this.logger.error('Error during compiling contracts: ', err);
             return undefined;
