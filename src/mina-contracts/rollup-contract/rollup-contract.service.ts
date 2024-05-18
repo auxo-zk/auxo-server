@@ -88,8 +88,6 @@ export class RollupContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // await this.compile();
-            // await this.rollup();
         } catch (err) {
             console.log(err);
         }
@@ -142,6 +140,7 @@ export class RollupContractService implements ContractServiceInterface {
                         'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
                     });
                 actionCounter[ZkAppIndex.RESPONSE] = responseActionCounter;
+
                 for (let i = 0; i < notActiveActions.length; i++) {
                     const notActiveAction = notActiveActions[i];
                     proof = await Rollup.rollup(
@@ -194,10 +193,13 @@ export class RollupContractService implements ContractServiceInterface {
                                 {
                                     level1Index:
                                         counterStorage.calculateLevel1Index(
-                                            Field(ZkAppIndex.DKG),
+                                            Field(
+                                                notActiveAction.actionData
+                                                    .zkAppIndex,
+                                            ),
                                         ),
                                 },
-                                Field(dkgActionCounter),
+                                Field(actionCounter[ZkAppIndex.DKG]),
                             );
                             break;
                         case ZkAppIndex.ROUND1:
@@ -206,10 +208,13 @@ export class RollupContractService implements ContractServiceInterface {
                                 {
                                     level1Index:
                                         counterStorage.calculateLevel1Index(
-                                            Field(ZkAppIndex.ROUND1),
+                                            Field(
+                                                notActiveAction.actionData
+                                                    .zkAppIndex,
+                                            ),
                                         ),
                                 },
-                                Field(round1ActionCounter),
+                                Field(actionCounter[ZkAppIndex.ROUND1]),
                             );
                             break;
                         case ZkAppIndex.ROUND2:
@@ -218,10 +223,13 @@ export class RollupContractService implements ContractServiceInterface {
                                 {
                                     level1Index:
                                         counterStorage.calculateLevel1Index(
-                                            Field(ZkAppIndex.ROUND2),
+                                            Field(
+                                                notActiveAction.actionData
+                                                    .zkAppIndex,
+                                            ),
                                         ),
                                 },
-                                Field(round2ActionCounter),
+                                Field(actionCounter[ZkAppIndex.ROUND2]),
                             );
                             break;
                         case ZkAppIndex.RESPONSE:
@@ -230,10 +238,13 @@ export class RollupContractService implements ContractServiceInterface {
                                 {
                                     level1Index:
                                         counterStorage.calculateLevel1Index(
-                                            Field(ZkAppIndex.RESPONSE),
+                                            Field(
+                                                notActiveAction.actionData
+                                                    .zkAppIndex,
+                                            ),
                                         ),
                                 },
-                                Field(responseActionCounter),
+                                Field(actionCounter[ZkAppIndex.RESPONSE]),
                             );
                             break;
                     }

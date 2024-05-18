@@ -13,16 +13,16 @@ export class MainCronTasksService {
     ) {}
 
     // 6 minutes
-    @Interval(120000)
-    async handleUpdateContracts() {
-        this.logger.log('Register updateContracts task at ' + process.pid);
-        this.contractServices.add('updateContractMerkleTrees', {
-            date: Date.now(),
-        });
-        this.contractServices.add('updateContracts', {
-            date: Date.now(),
-        });
-    }
+    // @Interval(120000)
+    // async handleUpdateContracts() {
+    //     this.logger.log('Register updateContracts task at ' + process.pid);
+    //     this.contractServices.add('updateContractMerkleTrees', {
+    //         date: Date.now(),
+    //     });
+    //     this.contractServices.add('updateContracts', {
+    //         date: Date.now(),
+    //     });
+    // }
 
     // 6 minutes
     // @Interval(360000)
