@@ -194,9 +194,10 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // await this.compile();
+            await this.rollupContractService.compile();
+            await this.compile();
             // await this.rollupDkg();
-            // await this.rollupRound1();
+            await this.rollupRound1();
         } catch (err) {
             console.log(err);
         }
@@ -301,7 +302,6 @@ export class DkgContractsService implements ContractServiceInterface {
                                     notActiveAction.actionData.committeeId
                                 ],
                             );
-                            console.log('here');
                             proof = await UpdateKey.generate(
                                 {
                                     previousActionState: Field(
@@ -1488,6 +1488,12 @@ export class DkgContractsService implements ContractServiceInterface {
                         { level1Index },
                         Field(key.status),
                     );
+                    const round1ActionsCount =
+                        await this.round1ActionModel.count({
+                            'actionData.committeeId': key.committeeId,
+                            'actionData.keyId': key.keyId,
+                            active: true,
+                        });
                     if (
                         key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION ||
                         key.status == KeyStatusEnum.ACTIVE
@@ -1496,7 +1502,16 @@ export class DkgContractsService implements ContractServiceInterface {
                             { level1Index },
                             PublicKey.fromBase58(key.key).toGroup(),
                         );
-
+                    }
+                    if (round1ActionsCount == committee.numberOfMembers) {
+                        this._round1.contributionStorage.updateInternal(
+                            Field(key.keyIndex),
+                            DKG_LEVEL_2_TREE(),
+                        );
+                        this._round1.publicKeyStorage.updateInternal(
+                            Field(key.keyIndex),
+                            DKG_LEVEL_2_TREE(),
+                        );
                         const round1s = key.round1s.sort(
                             (a, b) => a.memberId - b.memberId,
                         );
@@ -1522,53 +1537,55 @@ export class DkgContractsService implements ContractServiceInterface {
                                     level1Index,
                                     level2Index,
                                 },
-                                Group.from(
-                                    round1.contribution[0].x,
-                                    round1.contribution[0].y,
-                                ),
+                                contribution[0],
+                            );
+                        }
+                    }
+                    const round2ActionsCount =
+                        await this.round2ActionModel.count({
+                            'actionData.committeeId': key.committeeId,
+                            'actionData.keyId': key.keyId,
+                            active: true,
+                        });
+                    if (round2ActionsCount == committee.numberOfMembers) {
+                        const round2s = key.round2s.sort(
+                            (a, b) => a.memberId - b.memberId,
+                        );
+                        const contributions: Libs.Committee.Round2Contribution[] =
+                            [];
+                        for (let k = 0; k < round2s.length; k++) {
+                            const round2 = round2s[k];
+                            const c: Bit255[] = round2.contribution.c.map(
+                                (value) => Bit255.fromBigInt(BigInt(value)),
+                            );
+                            const u: Group[] = round2.contribution.u.map(
+                                (point) => Group.from(point.x, point.y),
+                            );
+                            contributions.push(
+                                new Libs.Committee.Round2Contribution({
+                                    c: Libs.Committee.cArray.from(c),
+                                    U: Libs.Committee.UArray.from(u),
+                                }),
                             );
                         }
 
-                        if (key.status == KeyStatusEnum.ACTIVE) {
-                            const round2s = key.round2s.sort(
-                                (a, b) => a.memberId - b.memberId,
+                        for (let k = 0; k < round2s.length; k++) {
+                            const round2 = round2s[k];
+                            const level2Index =
+                                this._round2.contributionStorage.calculateLevel2Index(
+                                    Field(round2.memberId),
+                                );
+                            this._round2.contributionStorage.updateRawLeaf(
+                                { level1Index, level2Index },
+                                contributions[k],
                             );
-                            const contributions: Libs.Committee.Round2Contribution[] =
-                                [];
-                            for (let k = 0; k < round2s.length; k++) {
-                                const round2 = round2s[k];
-                                const c: Bit255[] = round2.contribution.c.map(
-                                    (value) => Bit255.fromBigInt(BigInt(value)),
-                                );
-                                const u: Group[] = round2.contribution.u.map(
-                                    (point) => Group.from(point.x, point.y),
-                                );
-                                contributions.push(
-                                    new Libs.Committee.Round2Contribution({
-                                        c: Libs.Committee.cArray.from(c),
-                                        U: Libs.Committee.UArray.from(u),
-                                    }),
-                                );
-                            }
-
-                            for (let k = 0; k < round2s.length; k++) {
-                                const round2 = round2s[k];
-                                const level2Index =
-                                    this._round2.contributionStorage.calculateLevel2Index(
-                                        Field(round2.memberId),
-                                    );
-                                this._round2.contributionStorage.updateRawLeaf(
-                                    { level1Index, level2Index },
-                                    contributions[k],
-                                );
-                                this._round2.encryptionStorage.updateRawLeaf(
-                                    { level1Index, level2Index },
-                                    {
-                                        memberId: Field(round2.memberId),
-                                        contributions: contributions,
-                                    },
-                                );
-                            }
+                            this._round2.encryptionStorage.updateRawLeaf(
+                                { level1Index, level2Index },
+                                {
+                                    memberId: Field(round2.memberId),
+                                    contributions: contributions,
+                                },
+                            );
                         }
                     }
                 }
@@ -1576,7 +1593,9 @@ export class DkgContractsService implements ContractServiceInterface {
             await this.updateProcessStorageForDkg();
             await this.updateProcessStorageForRound1();
             await this.updateProcessStorageForRound2();
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     private async updateProcessStorageForDkg() {
