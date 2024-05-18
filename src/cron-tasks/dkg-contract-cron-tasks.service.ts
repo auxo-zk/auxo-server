@@ -40,7 +40,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
         });
     }
 
-    @Cron('5,15,25,35,45 * * * *')
+    @Cron('5,15,25,35,45,55 * * * *')
     async handleRollupContractsSecondOrder() {
         this.logger.log(
             'Register rollupContracts for the second order task at ' +
