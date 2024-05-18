@@ -105,14 +105,22 @@ export class DkgContractServicesConsumer {
                 this.dkgUsageContractsService.update(),
                 this.requesterContractsService.update(),
             ]).then(async () => {
-                const result = [];
-                result.push(await this.dkgContractsService.rollupRound2());
-                result.push(await this.dkgContractsService.rollupRound1());
-                result.push(await this.dkgContractsService.rollupDkg());
+                // const result = [];
+                // result.push(await this.dkgContractsService.rollupRound2());
+                // result.push(await this.dkgContractsService.rollupRound1());
+                // result.push(await this.dkgContractsService.rollupDkg());
 
+                // if (!result.includes(true)) {
+                //     await this.committeeContractService.rollup();
+                //     await this.rollupContractService.rollup();
+                // }
+                const result = [];
+                result.push(await this.committeeContractService.rollup());
+                result.push(await this.rollupContractService.rollup());
                 if (!result.includes(true)) {
-                    await this.committeeContractService.rollup();
-                    await this.rollupContractService.rollup();
+                    await this.dkgContractsService.rollupRound2();
+                    await this.dkgContractsService.rollupRound1();
+                    await this.dkgContractsService.rollupDkg();
                 }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
