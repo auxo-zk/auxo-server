@@ -1,11 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class GetTasksDto {
     @IsString()
-    @IsOptional()
     requester: string;
+
+    @IsBoolean()
+    @IsOptional()
+    @Transform(({ value }) => {
+        switch (value) {
+            case 'true':
+                return true;
+            case 'false':
+                return false;
+            default:
+                return undefined;
+        }
+    })
+    hasRequest?: boolean;
 
     @Type(() => Number)
     @IsNumber()
