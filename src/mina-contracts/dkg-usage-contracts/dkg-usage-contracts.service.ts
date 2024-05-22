@@ -37,13 +37,19 @@ import { Event } from 'src/interfaces/event.interface';
 import { Action } from 'src/interfaces/action.interface';
 import { DkgRequest } from 'src/schemas/request.schema';
 import {
+    accumulateResponses,
+    BatchDecryption,
     calculateKeyIndex,
+    ComputeResponse,
     ComputeResult,
     Constants,
     DArray,
     FinalizedEvent,
+    FinalizeResponse,
+    FinalizeResponseInput,
     GroupVectorStorage,
     RequestContract,
+    ResponseContract,
     ResponseContribution,
     ResponseContributionStorage,
     Storage,
@@ -73,6 +79,10 @@ import {
     getRequestEventData,
     RequestEvent,
 } from 'src/schemas/actions/request-event.schema';
+import { Utils } from '@auxo-dev/auxo-libs';
+import { Key } from 'src/schemas/key.schema';
+import { RollupContractService } from '../rollup-contract/rollup-contract.service';
+import { Task } from 'src/schemas/task.schema';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
@@ -124,6 +134,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly queryService: QueryService,
         private readonly dkgContractsService: DkgContractsService,
         private readonly committeeContractService: CommitteeContractService,
+        private readonly rollupContractService: RollupContractService,
         @InjectModel(RequestAction.name)
         private readonly requestActionModel: Model<RequestAction>,
         @InjectModel(RequestEvent.name)
@@ -142,6 +153,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly committeeModel: Model<Committee>,
         @InjectModel(RollupAction.name)
         private readonly rollupActionModel: Model<RollupAction>,
+        @InjectModel(Key.name)
+        private readonly keyModel: Model<Key>,
+        @InjectModel(Task.name)
+        private readonly taskModel: Model<Task>,
     ) {
         this._dkgRequest = {
             zkAppStorage: Utilities.getZkAppStorageForDkg(),
@@ -170,6 +185,12 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            // Provable.log(await this.fetchDkgResponseState());
+            // Provable.log(this._dkgResponse.contributionStorage.root);
+            // Provable.log(this._dkgResponse.responseStorage.root);
+            // Provable.log(this._dkgResponse.processStorage.root);
+            // await this.compile();
+            // await this.rollupRequest();
         } catch (err) {
             console.log(err);
         }
@@ -202,9 +223,13 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         await UpdateRequest.compile({ cache });
         await ComputeResult.compile({ cache });
         await RequestContract.compile({ cache });
+        await BatchDecryption.compile({ cache });
+        await ComputeResponse.compile({ cache });
+        await FinalizeResponse.compile({ cache });
+        await ResponseContract.compile({ cache });
     }
 
-    async rollupRequest() {
+    async rollupRequest(): Promise<boolean> {
         try {
             const notActiveActions = await this.requestActionModel.find(
                 { active: false },
@@ -305,29 +330,335 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
+                await Utils.proveAndSendTx(
+                    RequestContract.name,
+                    'update',
+                    async () => {
+                        await requestContract.update(proof);
+                    },
                     {
-                        sender: feePayerPrivateKey.toPublicKey(),
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
                         fee: process.env.FEE,
+                        memo: '',
                         nonce: await this.queryService.fetchAccountNonce(
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    async () => {
-                        await requestContract.update(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 return true;
             }
-        } catch (err) {}
+            return false;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
     }
 
+    async rollupResponse() {
+        try {
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
+                active: true,
+            });
+            const requests = await this.dkgRequestModel.find({
+                status: RequestStatusEnum.INITIALIZED,
+            });
+            for (let i = 0; i < requests.length; i++) {
+                const request = requests[i];
+                const key = await this.keyModel.findOne({
+                    keyIndex: request.keyIndex,
+                });
+                const committee = await this.committeeModel.findOne({
+                    committeeId: key.committeeId,
+                });
+                const notActiveActions = await this.responseActionModel.find({
+                    'actionData.requestId': request.requestId,
+                    active: false,
+                    actionId: {
+                        $lt: numRollupedActions,
+                    },
+                });
+                if (notActiveActions.length == committee.threshold) {
+                    const task = await this.taskModel.findOne({
+                        task: request.task,
+                    });
+                    const state = await this.fetchDkgResponseState();
+                    const contributionStorage = _.cloneDeep(
+                        this._dkgResponse.contributionStorage,
+                    );
+                    const responseStorage = _.cloneDeep(
+                        this._dkgResponse.responseStorage,
+                    );
+                    const processStorage = _.cloneDeep(
+                        this._dkgResponse.processStorage,
+                    );
+                    const processStorageMapping = _.cloneDeep(
+                        this._dkgResponse.processStorageMapping,
+                    );
+                    const rollupStorage = _.cloneDeep(
+                        this.rollupContractService.rollupStorage,
+                    );
+                    const dimension = new UInt8(
+                        notActiveActions[0].actionData.dimension,
+                    );
+                    const level1Index = Field(request.requestId);
+                    const indexList = Field.fromBits(
+                        notActiveActions
+                            .map((action) => Field(action.actionData.memberId))
+                            .map((e) => e.toBits(6))
+                            .flat(),
+                    );
+                    let proof = await FinalizeResponse.init(
+                        FinalizeResponseInput.empty(),
+                        Field(committee.threshold),
+                        Field(committee.numberOfMembers),
+                        new UInt8(Constants.ENCRYPTION_LIMITS.FULL_DIMENSION),
+                        level1Index,
+                        indexList,
+                        state.contributionRoot,
+                        state.processRoot,
+                        rollupStorage.root,
+                        contributionStorage.getLevel1Witness(level1Index),
+                    );
+
+                    const memberIds = [];
+                    const D: Group[][] = [];
+                    const groupVectorStorages: GroupVectorStorage[] = [];
+                    for (let j = 0; j < notActiveActions.length; j++) {
+                        const notActiveAction = notActiveActions[j];
+                        const level2Index = Field(
+                            notActiveAction.actionData.memberId,
+                        );
+                        memberIds.push(notActiveAction.actionData.memberId);
+                        const respondedEvents =
+                            await this.responseRespondedEventModel.find(
+                                {
+                                    'data.requestId': request.requestId,
+                                    'data.memberId':
+                                        notActiveAction.actionData.memberId,
+                                },
+                                {},
+                                { sort: { 'data.dimensionIndex': 1 } },
+                            );
+                        D[j] = respondedEvents.map((event) =>
+                            Group.from(event.data.Di.x, event.data.Di.y),
+                        );
+                        const groupVectorStorage = new GroupVectorStorage();
+                        D[j].map((Di, index) => {
+                            groupVectorStorage.updateRawLeaf(
+                                { level1Index: Field(index) },
+                                Di,
+                            );
+                        });
+                        groupVectorStorages.push(groupVectorStorage);
+                        const responseAction =
+                            ZkApp.Response.ResponseAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
+                                ),
+                            );
+                        proof = await FinalizeResponse.contribute(
+                            {
+                                previousActionState: Field(
+                                    notActiveAction.previousActionState,
+                                ),
+                                action: responseAction,
+                                actionId: Field(notActiveAction.actionId),
+                            },
+                            proof,
+                            contributionStorage.getWitness(
+                                level1Index,
+                                level2Index,
+                            ),
+                            rollupStorage.getWitness(
+                                rollupStorage.calculateLevel1Index({
+                                    zkAppIndex: Field(ZkAppIndex.RESPONSE),
+                                    actionId: Field(notActiveAction.actionId),
+                                }),
+                            ),
+                            processStorage.getWitness(
+                                Field(notActiveAction.actionId),
+                            ),
+                        );
+
+                        contributionStorage.updateRawLeaf(
+                            {
+                                level1Index: level1Index,
+                                level2Index: level2Index,
+                            },
+                            Field(notActiveAction.actionData.responseRootD),
+                        );
+                        if (
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] == undefined
+                        ) {
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] = 0;
+                        } else {
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] += 1;
+                        }
+                        processStorage.updateLeaf(
+                            {
+                                level1Index: Field(notActiveAction.actionId),
+                            },
+                            processStorage.calculateLeaf({
+                                actionState: Field(
+                                    notActiveAction.currentActionState,
+                                ),
+                                processCounter: new UInt8(
+                                    processStorageMapping[
+                                        notActiveAction.currentActionState
+                                    ],
+                                ),
+                            }),
+                        );
+                    }
+                    const sumD = accumulateResponses(memberIds, D);
+                    const groupVectorStorage = new GroupVectorStorage();
+                    for (let j = 0; j < task.totalR.length; j++) {
+                        for (let k = 0; k < notActiveActions.length; k++) {
+                            const notActiveAction = notActiveActions[k];
+                            const responseAction =
+                                ZkApp.Response.ResponseAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                );
+                            proof = await FinalizeResponse.compute(
+                                {
+                                    previousActionState: Field(
+                                        notActiveAction.previousActionState,
+                                    ),
+                                    action: responseAction,
+                                    actionId: Field(notActiveAction.actionId),
+                                },
+                                proof,
+                                D[k][j],
+                                groupVectorStorages[k].getWitness(Field(j)),
+                                processStorage.getWitness(
+                                    Field(notActiveAction.actionId),
+                                ),
+                            );
+                            if (
+                                processStorageMapping[
+                                    notActiveAction.currentActionState
+                                ] == undefined
+                            ) {
+                                processStorageMapping[
+                                    notActiveAction.currentActionState
+                                ] = 0;
+                            } else {
+                                processStorageMapping[
+                                    notActiveAction.currentActionState
+                                ] += 1;
+                            }
+                            processStorage.updateLeaf(
+                                {
+                                    level1Index: Field(
+                                        notActiveAction.actionId,
+                                    ),
+                                },
+                                processStorage.calculateLeaf({
+                                    actionState: Field(
+                                        notActiveAction.currentActionState,
+                                    ),
+                                    processCounter: new UInt8(
+                                        processStorageMapping[
+                                            notActiveAction.currentActionState
+                                        ],
+                                    ),
+                                }),
+                            );
+                        }
+                        await FinalizeResponse.finalize(
+                            FinalizeResponseInput.empty(),
+                            proof,
+                            groupVectorStorage.getWitness(Field(j)),
+                        );
+                        groupVectorStorage.updateRawLeaf(
+                            { level1Index: level1Index },
+                            sumD[j],
+                        );
+                    }
+                    responseStorage.updateRawLeaf(
+                        { level1Index },
+                        groupVectorStorage.root,
+                    );
+                    const responseContract = new ResponseContract(
+                        PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                    );
+                    const feePayerPrivateKey = PrivateKey.fromBase58(
+                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    );
+                    await Utils.proveAndSendTx(
+                        ResponseContract.name,
+                        'rollup',
+                        async () => {
+                            await responseContract.finalize(
+                                proof,
+                                this.committeeContractService.settingStorage.getLevel1Witness(
+                                    Field(committee.committeeId),
+                                ),
+                                this._dkgRequest.keyIndexStorage.getLevel1Witness(
+                                    level1Index,
+                                ),
+                                this._dkgResponse.responseStorage.getLevel1Witness(
+                                    level1Index,
+                                ),
+                                this._dkgResponse.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.COMMITTEE,
+                                    PublicKey.fromBase58(
+                                        process.env.COMMITTEE_ADDRESS,
+                                    ),
+                                ),
+                                this._dkgResponse.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.REQUEST,
+                                    PublicKey.fromBase58(
+                                        process.env.REQUEST_ADDRESS,
+                                    ),
+                                ),
+                                this._dkgResponse.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.ROLLUP,
+                                    PublicKey.fromBase58(
+                                        process.env.ROLLUP_COMMITTEE,
+                                    ),
+                                ),
+                            );
+                        },
+                        {
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
+                            },
+                            fee: process.env.FEE,
+                            memo: '',
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
+                        },
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
+                    );
+                    return true;
+                }
+                return false;
+            }
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
     // ===== PRIVATE FUNCTIONS
 
     private async fetchDkgRequestState(): Promise<DkgRequestState> {

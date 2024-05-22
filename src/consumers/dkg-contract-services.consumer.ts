@@ -78,6 +78,7 @@ export class DkgContractServicesConsumer {
                 this.dkgUsageContractsService.update(),
                 this.requesterContractsService.update(),
             ]).then(async () => {
+                await this.requesterContractsService.rollup();
                 const result = [];
                 result.push(await this.committeeContractService.rollup());
                 result.push(await this.rollupContractService.rollup());
@@ -114,6 +115,7 @@ export class DkgContractServicesConsumer {
                 //     await this.committeeContractService.rollup();
                 //     await this.rollupContractService.rollup();
                 // }
+                await this.requesterContractsService.rollup();
                 const result = [];
                 result.push(await this.committeeContractService.rollup());
                 result.push(await this.rollupContractService.rollup());

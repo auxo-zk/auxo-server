@@ -241,8 +241,12 @@ export class DkgContractsService implements ContractServiceInterface {
 
     async rollupDkg() {
         try {
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.DKG,
+                active: true,
+            });
             const notActiveActions = await this.dkgActionModel.find(
-                { active: false },
+                { active: false, actionId: { $lt: numRollupedActions } },
                 {},
                 { sort: { actionId: 1 } },
             );
@@ -552,6 +556,10 @@ export class DkgContractsService implements ContractServiceInterface {
 
     async rollupRound1() {
         try {
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.ROUND1,
+                active: true,
+            });
             const keys = await this.keyModel.find({
                 status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
             });
@@ -565,6 +573,9 @@ export class DkgContractsService implements ContractServiceInterface {
                         'actionData.keyId': key.keyId,
                         'actionData.committeeId': key.committeeId,
                         active: false,
+                        actionId: {
+                            $lt: numRollupedActions,
+                        },
                     },
                     {},
                     { sort: { 'actionData.memberId': 1 } },
@@ -766,6 +777,10 @@ export class DkgContractsService implements ContractServiceInterface {
 
     async rollupRound2() {
         try {
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.ROUND2,
+                active: true,
+            });
             const keys = await this.keyModel.find({
                 status: KeyStatusEnum.ROUND_2_CONTRIBUTION,
             });
@@ -779,6 +794,9 @@ export class DkgContractsService implements ContractServiceInterface {
                         'actionData.keyId': key.keyId,
                         'actionData.committeeId': key.committeeId,
                         active: false,
+                        actionId: {
+                            $lt: numRollupedActions,
+                        },
                     },
                     {},
                     { sort: { 'actionData.memberId': 1 } },

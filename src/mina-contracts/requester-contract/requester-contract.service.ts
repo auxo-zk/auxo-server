@@ -46,6 +46,7 @@ import {
 } from 'src/constants';
 import { Funding } from 'src/schemas/funding.schema';
 import { Utilities } from '../utilities';
+import { Utils } from '@auxo-dev/auxo-libs';
 
 export class RequesterContractStorage {
     zkAppStorage: Storage.AddressStorage.AddressStorage;
@@ -145,6 +146,25 @@ export class RequesterContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            // Provable.log(
+            //     await this.fetchRequesterState(this.requesterAddresses[0]),
+            // );
+            // Provable.log(this.storage(this.requesterAddresses[0]).counters);
+            // Provable.log(
+            //     this.storage(this.requesterAddresses[0]).keyIndexStorage.root,
+            // );
+            // Provable.log(
+            //     this.storage(this.requesterAddresses[0]).timestampStorage.root,
+            // );
+            // Provable.log(
+            //     this.storage(this.requesterAddresses[0]).accumulationStorage
+            //         .root,
+            // );
+            // Provable.log(
+            //     this.storage(this.requesterAddresses[0]).commitmentStorage.root,
+            // );
+            // await this.compile();
+            // await this.rollup();
         } catch (err) {
             console.log(err);
         }
@@ -170,7 +190,11 @@ export class RequesterContractsService implements ContractServiceInterface {
                     let proof = await UpdateTask.init(
                         ZkApp.Requester.RequesterAction.empty(),
                         state.actionState,
-                        UInt32.fromFields(state.counters.toFields()),
+                        new UInt32(
+                            this._storageMapping[
+                                requesterAddress
+                            ].counters.taskCounter,
+                        ),
                         state.keyIndexRoot,
                         state.timestampRoot,
                         state.accumulationRoot,
@@ -207,6 +231,7 @@ export class RequesterContractsService implements ContractServiceInterface {
                     );
                     for (let i = 0; i < notActiveActions.length; i++) {
                         const notActiveAction = notActiveActions[i];
+                        console.log('here');
                         if (
                             notActiveAction.actionData.taskId ==
                             Number(UInt32.MAXINT().toBigint())
@@ -266,6 +291,7 @@ export class RequesterContractsService implements ContractServiceInterface {
                             }
                             const oldSumR: Group[] = [];
                             const oldSumM: Group[] = [];
+                            const dimensionIndexes: number[] = [];
                             for (
                                 let j = 0;
                                 j < Constants.ENCRYPTION_LIMITS.DIMENSION;
@@ -279,6 +305,56 @@ export class RequesterContractsService implements ContractServiceInterface {
                                             .toBits()
                                             .slice(j * 8, (j + 1) * 8),
                                     ).toBigInt(),
+                                );
+                                dimensionIndexes.push(dimensionIndex);
+                                if (
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.leafs[dimensionIndex.toString()] ==
+                                    undefined
+                                ) {
+                                    oldSumR.push(Group.zero);
+                                    oldSumM.push(Group.zero);
+                                } else {
+                                    oldSumR.push(
+                                        groupVectorStorageMapping[
+                                            notActiveAction.actionData.taskId
+                                        ].R.leafs[j].raw,
+                                    );
+                                    oldSumM.push(
+                                        groupVectorStorageMapping[
+                                            notActiveAction.actionData.taskId
+                                        ].M.leafs[j].raw,
+                                    );
+                                }
+                            }
+                            const groupVectorOldSumR: GroupVector =
+                                new GroupVector(oldSumR);
+                            const groupVectorOldSumM: GroupVector =
+                                new GroupVector(oldSumM);
+                            const accumulationWitnessesR =
+                                new GroupVectorWitnesses();
+                            const accumulationWitnessesM =
+                                new GroupVectorWitnesses();
+                            const commitmentWitnesses =
+                                new CommitmentWitnesses();
+                            for (
+                                let j = 0;
+                                j < Constants.ENCRYPTION_LIMITS.DIMENSION;
+                                j++
+                            ) {
+                                const dimensionIndex = dimensionIndexes[j];
+                                accumulationWitnessesR.set(
+                                    Field(j),
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.getWitness(Field(dimensionIndex)),
+                                );
+                                accumulationWitnessesM.set(
+                                    Field(j),
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].M.getWitness(Field(dimensionIndex)),
                                 );
                                 if (
                                     groupVectorStorageMapping[
@@ -308,21 +384,7 @@ export class RequesterContractsService implements ContractServiceInterface {
                                             notActiveAction.actionData.M[j].y,
                                         ),
                                     );
-                                    oldSumR.push(Group.zero);
-                                    oldSumM.push(Group.zero);
                                 } else {
-                                    oldSumR.push(
-                                        groupVectorStorageMapping[
-                                            notActiveAction.actionData.taskId
-                                        ].R.leafs[dimensionIndex.toString()]
-                                            .raw,
-                                    );
-                                    oldSumM.push(
-                                        groupVectorStorageMapping[
-                                            notActiveAction.actionData.taskId
-                                        ].M.leafs[dimensionIndex.toString()]
-                                            .raw,
-                                    );
                                     groupVectorStorageMapping[
                                         notActiveAction.actionData.taskId
                                     ].R.updateRawLeaf(
@@ -358,55 +420,25 @@ export class RequesterContractsService implements ContractServiceInterface {
                                         ),
                                     );
                                 }
+                                commitmentWitnesses.set(
+                                    Field(j),
+                                    commitmentStorage.getWitness(
+                                        nextCommitmentIndex,
+                                    ),
+                                );
+                                commitmentStorage.updateRawLeaf(
+                                    {
+                                        level1Index: nextCommitmentIndex,
+                                    },
+                                    Field(
+                                        notActiveAction.actionData.commitments[
+                                            j
+                                        ],
+                                    ),
+                                );
+                                nextCommitmentIndex =
+                                    nextCommitmentIndex.add(1);
                             }
-                            const groupVectorOldSumR: GroupVector =
-                                new GroupVector(oldSumR);
-                            const groupVectorOldSumM: GroupVector =
-                                new GroupVector(oldSumM);
-                            const accumulationWitnessesR = [
-                                ...Array(
-                                    Constants.ENCRYPTION_LIMITS.DIMENSION,
-                                ).keys(),
-                            ].map((index) => {
-                                const dimensionIndex = Number(
-                                    Field.fromBits(
-                                        Field(
-                                            notActiveAction.actionData.indices,
-                                        )
-                                            .toBits()
-                                            .slice(index * 8, (index + 1) * 8),
-                                    ).toBigInt(),
-                                );
-                                return groupVectorStorageMapping[
-                                    notActiveAction.actionData.taskId
-                                ].R.getLevel1Witness(Field(dimensionIndex));
-                            });
-                            const accumulationWitnessesM = [
-                                ...Array(
-                                    Constants.ENCRYPTION_LIMITS.DIMENSION,
-                                ).keys(),
-                            ].map((index) => {
-                                const dimensionIndex = Number(
-                                    Field.fromBits(
-                                        Field(
-                                            notActiveAction.actionData.indices,
-                                        )
-                                            .toBits()
-                                            .slice(index * 8, (index + 1) * 8),
-                                    ).toBigInt(),
-                                );
-                                return groupVectorStorageMapping[
-                                    notActiveAction.actionData.taskId
-                                ].M.getLevel1Witness(Field(dimensionIndex));
-                            });
-                            const commitmentWitnesses = [
-                                commitmentStorage.getLevel1Witness(
-                                    nextCommitmentIndex,
-                                ),
-                                commitmentStorage.getLevel1Witness(
-                                    nextCommitmentIndex.add(1),
-                                ),
-                            ];
                             proof = await UpdateTask.accumulate(
                                 ZkApp.Requester.RequesterAction.fromFields(
                                     Utilities.stringArrayToFields(
@@ -419,13 +451,9 @@ export class RequesterContractsService implements ContractServiceInterface {
                                 accumulationStorage.getLevel1Witness(
                                     Field(notActiveAction.actionData.taskId),
                                 ),
-                                new GroupVectorWitnesses(
-                                    accumulationWitnessesR,
-                                ),
-                                new GroupVectorWitnesses(
-                                    accumulationWitnessesM,
-                                ),
-                                new CommitmentWitnesses(commitmentWitnesses),
+                                accumulationWitnessesR,
+                                accumulationWitnessesM,
+                                commitmentWitnesses,
                             );
                             accumulationStorage.updateLeaf(
                                 {
@@ -433,9 +461,7 @@ export class RequesterContractsService implements ContractServiceInterface {
                                         notActiveAction.actionData.taskId,
                                     ),
                                 },
-                                this._storageMapping[
-                                    requesterAddress
-                                ].accumulationStorage.calculateLeaf({
+                                accumulationStorage.calculateLeaf({
                                     accumulationRootR:
                                         groupVectorStorageMapping[
                                             notActiveAction.actionData.taskId
@@ -446,20 +472,6 @@ export class RequesterContractsService implements ContractServiceInterface {
                                         ].M.root,
                                 }),
                             );
-                            commitmentStorage.updateLeaf(
-                                { level1Index: nextCommitmentIndex },
-                                Field(
-                                    notActiveAction.actionData.commitments[0],
-                                ),
-                            );
-                            nextCommitmentIndex = nextCommitmentIndex.add(1);
-                            commitmentStorage.updateLeaf(
-                                { level1Index: nextCommitmentIndex },
-                                Field(
-                                    notActiveAction.actionData.commitments[1],
-                                ),
-                            );
-                            nextCommitmentIndex = nextCommitmentIndex.add(1);
                         }
                     }
                     const requesterContract = new RequesterContract(
@@ -468,28 +480,35 @@ export class RequesterContractsService implements ContractServiceInterface {
                     const feePayerPrivateKey = PrivateKey.fromBase58(
                         process.env.FEE_PAYER_PRIVATE_KEY,
                     );
-                    const tx = await Mina.transaction(
+                    await Utils.proveAndSendTx(
+                        RequesterContract.name,
+                        'rollup',
+                        async () => {
+                            await requesterContract.updateTasks(proof);
+                        },
                         {
-                            sender: feePayerPrivateKey.toPublicKey(),
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
+                            },
                             fee: process.env.FEE,
+                            memo: '',
                             nonce: await this.queryService.fetchAccountNonce(
                                 feePayerPrivateKey.toPublicKey().toBase58(),
                             ),
                         },
-                        async () => {
-                            await requesterContract.updateTasks(proof);
-                        },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
                     );
                     return true;
                 }
+                return false;
             });
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
     }
 
     private async fetchRequesterState(

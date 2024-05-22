@@ -60,6 +60,7 @@ export class QueryService {
                 )) as Action[];
             } catch (err) {
                 this.logger.error(err);
+                // console.log(err);
             }
         }
         return undefined;
