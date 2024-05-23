@@ -44,6 +44,7 @@ import {
     ComputeResult,
     Constants,
     DArray,
+    DKG_LEVEL_2_TREE,
     FinalizedEvent,
     FinalizeResponse,
     FinalizeResponseInput,
@@ -190,7 +191,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             // Provable.log(this._dkgResponse.responseStorage.root);
             // Provable.log(this._dkgResponse.processStorage.root);
             // await this.compile();
-            // await this.rollupRequest();
+            // await this.rollupResponse();
         } catch (err) {
             console.log(err);
         }
@@ -404,9 +405,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     const rollupStorage = _.cloneDeep(
                         this.rollupContractService.rollupStorage,
                     );
-                    const dimension = new UInt8(
-                        notActiveActions[0].actionData.dimension,
-                    );
                     const level1Index = Field(request.requestId);
                     const indexList = Field.fromBits(
                         notActiveActions
@@ -430,6 +428,11 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     const memberIds = [];
                     const D: Group[][] = [];
                     const groupVectorStorages: GroupVectorStorage[] = [];
+                    contributionStorage.updateInternal(
+                        level1Index,
+                        DKG_LEVEL_2_TREE(),
+                    );
+                    // responseStorage.
                     for (let j = 0; j < notActiveActions.length; j++) {
                         const notActiveAction = notActiveActions[j];
                         const level2Index = Field(
@@ -456,6 +459,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 Di,
                             );
                         });
+
                         groupVectorStorages.push(groupVectorStorage);
                         const responseAction =
                             ZkApp.Response.ResponseAction.fromFields(
@@ -580,13 +584,13 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 }),
                             );
                         }
-                        await FinalizeResponse.finalize(
+                        proof = await FinalizeResponse.finalize(
                             FinalizeResponseInput.empty(),
                             proof,
                             groupVectorStorage.getWitness(Field(j)),
                         );
                         groupVectorStorage.updateRawLeaf(
-                            { level1Index: level1Index },
+                            { level1Index: Field(j) },
                             sumD[j],
                         );
                     }
@@ -602,7 +606,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     );
                     await Utils.proveAndSendTx(
                         ResponseContract.name,
-                        'rollup',
+                        'finalize',
                         async () => {
                             await responseContract.finalize(
                                 proof,
@@ -630,7 +634,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 this._dkgResponse.zkAppStorage.getZkAppRef(
                                     ZkAppIndex.ROLLUP,
                                     PublicKey.fromBase58(
-                                        process.env.ROLLUP_COMMITTEE,
+                                        process.env.ROLLUP_ADDRESS,
                                     ),
                                 ),
                             );
