@@ -118,15 +118,7 @@ export class DkgContractServicesConsumer {
                     await this.committeeContractService.rollup();
                     await this.rollupContractService.rollup();
                 }
-                // const result = [];
-                // result.push(await this.committeeContractService.rollup());
-                // result.push(await this.rollupContractService.rollup());
-                // if (!result.includes(true)) {
-                //     await this.dkgContractsService.rollupRound2();
-                //     await this.dkgContractsService.rollupRound1();
-                //     await this.dkgContractsService.rollupDkg();
-                // }
-                // await job.progress();
+                await job.progress();
                 this.logger.log('All contract rolluped successfully');
                 return {};
             });

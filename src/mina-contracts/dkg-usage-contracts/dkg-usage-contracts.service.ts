@@ -39,20 +39,24 @@ import { DkgRequest } from 'src/schemas/request.schema';
 import {
     accumulateResponses,
     BatchDecryption,
+    bruteForceResultVector,
     calculateKeyIndex,
     ComputeResponse,
     ComputeResult,
+    ComputeResultInput,
     Constants,
     DArray,
     DKG_LEVEL_2_TREE,
     FinalizedEvent,
     FinalizeResponse,
     FinalizeResponseInput,
+    getResultVector,
     GroupVectorStorage,
     RequestContract,
     ResponseContract,
     ResponseContribution,
     ResponseContributionStorage,
+    ScalarVectorStorage,
     Storage,
     UpdateRequest,
     ZkApp,
@@ -84,6 +88,7 @@ import { Utils } from '@auxo-dev/auxo-libs';
 import { Key } from 'src/schemas/key.schema';
 import { RollupContractService } from '../rollup-contract/rollup-contract.service';
 import { Task } from 'src/schemas/task.schema';
+import { RequesterContractsService } from '../requester-contract/requester-contract.service';
 
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
@@ -135,6 +140,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         private readonly queryService: QueryService,
         private readonly dkgContractsService: DkgContractsService,
         private readonly committeeContractService: CommitteeContractService,
+        private readonly requesterContractsService: RequesterContractsService,
         private readonly rollupContractService: RollupContractService,
         @InjectModel(RequestAction.name)
         private readonly requestActionModel: Model<RequestAction>,
@@ -661,6 +667,138 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         } catch (err) {
             console.log(err);
             return false;
+        }
+    }
+
+    async computeResult() {
+        try {
+            // const numRollupedActions = await this.rollupActionModel.count({
+            //     'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
+            //     active: true,
+            // });
+            const requests = await this.dkgRequestModel.find({
+                status: RequestStatusEnum.INITIALIZED,
+            });
+            for (let i = 0; i < requests.length; i++) {
+                const request = requests[i];
+                const key = await this.keyModel.findOne({
+                    keyIndex: request.keyIndex,
+                });
+                const committee = await this.committeeModel.findOne({
+                    committeeId: key.committeeId,
+                });
+                if (request.responses.length == committee.threshold) {
+                    const task = await this.taskModel.findOne({
+                        task: request.task,
+                    });
+                    const totalM = task.totalM.map((Mi) =>
+                        Group.from(Mi.x, Mi.y),
+                    );
+                    const totalD = request.finalizedD.map((Di) =>
+                        Group.from(Di.x, Di.y),
+                    );
+                    const accumulationStorageM =
+                        this.requesterContractsService.storage(task.requester)
+                            .groupVectorStorageMapping[task.taskId].M;
+                    const accumulationStorageR =
+                        this.requesterContractsService.storage(task.requester)
+                            .groupVectorStorageMapping[task.taskId].R;
+                    const rawResultStorage = new ScalarVectorStorage();
+                    const rawResult = bruteForceResultVector(
+                        getResultVector(totalM, totalD),
+                    );
+                    for (
+                        let j = 0;
+                        j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
+                        j++
+                    ) {
+                        rawResultStorage.updateRawLeaf(
+                            { level1Index: Field(j) },
+                            rawResult[j],
+                        );
+                    }
+                    let proof = await ComputeResult.init(
+                        ComputeResultInput.empty(),
+                        accumulationStorageM.root,
+                        this._dkgResponse.responseStorage.root,
+                        rawResultStorage.root,
+                    );
+                    for (
+                        let j = 0;
+                        j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
+                        j++
+                    ) {
+                        const totalMi = totalM[j];
+                        const totalDi = totalD[j];
+                        const result = rawResult[j];
+                        proof = await ComputeResult.compute(
+                            {
+                                M: totalMi,
+                                D: totalDi,
+                                result,
+                            },
+                            proof,
+                            accumulationStorageM.getWitness(Field(j)),
+                            this._dkgResponse.responseStorage.getWitness(
+                                Field(j),
+                            ),
+                            rawResultStorage.getWitness(Field(j)),
+                        );
+                    }
+                    const requestContract = new RequestContract(
+                        PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                    );
+                    const feePayerPrivateKey = PrivateKey.fromBase58(
+                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    );
+                    await Utils.proveAndSendTx(
+                        RequestContract.name,
+                        'update',
+                        async () => {
+                            await requestContract.resolve(
+                                proof,
+                                new UInt64(request.expirationTimestamp),
+                                accumulationStorageR.root,
+                                this._dkgRequest.expirationStorage.getWitness(
+                                    Field(request.requestId),
+                                ),
+                                this._dkgRequest.accumulationStorage.getWitness(
+                                    Field(request.requestId),
+                                ),
+                                this._dkgResponse.responseStorage.getWitness(
+                                    Field(request.requestId),
+                                ),
+                                this._dkgRequest.resultStorage.getWitness(
+                                    Field(request.requestId),
+                                ),
+                                this._dkgRequest.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.RESPONSE,
+                                    PublicKey.fromBase58(
+                                        process.env.RESPONSE_ADDRESS,
+                                    ),
+                                ),
+                            );
+                        },
+                        {
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
+                            },
+                            fee: process.env.FEE,
+                            memo: '',
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
+                        },
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
+                    );
+                    return true;
+                }
+            }
+        } catch (err) {
+            console.log(err);
         }
     }
     // ===== PRIVATE FUNCTIONS

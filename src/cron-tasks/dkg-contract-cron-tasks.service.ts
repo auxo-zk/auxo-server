@@ -31,23 +31,29 @@ export class DkgContractCronTasksService implements OnModuleInit {
 
     @Cron('*/10 * * * *')
     async handleRollupContractsFirstOrder() {
-        this.logger.log(
-            'Register rollupContracts for the first order task at ' +
-                process.pid,
-        );
-        this.contractServices.add('rollupContractsFirstOrder', {
-            date: Date.now(),
-        });
+        const jobCount = await this.contractServices.getJobCounts();
+        if (jobCount.waiting <= 1) {
+            this.logger.log(
+                'Register rollupContracts for the first order task at ' +
+                    process.pid,
+            );
+            this.contractServices.add('rollupContractsFirstOrder', {
+                date: Date.now(),
+            });
+        }
     }
 
     @Cron('5,15,25,35,45,55 * * * *')
     async handleRollupContractsSecondOrder() {
-        this.logger.log(
-            'Register rollupContracts for the second order task at ' +
-                process.pid,
-        );
-        this.contractServices.add('rollupContractsSecondOrder', {
-            date: Date.now(),
-        });
+        const jobCount = await this.contractServices.getJobCounts();
+        if (jobCount.waiting <= 1) {
+            this.logger.log(
+                'Register rollupContracts for the second order task at ' +
+                    process.pid,
+            );
+            this.contractServices.add('rollupContractsSecondOrder', {
+                date: Date.now(),
+            });
+        }
     }
 }
