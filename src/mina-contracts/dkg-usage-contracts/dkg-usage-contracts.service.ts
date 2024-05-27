@@ -16,6 +16,7 @@ import {
     Provable,
     PublicKey,
     Reducer,
+    Scalar,
     UInt64,
     UInt8,
 } from 'o1js';
@@ -197,7 +198,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             // Provable.log(this._dkgResponse.responseStorage.root);
             // Provable.log(this._dkgResponse.processStorage.root);
             // await this.compile();
-            // await this.rollupResponse();
+            // await this.computeResult();
         } catch (err) {
             console.log(err);
         }
@@ -367,7 +368,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         }
     }
 
-    async rollupResponse() {
+    async rollupResponse(): Promise<boolean> {
         try {
             const numRollupedActions = await this.rollupActionModel.count({
                 'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
@@ -672,10 +673,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     async computeResult() {
         try {
-            // const numRollupedActions = await this.rollupActionModel.count({
-            //     'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
-            //     active: true,
-            // });
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
+                active: true,
+            });
             const requests = await this.dkgRequestModel.find({
                 status: RequestStatusEnum.INITIALIZED,
             });
@@ -705,8 +706,15 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             .groupVectorStorageMapping[task.taskId].R;
                     const rawResultStorage = new ScalarVectorStorage();
                     const rawResult = bruteForceResultVector(
-                        getResultVector(totalM, totalD),
+                        getResultVector(totalD, totalM),
                     );
+                    const groupVectorStorage = new GroupVectorStorage();
+                    totalD.map((Di, index) => {
+                        groupVectorStorage.updateRawLeaf(
+                            { level1Index: Field(index) },
+                            Di,
+                        );
+                    });
                     for (
                         let j = 0;
                         j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
@@ -718,9 +726,13 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         );
                     }
                     let proof = await ComputeResult.init(
-                        ComputeResultInput.empty(),
+                        new ComputeResultInput({
+                            M: Group.zero,
+                            D: Group.zero,
+                            result: Scalar.from(0),
+                        }),
                         accumulationStorageM.root,
-                        this._dkgResponse.responseStorage.root,
+                        groupVectorStorage.root,
                         rawResultStorage.root,
                     );
                     for (
@@ -739,9 +751,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             },
                             proof,
                             accumulationStorageM.getWitness(Field(j)),
-                            this._dkgResponse.responseStorage.getWitness(
-                                Field(j),
-                            ),
+                            groupVectorStorage.getWitness(Field(j)),
                             rawResultStorage.getWitness(Field(j)),
                         );
                     }
@@ -759,7 +769,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 proof,
                                 new UInt64(request.expirationTimestamp),
                                 accumulationStorageR.root,
-                                this._dkgRequest.expirationStorage.getWitness(
+                                this._dkgRequest.resultStorage.getWitness(
                                     Field(request.requestId),
                                 ),
                                 this._dkgRequest.accumulationStorage.getWitness(
@@ -768,7 +778,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 this._dkgResponse.responseStorage.getWitness(
                                     Field(request.requestId),
                                 ),
-                                this._dkgRequest.resultStorage.getWitness(
+                                this._dkgRequest.expirationStorage.getWitness(
                                     Field(request.requestId),
                                 ),
                                 this._dkgRequest.zkAppStorage.getZkAppRef(
@@ -797,6 +807,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     return true;
                 }
             }
+            return false;
         } catch (err) {
             console.log(err);
         }

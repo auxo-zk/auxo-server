@@ -29,7 +29,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
     //     });
     // }
 
-    @Cron('*/10 * * * *')
+    @Cron('*/6 * * * *')
     async handleRollupContractsFirstOrder() {
         const jobCount = await this.contractServices.getJobCounts();
         if (jobCount.waiting <= 1) {
@@ -43,7 +43,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
         }
     }
 
-    @Cron('5,15,25,35,45,55 * * * *')
+    @Cron('3,9,15,21,27,33,39,45,51,57 * * * *')
     async handleRollupContractsSecondOrder() {
         const jobCount = await this.contractServices.getJobCounts();
         if (jobCount.waiting <= 1) {
