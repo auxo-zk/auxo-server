@@ -187,20 +187,27 @@ export class RequesterContractsService implements ContractServiceInterface {
                 if (notActiveActions.length > 0) {
                     const state =
                         await this.fetchRequesterState(requesterAddress);
-                    let proof = await UpdateTask.init(
-                        ZkApp.Requester.RequesterAction.empty(),
-                        state.actionState,
-                        new UInt32(
-                            this._storageMapping[
-                                requesterAddress
-                            ].counters.taskCounter,
-                        ),
-                        state.keyIndexRoot,
-                        state.timestampRoot,
-                        state.accumulationRoot,
-                        this._storageMapping[requesterAddress].counters
-                            .commitmentCounter,
-                        state.commitmentRoot,
+                    let proof = await Utils.prove(
+                        UpdateTask.name,
+                        'init',
+                        async () =>
+                            UpdateTask.init(
+                                ZkApp.Requester.RequesterAction.empty(),
+                                state.actionState,
+                                new UInt32(
+                                    this._storageMapping[
+                                        requesterAddress
+                                    ].counters.taskCounter,
+                                ),
+                                state.keyIndexRoot,
+                                state.timestampRoot,
+                                state.accumulationRoot,
+                                this._storageMapping[requesterAddress].counters
+                                    .commitmentCounter,
+                                state.commitmentRoot,
+                            ),
+                        undefined,
+                        { info: true, error: true },
                     );
                     const counters = _.cloneDeep(
                         this._storageMapping[requesterAddress].counters,
@@ -439,21 +446,31 @@ export class RequesterContractsService implements ContractServiceInterface {
                                 nextCommitmentIndex =
                                     nextCommitmentIndex.add(1);
                             }
-                            proof = await UpdateTask.accumulate(
-                                ZkApp.Requester.RequesterAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notActiveAction.actions,
+                            proof = await Utils.prove(
+                                UpdateTask.name,
+                                'accumulate',
+                                async () =>
+                                    UpdateTask.accumulate(
+                                        ZkApp.Requester.RequesterAction.fromFields(
+                                            Utilities.stringArrayToFields(
+                                                notActiveAction.actions,
+                                            ),
+                                        ),
+                                        proof,
+                                        groupVectorOldSumR,
+                                        groupVectorOldSumM,
+                                        accumulationStorage.getLevel1Witness(
+                                            Field(
+                                                notActiveAction.actionData
+                                                    .taskId,
+                                            ),
+                                        ),
+                                        accumulationWitnessesR,
+                                        accumulationWitnessesM,
+                                        commitmentWitnesses,
                                     ),
-                                ),
-                                proof,
-                                groupVectorOldSumR,
-                                groupVectorOldSumM,
-                                accumulationStorage.getLevel1Witness(
-                                    Field(notActiveAction.actionData.taskId),
-                                ),
-                                accumulationWitnessesR,
-                                accumulationWitnessesM,
-                                commitmentWitnesses,
+                                undefined,
+                                { info: true, error: true },
                             );
                             accumulationStorage.updateLeaf(
                                 {

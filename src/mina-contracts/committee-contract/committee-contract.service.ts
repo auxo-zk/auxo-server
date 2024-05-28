@@ -123,26 +123,44 @@ export class CommitteeContractService implements ContractServiceInterface {
             );
             if (notActiveActions.length > 0) {
                 const state = await this.fetchCommitteeState();
-                let proof = await UpdateCommittee.init(
-                    state.actionState,
-                    state.memberRoot,
-                    state.settingRoot,
-                    state.nextCommitteeId,
+
+                let proof = await Utils.prove(
+                    UpdateCommittee.name,
+                    'init',
+                    async () =>
+                        UpdateCommittee.init(
+                            state.actionState,
+                            state.memberRoot,
+                            state.settingRoot,
+                            state.nextCommitteeId,
+                        ),
+                    undefined,
+                    { info: true, error: true },
                 );
                 const memberStorage = _.cloneDeep(this._memberStorage);
                 const settingStorage = _.cloneDeep(this._settingStorage);
                 let nextCommitteeId = state.nextCommitteeId;
                 for (let i = 0; i < notActiveActions.length; i++) {
                     const notActiveAction = notActiveActions[i];
-                    proof = await UpdateCommittee.update(
-                        proof,
-                        ZkApp.Committee.CommitteeAction.fromFields(
-                            Utilities.stringArrayToFields(
-                                notActiveAction.actions,
+
+                    proof = await Utils.prove(
+                        UpdateCommittee.name,
+                        'update',
+                        async () =>
+                            UpdateCommittee.update(
+                                proof,
+                                ZkApp.Committee.CommitteeAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                memberStorage.getLevel1Witness(nextCommitteeId),
+                                settingStorage.getLevel1Witness(
+                                    nextCommitteeId,
+                                ),
                             ),
-                        ),
-                        memberStorage.getLevel1Witness(nextCommitteeId),
-                        settingStorage.getLevel1Witness(nextCommitteeId),
+                        undefined,
+                        { info: true, error: true },
                     );
                     memberStorage.updateInternal(
                         nextCommitteeId,

@@ -270,13 +270,20 @@ export class DkgContractsService implements ContractServiceInterface {
                 const nextKeyIdMapping: {
                     [committeeId: number]: number;
                 } = {};
-                let proof = await UpdateKey.init(
-                    UpdateKeyInput.empty(),
-                    rollupStorage.root,
-                    state.keyCounterRoot,
-                    state.keyStatusRoot,
-                    state.keyRoot,
-                    state.processRoot,
+                let proof = await Utils.prove(
+                    UpdateKey.name,
+                    'init',
+                    async () =>
+                        UpdateKey.init(
+                            UpdateKeyInput.empty(),
+                            rollupStorage.root,
+                            state.keyCounterRoot,
+                            state.keyStatusRoot,
+                            state.keyRoot,
+                            state.processRoot,
+                        ),
+                    undefined,
+                    { info: true, error: true },
                 );
                 for (let i = 0; i < notActiveActions.length; i++) {
                     const notActiveAction = notActiveActions[i];
@@ -307,36 +314,50 @@ export class DkgContractsService implements ContractServiceInterface {
                                     notActiveAction.actionData.committeeId
                                 ],
                             );
-                            proof = await UpdateKey.generate(
-                                {
-                                    previousActionState: Field(
-                                        notActiveAction.previousActionState,
-                                    ),
-                                    action: dkgAction,
-                                    actionId: Field(notActiveAction.actionId),
-                                },
-                                proof,
-                                nextKeyId,
-                                keyCounterStorage.getLevel1Witness(
-                                    Field(committeeId),
-                                ),
-                                keyStatusStorage.getLevel1Witness(
-                                    keyStatusStorage.calculateLevel1Index({
-                                        committeeId: Field(committeeId),
-                                        keyId: nextKeyId,
-                                    }),
-                                ),
-                                rollupStorage.getWitness(
-                                    rollupStorage.calculateLevel1Index({
-                                        zkAppIndex: Field(ZkAppIndex.DKG),
-                                        actionId: Field(
-                                            notActiveAction.actionId,
+                            proof = await Utils.prove(
+                                UpdateKey.name,
+                                'generate',
+                                async () =>
+                                    UpdateKey.generate(
+                                        {
+                                            previousActionState: Field(
+                                                notActiveAction.previousActionState,
+                                            ),
+                                            action: dkgAction,
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        },
+                                        proof,
+                                        nextKeyId,
+                                        keyCounterStorage.getLevel1Witness(
+                                            Field(committeeId),
                                         ),
-                                    }),
-                                ),
-                                processStorage.getWitness(
-                                    Field(notActiveAction.actionId),
-                                ),
+                                        keyStatusStorage.getLevel1Witness(
+                                            keyStatusStorage.calculateLevel1Index(
+                                                {
+                                                    committeeId:
+                                                        Field(committeeId),
+                                                    keyId: nextKeyId,
+                                                },
+                                            ),
+                                        ),
+                                        rollupStorage.getWitness(
+                                            rollupStorage.calculateLevel1Index({
+                                                zkAppIndex: Field(
+                                                    ZkAppIndex.DKG,
+                                                ),
+                                                actionId: Field(
+                                                    notActiveAction.actionId,
+                                                ),
+                                            }),
+                                        ),
+                                        processStorage.getWitness(
+                                            Field(notActiveAction.actionId),
+                                        ),
+                                    ),
+                                undefined,
+                                { info: true, error: true },
                             );
                             keyCounterStorage.updateLeaf(
                                 { level1Index: Field(committeeId) },
@@ -357,42 +378,58 @@ export class DkgContractsService implements ContractServiceInterface {
                             ] += 1;
                             break;
                         case DkgActionEnum.FINALIZE_ROUND_1:
-                            proof = await UpdateKey.update(
-                                {
-                                    previousActionState: Field(
-                                        notActiveAction.previousActionState,
+                            proof = await Utils.prove(
+                                UpdateKey.name,
+                                'update',
+                                async () =>
+                                    UpdateKey.update(
+                                        {
+                                            previousActionState: Field(
+                                                notActiveAction.previousActionState,
+                                            ),
+                                            action: dkgAction,
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        },
+                                        proof,
+                                        keyStatusStorage.getLevel1Witness(
+                                            keyStatusStorage.calculateLevel1Index(
+                                                {
+                                                    committeeId:
+                                                        Field(committeeId),
+                                                    keyId: Field(
+                                                        notActiveAction
+                                                            .actionData.keyId,
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        keyStorage.getLevel1Witness(
+                                            keyStorage.calculateLevel1Index({
+                                                committeeId: Field(committeeId),
+                                                keyId: Field(
+                                                    notActiveAction.actionData
+                                                        .keyId,
+                                                ),
+                                            }),
+                                        ),
+                                        rollupStorage.getWitness(
+                                            rollupStorage.calculateLevel1Index({
+                                                zkAppIndex: Field(
+                                                    ZkAppIndex.DKG,
+                                                ),
+                                                actionId: Field(
+                                                    notActiveAction.actionId,
+                                                ),
+                                            }),
+                                        ),
+                                        processStorage.getWitness(
+                                            Field(notActiveAction.actionId),
+                                        ),
                                     ),
-                                    action: dkgAction,
-                                    actionId: Field(notActiveAction.actionId),
-                                },
-                                proof,
-                                keyStatusStorage.getLevel1Witness(
-                                    keyStatusStorage.calculateLevel1Index({
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(
-                                            notActiveAction.actionData.keyId,
-                                        ),
-                                    }),
-                                ),
-                                keyStorage.getLevel1Witness(
-                                    keyStorage.calculateLevel1Index({
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(
-                                            notActiveAction.actionData.keyId,
-                                        ),
-                                    }),
-                                ),
-                                rollupStorage.getWitness(
-                                    rollupStorage.calculateLevel1Index({
-                                        zkAppIndex: Field(ZkAppIndex.DKG),
-                                        actionId: Field(
-                                            notActiveAction.actionId,
-                                        ),
-                                    }),
-                                ),
-                                processStorage.getWitness(
-                                    Field(notActiveAction.actionId),
-                                ),
+                                undefined,
+                                { info: true, error: true },
                             );
                             keyStatusStorage.updateLeaf(
                                 {
@@ -426,42 +463,58 @@ export class DkgContractsService implements ContractServiceInterface {
                             );
                             break;
                         case DkgActionEnum.FINALIZE_ROUND_2:
-                            proof = await UpdateKey.update(
-                                {
-                                    previousActionState: Field(
-                                        notActiveAction.previousActionState,
+                            proof = await Utils.prove(
+                                UpdateKey.name,
+                                'update',
+                                async () =>
+                                    UpdateKey.update(
+                                        {
+                                            previousActionState: Field(
+                                                notActiveAction.previousActionState,
+                                            ),
+                                            action: dkgAction,
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        },
+                                        proof,
+                                        keyStatusStorage.getLevel1Witness(
+                                            keyStatusStorage.calculateLevel1Index(
+                                                {
+                                                    committeeId:
+                                                        Field(committeeId),
+                                                    keyId: Field(
+                                                        notActiveAction
+                                                            .actionData.keyId,
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        keyStorage.getLevel1Witness(
+                                            keyStorage.calculateLevel1Index({
+                                                committeeId: Field(committeeId),
+                                                keyId: Field(
+                                                    notActiveAction.actionData
+                                                        .keyId,
+                                                ),
+                                            }),
+                                        ),
+                                        rollupStorage.getWitness(
+                                            rollupStorage.calculateLevel1Index({
+                                                zkAppIndex: Field(
+                                                    ZkAppIndex.DKG,
+                                                ),
+                                                actionId: Field(
+                                                    notActiveAction.actionId,
+                                                ),
+                                            }),
+                                        ),
+                                        processStorage.getWitness(
+                                            Field(notActiveAction.actionId),
+                                        ),
                                     ),
-                                    action: dkgAction,
-                                    actionId: Field(notActiveAction.actionId),
-                                },
-                                proof,
-                                keyStatusStorage.getLevel1Witness(
-                                    keyStatusStorage.calculateLevel1Index({
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(
-                                            notActiveAction.actionData.keyId,
-                                        ),
-                                    }),
-                                ),
-                                keyStorage.getLevel1Witness(
-                                    keyStorage.calculateLevel1Index({
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(
-                                            notActiveAction.actionData.keyId,
-                                        ),
-                                    }),
-                                ),
-                                rollupStorage.getWitness(
-                                    rollupStorage.calculateLevel1Index({
-                                        zkAppIndex: Field(ZkAppIndex.DKG),
-                                        actionId: Field(
-                                            notActiveAction.actionId,
-                                        ),
-                                    }),
-                                ),
-                                processStorage.getWitness(
-                                    Field(notActiveAction.actionId),
-                                ),
+                                undefined,
+                                { info: true, error: true },
                             );
                             keyStatusStorage.updateLeaf(
                                 {
@@ -597,19 +650,28 @@ export class DkgContractsService implements ContractServiceInterface {
                     const rollupStorage = _.cloneDeep(
                         this.rollupContractService.rollupStorage,
                     );
-                    let proof = await FinalizeRound1.init(
-                        FinalizeRound1Input.empty(),
-                        rollupStorage.root,
-                        Field(committee.threshold),
-                        Field(committee.numberOfMembers),
-                        state.contributionRoot,
-                        state.publicKeyRoot,
-                        state.processRoot,
-                        Field(key.keyIndex),
-                        contributionStorage.getLevel1Witness(
-                            Field(key.keyIndex),
-                        ),
-                        publicKeyStorage.getLevel1Witness(Field(key.keyIndex)),
+                    let proof = await Utils.prove(
+                        FinalizeRound1.name,
+                        'init',
+                        async () =>
+                            FinalizeRound1.init(
+                                FinalizeRound1Input.empty(),
+                                rollupStorage.root,
+                                Field(committee.threshold),
+                                Field(committee.numberOfMembers),
+                                state.contributionRoot,
+                                state.publicKeyRoot,
+                                state.processRoot,
+                                Field(key.keyIndex),
+                                contributionStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
+                                ),
+                                publicKeyStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
                     );
                     contributionStorage.updateInternal(
                         Field(key.keyIndex),
@@ -627,32 +689,50 @@ export class DkgContractsService implements ContractServiceInterface {
                                     notActiveAction.actions,
                                 ),
                             );
-                        proof = await FinalizeRound1.contribute(
-                            {
-                                previousActionState: Field(
-                                    notActiveAction.previousActionState,
+
+                        proof = await Utils.prove(
+                            FinalizeRound1.name,
+                            'contribute',
+                            async () =>
+                                FinalizeRound1.contribute(
+                                    {
+                                        previousActionState: Field(
+                                            notActiveAction.previousActionState,
+                                        ),
+                                        action: round1Action,
+                                        actionId: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    },
+                                    proof,
+                                    contributionStorage.getWitness(
+                                        Field(key.keyIndex),
+                                        Field(
+                                            notActiveAction.actionData.memberId,
+                                        ),
+                                    ),
+                                    publicKeyStorage.getWitness(
+                                        Field(key.keyIndex),
+                                        Field(
+                                            notActiveAction.actionData.memberId,
+                                        ),
+                                    ),
+                                    rollupStorage.getWitness(
+                                        rollupStorage.calculateLevel1Index({
+                                            zkAppIndex: Field(
+                                                ZkAppIndex.ROUND1,
+                                            ),
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        }),
+                                    ),
+                                    processStorage.getWitness(
+                                        Field(notActiveAction.actionId),
+                                    ),
                                 ),
-                                action: round1Action,
-                                actionId: Field(notActiveAction.actionId),
-                            },
-                            proof,
-                            contributionStorage.getWitness(
-                                Field(key.keyIndex),
-                                Field(notActiveAction.actionData.memberId),
-                            ),
-                            publicKeyStorage.getWitness(
-                                Field(key.keyIndex),
-                                Field(notActiveAction.actionData.memberId),
-                            ),
-                            rollupStorage.getWitness(
-                                rollupStorage.calculateLevel1Index({
-                                    zkAppIndex: Field(ZkAppIndex.ROUND1),
-                                    actionId: Field(notActiveAction.actionId),
-                                }),
-                            ),
-                            processStorage.getWitness(
-                                Field(notActiveAction.actionId),
-                            ),
+                            undefined,
+                            { info: true, error: true },
                         );
 
                         const contribution: Group[] =
@@ -818,22 +898,30 @@ export class DkgContractsService implements ContractServiceInterface {
                     const rollupStorage = _.cloneDeep(
                         this.rollupContractService.rollupStorage,
                     );
-                    let proof = await FinalizeRound2.init(
-                        FinalizeRound2Input.empty(),
-                        rollupStorage.root,
-                        Field(committee.threshold),
-                        Field(committee.numberOfMembers),
-                        state.contributionRoot,
-                        state.processRoot,
-                        Field(key.keyIndex),
-                        new EncryptionHashArray(
-                            [...Array(committee.numberOfMembers)].map(() =>
-                                Field(0),
+
+                    let proof = await Utils.prove(
+                        FinalizeRound2.name,
+                        'init',
+                        async () =>
+                            FinalizeRound2.init(
+                                FinalizeRound2Input.empty(),
+                                rollupStorage.root,
+                                Field(committee.threshold),
+                                Field(committee.numberOfMembers),
+                                state.contributionRoot,
+                                state.processRoot,
+                                Field(key.keyIndex),
+                                new EncryptionHashArray(
+                                    [...Array(committee.numberOfMembers)].map(
+                                        () => Field(0),
+                                    ),
+                                ),
+                                contributionStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
+                                ),
                             ),
-                        ),
-                        contributionStorage.getLevel1Witness(
-                            Field(key.keyIndex),
-                        ),
+                        undefined,
+                        { info: true, error: true },
                     );
                     const contributions: Libs.Committee.Round2Contribution[] =
                         [];
@@ -864,28 +952,43 @@ export class DkgContractsService implements ContractServiceInterface {
                                     notActiveAction.actions,
                                 ),
                             );
-                        proof = await FinalizeRound2.contribute(
-                            {
-                                previousActionState: Field(
-                                    notActiveAction.previousActionState,
+                        proof = await Utils.prove(
+                            FinalizeRound2.name,
+                            'init',
+                            async () =>
+                                FinalizeRound2.contribute(
+                                    {
+                                        previousActionState: Field(
+                                            notActiveAction.previousActionState,
+                                        ),
+                                        action: round2Action,
+                                        actionId: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    },
+                                    proof,
+                                    contributionStorage.getWitness(
+                                        Field(key.keyIndex),
+                                        Field(
+                                            notActiveAction.actionData.memberId,
+                                        ),
+                                    ),
+                                    rollupStorage.getWitness(
+                                        rollupStorage.calculateLevel1Index({
+                                            zkAppIndex: Field(
+                                                ZkAppIndex.ROUND2,
+                                            ),
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        }),
+                                    ),
+                                    processStorage.getWitness(
+                                        Field(notActiveAction.actionId),
+                                    ),
                                 ),
-                                action: round2Action,
-                                actionId: Field(notActiveAction.actionId),
-                            },
-                            proof,
-                            contributionStorage.getWitness(
-                                Field(key.keyIndex),
-                                Field(notActiveAction.actionData.memberId),
-                            ),
-                            rollupStorage.getWitness(
-                                rollupStorage.calculateLevel1Index({
-                                    zkAppIndex: Field(ZkAppIndex.ROUND2),
-                                    actionId: Field(notActiveAction.actionId),
-                                }),
-                            ),
-                            processStorage.getWitness(
-                                Field(notActiveAction.actionId),
-                            ),
+                            undefined,
+                            { info: true, error: true },
                         );
                         contributionStorage.updateRawLeaf(
                             {

@@ -248,15 +248,22 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             );
             if (notActiveActions.length > 0) {
                 const state = await this.fetchDkgRequestState();
-                let proof = await UpdateRequest.init(
-                    ZkApp.Request.RequestAction.empty(),
-                    state.requestCounter,
-                    state.keyIndexRoot,
-                    state.taskRoot,
-                    state.accumulationRoot,
-                    state.expirationRoot,
-                    state.resultRoot,
-                    state.actionState,
+                let proof = await Utils.prove(
+                    UpdateRequest.name,
+                    'init',
+                    async () =>
+                        UpdateRequest.init(
+                            ZkApp.Request.RequestAction.empty(),
+                            state.requestCounter,
+                            state.keyIndexRoot,
+                            state.taskRoot,
+                            state.accumulationRoot,
+                            state.expirationRoot,
+                            state.resultRoot,
+                            state.actionState,
+                        ),
+                    undefined,
+                    { info: true, error: true },
                 );
                 const keyIndexStorage = _.cloneDeep(
                     this._dkgRequest.keyIndexStorage,
@@ -279,17 +286,30 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         notActiveAction.actionData.requestId ==
                         Number(Field(-1).toBigInt())
                     ) {
-                        proof = await UpdateRequest.initialize(
-                            ZkApp.Request.RequestAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notActiveAction.actions,
+                        proof = await Utils.prove(
+                            UpdateRequest.name,
+                            'initialize',
+                            async () =>
+                                UpdateRequest.initialize(
+                                    ZkApp.Request.RequestAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notActiveAction.actions,
+                                        ),
+                                    ),
+                                    proof,
+                                    keyIndexStorage.getLevel1Witness(
+                                        nextRequestId,
+                                    ),
+                                    taskStorage.getLevel1Witness(nextRequestId),
+                                    accumulationStorage.getLevel1Witness(
+                                        nextRequestId,
+                                    ),
+                                    expirationStorage.getLevel1Witness(
+                                        nextRequestId,
+                                    ),
                                 ),
-                            ),
-                            proof,
-                            keyIndexStorage.getLevel1Witness(nextRequestId),
-                            taskStorage.getLevel1Witness(nextRequestId),
-                            accumulationStorage.getLevel1Witness(nextRequestId),
-                            expirationStorage.getLevel1Witness(nextRequestId),
+                            undefined,
+                            { info: true, error: true },
                         );
                         keyIndexStorage.updateLeaf(
                             { level1Index: nextRequestId },
@@ -313,16 +333,26 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         );
                         nextRequestId = nextRequestId.add(1);
                     } else {
-                        proof = await UpdateRequest.resolve(
-                            ZkApp.Request.RequestAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notActiveAction.actions,
+                        proof = await Utils.prove(
+                            UpdateRequest.name,
+                            'resolve',
+                            async () =>
+                                UpdateRequest.resolve(
+                                    ZkApp.Request.RequestAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notActiveAction.actions,
+                                        ),
+                                    ),
+                                    proof,
+                                    resultStorage.getLevel1Witness(
+                                        Field(
+                                            notActiveAction.actionData
+                                                .requestId,
+                                        ),
+                                    ),
                                 ),
-                            ),
-                            proof,
-                            resultStorage.getLevel1Witness(
-                                Field(notActiveAction.actionData.requestId),
-                            ),
+                            undefined,
+                            { info: true, error: true },
                         );
                         resultStorage.updateLeaf(
                             {
@@ -421,17 +451,29 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             .map((e) => e.toBits(6))
                             .flat(),
                     );
-                    let proof = await FinalizeResponse.init(
-                        FinalizeResponseInput.empty(),
-                        Field(committee.threshold),
-                        Field(committee.numberOfMembers),
-                        new UInt8(Constants.ENCRYPTION_LIMITS.FULL_DIMENSION),
-                        level1Index,
-                        indexList,
-                        state.contributionRoot,
-                        state.processRoot,
-                        rollupStorage.root,
-                        contributionStorage.getLevel1Witness(level1Index),
+
+                    let proof = await Utils.prove(
+                        FinalizeResponse.name,
+                        'init',
+                        async () =>
+                            FinalizeResponse.init(
+                                FinalizeResponseInput.empty(),
+                                Field(committee.threshold),
+                                Field(committee.numberOfMembers),
+                                new UInt8(
+                                    Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
+                                ),
+                                level1Index,
+                                indexList,
+                                state.contributionRoot,
+                                state.processRoot,
+                                rollupStorage.root,
+                                contributionStorage.getLevel1Witness(
+                                    level1Index,
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
                     );
 
                     const memberIds = [];
@@ -476,28 +518,42 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                     notActiveAction.actions,
                                 ),
                             );
-                        proof = await FinalizeResponse.contribute(
-                            {
-                                previousActionState: Field(
-                                    notActiveAction.previousActionState,
+
+                        proof = await Utils.prove(
+                            FinalizeResponse.name,
+                            'contribute',
+                            async () =>
+                                FinalizeResponse.contribute(
+                                    {
+                                        previousActionState: Field(
+                                            notActiveAction.previousActionState,
+                                        ),
+                                        action: responseAction,
+                                        actionId: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    },
+                                    proof,
+                                    contributionStorage.getWitness(
+                                        level1Index,
+                                        level2Index,
+                                    ),
+                                    rollupStorage.getWitness(
+                                        rollupStorage.calculateLevel1Index({
+                                            zkAppIndex: Field(
+                                                ZkAppIndex.RESPONSE,
+                                            ),
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        }),
+                                    ),
+                                    processStorage.getWitness(
+                                        Field(notActiveAction.actionId),
+                                    ),
                                 ),
-                                action: responseAction,
-                                actionId: Field(notActiveAction.actionId),
-                            },
-                            proof,
-                            contributionStorage.getWitness(
-                                level1Index,
-                                level2Index,
-                            ),
-                            rollupStorage.getWitness(
-                                rollupStorage.calculateLevel1Index({
-                                    zkAppIndex: Field(ZkAppIndex.RESPONSE),
-                                    actionId: Field(notActiveAction.actionId),
-                                }),
-                            ),
-                            processStorage.getWitness(
-                                Field(notActiveAction.actionId),
-                            ),
+                            undefined,
+                            { info: true, error: true },
                         );
 
                         contributionStorage.updateRawLeaf(
@@ -547,20 +603,32 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                         notActiveAction.actions,
                                     ),
                                 );
-                            proof = await FinalizeResponse.compute(
-                                {
-                                    previousActionState: Field(
-                                        notActiveAction.previousActionState,
+
+                            proof = await Utils.prove(
+                                FinalizeResponse.name,
+                                'compute',
+                                async () =>
+                                    FinalizeResponse.compute(
+                                        {
+                                            previousActionState: Field(
+                                                notActiveAction.previousActionState,
+                                            ),
+                                            action: responseAction,
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        },
+                                        proof,
+                                        D[k][j],
+                                        groupVectorStorages[k].getWitness(
+                                            Field(j),
+                                        ),
+                                        processStorage.getWitness(
+                                            Field(notActiveAction.actionId),
+                                        ),
                                     ),
-                                    action: responseAction,
-                                    actionId: Field(notActiveAction.actionId),
-                                },
-                                proof,
-                                D[k][j],
-                                groupVectorStorages[k].getWitness(Field(j)),
-                                processStorage.getWitness(
-                                    Field(notActiveAction.actionId),
-                                ),
+                                undefined,
+                                { info: true, error: true },
                             );
                             if (
                                 processStorageMapping[
@@ -593,10 +661,18 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 }),
                             );
                         }
-                        proof = await FinalizeResponse.finalize(
-                            FinalizeResponseInput.empty(),
-                            proof,
-                            groupVectorStorage.getWitness(Field(j)),
+
+                        proof = await Utils.prove(
+                            FinalizeResponse.name,
+                            'finalize',
+                            async () =>
+                                FinalizeResponse.finalize(
+                                    FinalizeResponseInput.empty(),
+                                    proof,
+                                    groupVectorStorage.getWitness(Field(j)),
+                                ),
+                            undefined,
+                            { info: true, error: true },
                         );
                         groupVectorStorage.updateRawLeaf(
                             { level1Index: Field(j) },
@@ -727,15 +803,23 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             rawResult[j],
                         );
                     }
-                    let proof = await ComputeResult.init(
-                        new ComputeResultInput({
-                            M: Group.zero,
-                            D: Group.zero,
-                            result: Scalar.from(0),
-                        }),
-                        accumulationStorageM.root,
-                        groupVectorStorage.root,
-                        rawResultStorage.root,
+
+                    let proof = await Utils.prove(
+                        ComputeResult.name,
+                        'init',
+                        async () =>
+                            ComputeResult.init(
+                                new ComputeResultInput({
+                                    M: Group.zero,
+                                    D: Group.zero,
+                                    result: Scalar.from(0),
+                                }),
+                                accumulationStorageM.root,
+                                groupVectorStorage.root,
+                                rawResultStorage.root,
+                            ),
+                        undefined,
+                        { info: true, error: true },
                     );
                     for (
                         let j = 0;
@@ -745,16 +829,24 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         const totalMi = totalM[j];
                         const totalDi = totalD[j];
                         const result = rawResult[j];
-                        proof = await ComputeResult.compute(
-                            {
-                                M: totalMi,
-                                D: totalDi,
-                                result,
-                            },
-                            proof,
-                            accumulationStorageM.getWitness(Field(j)),
-                            groupVectorStorage.getWitness(Field(j)),
-                            rawResultStorage.getWitness(Field(j)),
+
+                        proof = await Utils.prove(
+                            ComputeResult.name,
+                            'compute',
+                            async () =>
+                                ComputeResult.compute(
+                                    {
+                                        M: totalMi,
+                                        D: totalDi,
+                                        result,
+                                    },
+                                    proof,
+                                    accumulationStorageM.getWitness(Field(j)),
+                                    groupVectorStorage.getWitness(Field(j)),
+                                    rawResultStorage.getWitness(Field(j)),
+                                ),
+                            undefined,
+                            { info: true, error: true },
                         );
                     }
                     const requestContract = new RequestContract(
