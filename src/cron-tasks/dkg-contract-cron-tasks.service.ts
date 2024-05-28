@@ -14,7 +14,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
 
     async onModuleInit() {
         this.logger.log('Register compileContracts task at ' + process.pid);
-        await this.contractServices.client.flushall();
+        await this.contractServices.client.flushdb();
         this.contractServices.add('compileContracts', {
             date: Date.now(),
         });
