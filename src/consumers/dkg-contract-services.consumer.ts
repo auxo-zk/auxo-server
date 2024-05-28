@@ -78,7 +78,6 @@ export class DkgContractServicesConsumer {
                 this.dkgUsageContractsService.update(),
                 this.requesterContractsService.update(),
             ]).then(async () => {
-                await this.dkgUsageContractsService.rollupRequest();
                 await this.requesterContractsService.rollup();
                 const result = [];
                 result.push(await this.committeeContractService.rollup());
@@ -88,6 +87,12 @@ export class DkgContractServicesConsumer {
                     await this.dkgContractsService.rollupRound2();
                     await this.dkgContractsService.rollupRound1();
                     await this.dkgContractsService.rollupDkg();
+                }
+                if (
+                    (await this.dkgUsageContractsService.rollupRequest()) ==
+                    false
+                ) {
+                    await this.dkgUsageContractsService.computeResult();
                 }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
@@ -108,7 +113,6 @@ export class DkgContractServicesConsumer {
                 this.dkgUsageContractsService.update(),
                 this.requesterContractsService.update(),
             ]).then(async () => {
-                await this.dkgUsageContractsService.rollupRequest();
                 await this.requesterContractsService.rollup();
                 const result = [];
                 result.push(
@@ -121,6 +125,12 @@ export class DkgContractServicesConsumer {
                 if (!result.includes(true)) {
                     await this.committeeContractService.rollup();
                     await this.rollupContractService.rollup();
+                }
+                if (
+                    (await this.dkgUsageContractsService.computeResult()) ==
+                    false
+                ) {
+                    await this.dkgUsageContractsService.rollupRequest();
                 }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');

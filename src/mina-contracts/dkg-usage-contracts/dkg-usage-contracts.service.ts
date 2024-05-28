@@ -198,6 +198,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             // Provable.log(this._dkgResponse.responseStorage.root);
             // Provable.log(this._dkgResponse.processStorage.root);
             // await this.compile();
+            // await this.rollupContractService.compile();
+            // await this.rollupResponse();
             // await this.computeResult();
         } catch (err) {
             console.log(err);
@@ -769,7 +771,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 proof,
                                 new UInt64(request.expirationTimestamp),
                                 accumulationStorageR.root,
-                                this._dkgRequest.resultStorage.getWitness(
+                                this._dkgRequest.expirationStorage.getWitness(
                                     Field(request.requestId),
                                 ),
                                 this._dkgRequest.accumulationStorage.getWitness(
@@ -778,7 +780,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 this._dkgResponse.responseStorage.getWitness(
                                     Field(request.requestId),
                                 ),
-                                this._dkgRequest.expirationStorage.getWitness(
+                                this._dkgRequest.resultStorage.getWitness(
                                     Field(request.requestId),
                                 ),
                                 this._dkgRequest.zkAppStorage.getZkAppRef(

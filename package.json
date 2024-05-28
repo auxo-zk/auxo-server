@@ -25,7 +25,7 @@
     },
     "dependencies": {
         "@auxo-dev/auxo-libs": "0.5.7",
-        "@auxo-dev/dkg": "^0.4.9",
+        "@auxo-dev/dkg": "^0.4.10",
         "@auxo-dev/platform": "0.2.6",
         "@aws-sdk/client-s3": "^3.485.0",
         "@nestjs/axios": "^3.0.1",

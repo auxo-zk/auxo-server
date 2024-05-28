@@ -14,6 +14,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
 
     async onModuleInit() {
         this.logger.log('Register compileContracts task at ' + process.pid);
+        await this.contractServices.client.flushall();
         this.contractServices.add('compileContracts', {
             date: Date.now(),
         });
@@ -32,7 +33,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
     @Cron('*/6 * * * *')
     async handleRollupContractsFirstOrder() {
         const jobCount = await this.contractServices.getJobCounts();
-        if (jobCount.active == 0) {
+        if (jobCount.active == 0 && jobCount.waiting == 0) {
             this.logger.log(
                 'Register rollupContracts for the first order task at ' +
                     process.pid,
@@ -46,7 +47,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
     @Cron('3,9,15,21,27,33,39,45,51,57 * * * *')
     async handleRollupContractsSecondOrder() {
         const jobCount = await this.contractServices.getJobCounts();
-        if (jobCount.active == 0) {
+        if (jobCount.active == 0 && jobCount.waiting == 0) {
             this.logger.log(
                 'Register rollupContracts for the second order task at ' +
                     process.pid,
