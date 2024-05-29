@@ -178,7 +178,12 @@ export class RequesterContractsService implements ContractServiceInterface {
 
     async rollup() {
         try {
-            this.requesterAddresses.map(async (requesterAddress) => {
+            for (
+                let index = 0;
+                index < this.requesterAddresses.length;
+                index++
+            ) {
+                const requesterAddress = this.requesterAddresses[index];
                 const notActiveActions = await this.requesterActionModel.find(
                     { active: false, requester: requesterAddress },
                     {},
@@ -238,7 +243,6 @@ export class RequesterContractsService implements ContractServiceInterface {
                     );
                     for (let i = 0; i < notActiveActions.length; i++) {
                         const notActiveAction = notActiveActions[i];
-                        console.log('here');
                         if (
                             notActiveAction.actionData.taskId ==
                             Number(UInt32.MAXINT().toBigint())
@@ -326,12 +330,26 @@ export class RequesterContractsService implements ContractServiceInterface {
                                     oldSumR.push(
                                         groupVectorStorageMapping[
                                             notActiveAction.actionData.taskId
-                                        ].R.leafs[j].raw,
+                                        ].R.leafs[dimensionIndex.toString()]
+                                            ? groupVectorStorageMapping[
+                                                  notActiveAction.actionData
+                                                      .taskId
+                                              ].R.leafs[
+                                                  dimensionIndex.toString()
+                                              ].raw
+                                            : Group.zero,
                                     );
                                     oldSumM.push(
                                         groupVectorStorageMapping[
                                             notActiveAction.actionData.taskId
-                                        ].M.leafs[j].raw,
+                                        ].M.leafs[dimensionIndex.toString()]
+                                            ? groupVectorStorageMapping[
+                                                  notActiveAction.actionData
+                                                      .taskId
+                                              ].M.leafs[
+                                                  dimensionIndex.toString()
+                                              ].raw
+                                            : Group.zero,
                                     );
                                 }
                             }
@@ -499,10 +517,8 @@ export class RequesterContractsService implements ContractServiceInterface {
                     );
                     await Utils.proveAndSendTx(
                         RequesterContract.name,
-                        'rollup',
-                        async () => {
-                            await requesterContract.updateTasks(proof);
-                        },
+                        'updateTasks',
+                        async () => requesterContract.updateTasks(proof),
                         {
                             sender: {
                                 privateKey: feePayerPrivateKey,
@@ -521,7 +537,7 @@ export class RequesterContractsService implements ContractServiceInterface {
                     return true;
                 }
                 return false;
-            });
+            }
         } catch (err) {
             console.log(err);
             return false;

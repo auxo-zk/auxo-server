@@ -572,8 +572,8 @@ export class DkgContractsService implements ContractServiceInterface {
                 await Utils.proveAndSendTx(
                     DkgContract.name,
                     'update',
-                    async () => {
-                        await dkgContract.update(
+                    async () =>
+                        dkgContract.update(
                             proof,
                             this._dkg.zkAppStorage.getZkAppRef(
                                 ZkAppIndex.ROLLUP,
@@ -581,8 +581,7 @@ export class DkgContractsService implements ContractServiceInterface {
                                     process.env.ROLLUP_ADDRESS,
                                 ),
                             ),
-                        );
-                    },
+                        ),
                     {
                         sender: {
                             privateKey: feePayerPrivateKey,
@@ -797,8 +796,8 @@ export class DkgContractsService implements ContractServiceInterface {
                     await Utils.proveAndSendTx(
                         Round1Contract.name,
                         'finalize',
-                        async () => {
-                            await round1Contract.finalize(
+                        async () =>
+                            round1Contract.finalize(
                                 proof,
                                 this.committeeContractService.settingStorage.getLevel1Witness(
                                     Field(key.committeeId),
@@ -830,8 +829,7 @@ export class DkgContractsService implements ContractServiceInterface {
                                         process.env.ROUND_1_ADDRESS,
                                     ),
                                 ),
-                            );
-                        },
+                            ),
                         {
                             sender: {
                                 privateKey: feePayerPrivateKey,
@@ -1037,8 +1035,8 @@ export class DkgContractsService implements ContractServiceInterface {
                     await Utils.proveAndSendTx(
                         Round2Contract.name,
                         'finalize',
-                        async () => {
-                            await round2Contract.finalize(
+                        async () =>
+                            round2Contract.finalize(
                                 proof,
                                 encryptionStorage.getLevel1Witness(
                                     Field(key.keyIndex),
@@ -1073,8 +1071,7 @@ export class DkgContractsService implements ContractServiceInterface {
                                         process.env.ROUND_2_ADDRESS,
                                     ),
                                 ),
-                            );
-                        },
+                            ),
                         {
                             sender: {
                                 privateKey: feePayerPrivateKey,

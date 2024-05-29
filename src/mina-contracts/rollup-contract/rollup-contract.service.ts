@@ -262,9 +262,7 @@ export class RollupContractService implements ContractServiceInterface {
                 await Utils.proveAndSendTx(
                     RollupContract.name,
                     'rollup',
-                    async () => {
-                        await rollupContract.rollup(proof);
-                    },
+                    async () => rollupContract.rollup(proof),
                     {
                         sender: {
                             privateKey: feePayerPrivateKey,

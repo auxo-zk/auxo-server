@@ -373,9 +373,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 await Utils.proveAndSendTx(
                     RequestContract.name,
                     'update',
-                    async () => {
-                        await requestContract.update(proof);
-                    },
+                    async () => requestContract.update(proof),
                     {
                         sender: {
                             privateKey: feePayerPrivateKey,
@@ -692,8 +690,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     await Utils.proveAndSendTx(
                         ResponseContract.name,
                         'finalize',
-                        async () => {
-                            await responseContract.finalize(
+                        async () =>
+                            responseContract.finalize(
                                 proof,
                                 this.committeeContractService.settingStorage.getLevel1Witness(
                                     Field(committee.committeeId),
@@ -722,8 +720,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                         process.env.ROLLUP_ADDRESS,
                                     ),
                                 ),
-                            );
-                        },
+                            ),
                         {
                             sender: {
                                 privateKey: feePayerPrivateKey,
@@ -858,8 +855,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     await Utils.proveAndSendTx(
                         RequestContract.name,
                         'update',
-                        async () => {
-                            await requestContract.resolve(
+                        async () =>
+                            requestContract.resolve(
                                 proof,
                                 new UInt64(request.expirationTimestamp),
                                 accumulationStorageR.root,
@@ -881,8 +878,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                         process.env.RESPONSE_ADDRESS,
                                     ),
                                 ),
-                            );
-                        },
+                            ),
                         {
                             sender: {
                                 privateKey: feePayerPrivateKey,

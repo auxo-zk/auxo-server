@@ -206,9 +206,7 @@ export class CommitteeContractService implements ContractServiceInterface {
                 await Utils.proveAndSendTx(
                     CommitteeContract.name,
                     'update',
-                    async () => {
-                        await committeeContract.update(proof);
-                    },
+                    async () => committeeContract.update(proof),
                     {
                         sender: {
                             privateKey: feePayerPrivateKey,
