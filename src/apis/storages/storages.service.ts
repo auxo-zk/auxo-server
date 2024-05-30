@@ -900,6 +900,12 @@ export class StoragesService {
         return result;
     }
 
+    getProjectMemberStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.projectContractService.memberStorage.leafs;
+    }
+
     getProjectIpfsHashStorageLevel1(): MerkleLeaf[] {
         const leafCount =
             this.projectContractService.ipfsHashStorage.level1.leafCount;
@@ -912,6 +918,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getProjectIpfsHashStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.projectContractService.ipfsHashStorage.leafs;
     }
 
     getProjectTreasuryAddressStorageLevel1(): MerkleLeaf[] {
@@ -928,6 +940,12 @@ export class StoragesService {
         return result;
     }
 
+    getProjectTreasuryAddressStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.projectContractService.treasuryAddressStorage.leafs;
+    }
+
     getCampaignTimelineStorageLevel1(): MerkleLeaf[] {
         const leafCount =
             this.campaignContractService.timelineStorage.level1.leafCount;
@@ -940,6 +958,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getCampaignTimelineStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.campaignContractService.timelineStorage.leafs;
     }
 
     getCampaignIpfsHashStorageLevel1(): MerkleLeaf[] {
@@ -970,6 +994,12 @@ export class StoragesService {
         return result;
     }
 
+    getCampaignKeyIndexStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.campaignContractService.keyIndexStorage.leafs;
+    }
+
     getCampaignZkAppStorage(): MerkleLeaf[] {
         const leafCount =
             this.campaignContractService.zkAppStorage.addressMap.leafCount;
@@ -982,6 +1012,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getCampaignZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.campaignContractService.zkAppStorage.addresses;
     }
 
     getParticipationProjectIndexStorageLevel1(): MerkleLeaf[] {
@@ -999,6 +1035,12 @@ export class StoragesService {
         return result;
     }
 
+    getParticipationProjectIndexStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.participationContractService.projectIndexStorage.leafs;
+    }
+
     getParticipationProjectCounterStorageLevel1(): MerkleLeaf[] {
         const leafCount =
             this.participationContractService.projectCounterStorage.level1
@@ -1012,6 +1054,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getParticipationProjectCounterStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.participationContractService.projectCounterStorage.leafs;
     }
 
     getParticipationIpfsHashStorageLevel1(): MerkleLeaf[] {
@@ -1028,6 +1076,12 @@ export class StoragesService {
         return result;
     }
 
+    getParticipationIpfsHashStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.participationContractService.ipfsHashStorage.leafs;
+    }
+
     getParticipationZkAppStorage(): MerkleLeaf[] {
         const leafCount =
             this.participationContractService.zkAppStorage.addressMap.leafCount;
@@ -1040,6 +1094,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getParticipationZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.participationContractService.zkAppStorage.addresses;
     }
 
     getFundingInformationStorageLevel1(): MerkleLeaf[] {
@@ -1057,6 +1117,12 @@ export class StoragesService {
         return result;
     }
 
+    getFundingInformationStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.fundingContractService.fundingInformationStorage.leafs;
+    }
+
     getFundingZkAppStorage(): MerkleLeaf[] {
         const leafCount =
             this.fundingContractService.zkAppStorage.addressMap.leafCount;
@@ -1069,6 +1135,12 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getFundingZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.fundingContractService.zkAppStorage.addresses;
     }
 
     getTreasuryManagerCampaignStateStorageLevel1(): MerkleLeaf[] {
@@ -1086,6 +1158,12 @@ export class StoragesService {
         return result;
     }
 
+    getTreasuryManagerCampaignStateStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.treasuryManagerContractService.campaignStateStorage.leafs;
+    }
+
     getTreasuryManagerClaimedAmountStorageLevel1(): MerkleLeaf[] {
         const leafCount =
             this.treasuryManagerContractService.claimedAmountStorage.level1
@@ -1101,6 +1179,12 @@ export class StoragesService {
         return result;
     }
 
+    getTreasuryManagerClaimedAmountStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.treasuryManagerContractService.claimedAmountStorage.leafs;
+    }
+
     getTreasuryManagerZkAppStorage(): MerkleLeaf[] {
         const leafCount =
             this.treasuryManagerContractService.zkAppStorage.addressMap
@@ -1114,5 +1198,11 @@ export class StoragesService {
             );
         }
         return result;
+    }
+
+    getTreasuryManagerZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.treasuryManagerContractService.zkAppStorage.addresses;
     }
 }
