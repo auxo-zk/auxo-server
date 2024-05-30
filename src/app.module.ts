@@ -32,9 +32,6 @@ import {
     Round2ActionSchema,
 } from 'src/schemas/actions/round-2-action.schema';
 import { Key, KeySchema } from 'src/schemas/key.schema';
-import { Dkg, DkgSchema } from 'src/schemas/dkg.schema';
-import { Round1, Round1Schema } from 'src/schemas/round-1.schema';
-import { Round2, Round2Schema } from 'src/schemas/round-2.schema';
 import {
     RequestAction,
     RequestActionSchema,
@@ -44,26 +41,16 @@ import {
     ResponseActionSchema,
 } from 'src/schemas/actions/response-action.schema';
 import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
-import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
-import {
-    RawDkgRequest,
-    RawDkgRequestSchema,
-} from 'src/schemas/raw-request.schema';
 import {
     ProjectAction,
     ProjectActionSchema,
 } from 'src/schemas/actions/project-action.schema';
-import { RawProject, RawProjectSchema } from 'src/schemas/raw-project.schema';
 import { Project, ProjectSchema } from 'src/schemas/project.schema';
 import {
     CampaignAction,
     CampaignActionSchema,
 } from 'src/schemas/actions/campaign-action.schema';
 import { Campaign, CampaignSchema } from 'src/schemas/campaign.schema';
-import {
-    RawCampaign,
-    RawCampaignSchema,
-} from 'src/schemas/raw-campaign.schema';
 import {
     ParticipationAction,
     ParticipationActionSchema,
@@ -82,11 +69,40 @@ import {
     FundingResultSchema,
 } from 'src/schemas/funding-result.schema';
 import {
-    TreasuryAction,
-    TreasuryActionSchema,
-} from 'src/schemas/actions/treasury-action.schema';
-import { Treasury, TreasurySchema } from 'src/schemas/treasury.schema';
+    TreasuryManagerAction,
+    TreasuryManagerActionSchema,
+} from 'src/schemas/actions/treasury-manager-action.schema';
 import { MainContractServicesConsumer } from './consumers/main-contract-services.consumer';
+import { DkgEvent, DkgEventSchema } from './schemas/actions/dkg-event.schema';
+import {
+    Round1Event,
+    Round1EventSchema,
+} from './schemas/actions/round-1-event.schema';
+import {
+    Round2Event,
+    Round2EventSchema,
+} from './schemas/actions/round-2-event.schema';
+import {
+    RequesterAction,
+    RequesterActionSchema,
+} from './schemas/actions/requester-action.schema';
+import {
+    RollupAction,
+    RollupActionSchema,
+} from './schemas/actions/rollup-action.schema';
+import {
+    CampaignResult,
+    CampaignResultSchema,
+} from './schemas/campaign-result.schema';
+import { Task, TaskSchema } from './schemas/task.schema';
+import {
+    ResponseFinalizedEvent,
+    ResponseFinalizedEventSchema,
+    ResponseProcessedEvent,
+    ResponseProcessedEventSchema,
+    ResponseRespondedEvent,
+    ResponseRespondedEventSchema,
+} from './schemas/actions/response-event.schema';
 
 @Module({
     imports: [
@@ -96,38 +112,55 @@ import { MainContractServicesConsumer } from './consumers/main-contract-services
         }),
         MongooseModule.forFeature([
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
-            { name: Committee.name, schema: CommitteeSchema },
             { name: DkgAction.name, schema: DkgActionSchema },
-            { name: Dkg.name, schema: DkgSchema },
-            { name: Round1Action.name, schema: Round1ActionSchema },
-            { name: Round1.name, schema: Round1Schema },
-            { name: Round2Action.name, schema: Round2ActionSchema },
-            { name: Round2.name, schema: Round2Schema },
-            { name: Key.name, schema: KeySchema },
-            { name: RequestAction.name, schema: RequestActionSchema },
-            { name: RawDkgRequest.name, schema: RawDkgRequestSchema },
-            { name: DkgRequest.name, schema: DkgRequestSchema },
-            { name: ResponseAction.name, schema: ResponseActionSchema },
-            { name: DkgResponse.name, schema: DkgResponseSchema },
-            { name: ProjectAction.name, schema: ProjectActionSchema },
-            { name: RawProject.name, schema: RawProjectSchema },
-            { name: Project.name, schema: ProjectSchema },
-            { name: CampaignAction.name, schema: CampaignActionSchema },
-            { name: RawCampaign.name, schema: RawCampaignSchema },
-            { name: Campaign.name, schema: CampaignSchema },
+            { name: DkgEvent.name, schema: DkgEventSchema },
+            { name: FundingAction.name, schema: FundingActionSchema },
+            {
+                name: RequesterAction.name,
+                schema: RequesterActionSchema,
+            },
             {
                 name: ParticipationAction.name,
                 schema: ParticipationActionSchema,
             },
+            { name: RequestAction.name, schema: RequestActionSchema },
+            { name: DkgRequest.name, schema: DkgRequestSchema },
+            { name: ResponseAction.name, schema: ResponseActionSchema },
+            {
+                name: ResponseProcessedEvent.name,
+                schema: ResponseProcessedEventSchema,
+            },
+            {
+                name: ResponseRespondedEvent.name,
+                schema: ResponseRespondedEventSchema,
+            },
+            {
+                name: ResponseFinalizedEvent.name,
+                schema: ResponseFinalizedEventSchema,
+            },
+            { name: RollupAction.name, schema: RollupActionSchema },
+            { name: Round1Action.name, schema: Round1ActionSchema },
+            { name: Round1Event.name, schema: Round1EventSchema },
+            { name: Round2Action.name, schema: Round2ActionSchema },
+            { name: Round2Event.name, schema: Round2EventSchema },
+            {
+                name: TreasuryManagerAction.name,
+                schema: TreasuryManagerActionSchema,
+            },
+            { name: ProjectAction.name, schema: ProjectActionSchema },
+            { name: Project.name, schema: ProjectSchema },
+            { name: CampaignAction.name, schema: CampaignActionSchema },
+            { name: Campaign.name, schema: CampaignSchema },
+            { name: CampaignResult.name, schema: CampaignResultSchema },
+            { name: Committee.name, schema: CommitteeSchema },
+            { name: FundingResult.name, schema: FundingResultSchema },
+            { name: Task.name, schema: TaskSchema },
+            { name: Funding.name, schema: FundingSchema },
+            { name: Key.name, schema: KeySchema },
             {
                 name: Participation.name,
                 schema: ParticipationSchema,
             },
-            { name: FundingAction.name, schema: FundingActionSchema },
-            { name: Funding.name, schema: FundingSchema },
-            { name: FundingResult.name, schema: FundingResultSchema },
-            { name: TreasuryAction.name, schema: TreasuryActionSchema },
-            { name: Treasury.name, schema: TreasurySchema },
         ]),
         MongooseModule.forFeature([]),
         MinaContractsModule,

@@ -3,46 +3,42 @@ import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     ParticipationAction,
-    getParticipation,
+    getParticipationActionData,
 } from 'src/schemas/actions/participation-action.schema';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
 import { Field, Mina, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
 import { Participation } from 'src/schemas/participation.schema';
 import { Ipfs } from 'src/ipfs/ipfs';
-import {
-    Constants,
-    JoinCampaign,
-    ParticipationContract,
-    Storage,
-    ZkApp,
-} from '@auxo-dev/platform';
-import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
+import { IpfsHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
-import { MaxRetries, zkAppCache } from 'src/constants';
+import { MaxRetries, ZkAppCache } from 'src/constants';
 import { Utilities } from '../utilities';
 import { ParticipationState } from 'src/interfaces/zkapp-state.interface';
 import * as _ from 'lodash';
+import { Campaign } from 'src/schemas/campaign.schema';
 
 @Injectable()
 export class ParticipationContractService implements ContractServiceInterface {
     private readonly logger = new Logger(ParticipationContractService.name);
-    private readonly _counter: Storage.ParticipationStorage.CounterStorage;
-    private readonly _index: Storage.ParticipationStorage.IndexStorage;
-    private readonly _info: Storage.ParticipationStorage.InfoStorage;
-    private readonly _zkApp: Storage.SharedStorage.AddressStorage;
+    private readonly _projectIndexStorage: Storage.ParticipationStorage.ProjectIndexStorage;
+    private readonly _projectCounterStorage: Storage.ParticipationStorage.ProjectCounterStorage;
+    private readonly _ipfsHashStorage: Storage.ParticipationStorage.IpfsHashStorage;
+    private readonly _zkAppStorage: Storage.SharedStorage.ZkAppStorage;
+    private _actionState: string;
 
-    public get counter(): Storage.ParticipationStorage.CounterStorage {
-        return this._counter;
+    public get projectIndexStorage(): Storage.ParticipationStorage.ProjectIndexStorage {
+        return this._projectIndexStorage;
     }
-    public get index(): Storage.ParticipationStorage.IndexStorage {
-        return this._index;
+    public get projectCounterStorage(): Storage.ParticipationStorage.ProjectCounterStorage {
+        return this._projectCounterStorage;
     }
-    public get info(): Storage.ParticipationStorage.InfoStorage {
-        return this._info;
+    public get ipfsHashStorage(): Storage.ParticipationStorage.IpfsHashStorage {
+        return this._ipfsHashStorage;
     }
-    public get zkApp(): Storage.SharedStorage.AddressStorage {
-        return this._zkApp;
+    public get zkAppStorage(): Storage.SharedStorage.ZkAppStorage {
+        return this._zkAppStorage;
     }
 
     constructor(
@@ -52,64 +48,23 @@ export class ParticipationContractService implements ContractServiceInterface {
         private readonly participationActionModel: Model<ParticipationAction>,
         @InjectModel(Participation.name)
         private readonly participationModel: Model<Participation>,
+        @InjectModel(Campaign.name)
+        private readonly campaignModel: Model<Campaign>,
     ) {
-        this._counter = new Storage.ParticipationStorage.CounterStorage();
-        this._index = new Storage.ParticipationStorage.IndexStorage();
-        this._info = new Storage.ParticipationStorage.InfoStorage();
-        this._zkApp = new Storage.SharedStorage.AddressStorage([
-            {
-                index: Constants.ZkAppEnum.COMMITTEE,
-                address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.DKG,
-                address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.ROUND1,
-                address: PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.ROUND2,
-                address: PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.RESPONSE,
-                address: PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.REQUEST,
-                address: PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.PROJECT,
-                address: PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.CAMPAIGN,
-                address: PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.PARTICIPATION,
-                address: PublicKey.fromBase58(
-                    process.env.PARTICIPATION_ADDRESS,
-                ),
-            },
-            {
-                index: Constants.ZkAppEnum.FUNDING,
-                address: PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.TREASURY,
-                address: PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-            },
-        ]);
+        this._actionState = '';
+        this._projectIndexStorage =
+            new Storage.ParticipationStorage.ProjectIndexStorage();
+        this._projectCounterStorage =
+            new Storage.ParticipationStorage.ProjectCounterStorage();
+        this._ipfsHashStorage =
+            new Storage.ParticipationStorage.IpfsHashStorage();
+        this._zkAppStorage = Utilities.getZkAppStorageForPlatform();
     }
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -125,7 +80,6 @@ export class ParticipationContractService implements ContractServiceInterface {
             try {
                 await this.fetchParticipationActions();
                 await this.updateParticipations();
-                count = MaxRetries;
             } catch (err) {
                 this.logger.error(err);
             }
@@ -133,37 +87,36 @@ export class ParticipationContractService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
-        await Utilities.compile(JoinCampaign, cache, this.logger);
-        await Utilities.compile(ParticipationContract, cache, this.logger);
+        const cache = ZkAppCache;
     }
 
     async fetchParticipationState(): Promise<ParticipationState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.PARTICIPATION_ADDRESS,
         );
-        return {
-            index: Field(state[0]),
-            info: Field(state[1]),
-            counter: Field(state[2]),
-            zkApp: Field(state[3]),
+        const result: ParticipationState = {
+            projectIndexRoot: Field(state[0]),
+            projectCounterRoot: Field(state[1]),
+            ipfsHashRoot: Field(state[2]),
+            zkAppRoot: Field(state[3]),
             actionState: Field(state[4]),
         };
+        this._actionState = result.actionState.toString();
+        return result;
     }
 
     async rollup(): Promise<boolean> {
         try {
-            const lastActiveParticipation =
-                await this.participationModel.findOne(
+            const lastReducedAction =
+                await this.participationActionModel.findOne(
                     { active: true },
                     {},
-                    { sort: { actionId: -1 } },
+                    {
+                        sort: {
+                            actionId: -1,
+                        },
+                    },
                 );
-            const lastReducedAction = lastActiveParticipation
-                ? await this.participationActionModel.findOne({
-                      actionId: lastActiveParticipation.actionId,
-                  })
-                : undefined;
             const notReducedActions = await this.participationActionModel.find(
                 {
                     actionId: {
@@ -176,138 +129,81 @@ export class ParticipationContractService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             if (notReducedActions.length > 0) {
-                const notActiveParticipations =
-                    await this.participationModel.find(
-                        {
-                            projectId: {
-                                $gt: lastActiveParticipation
-                                    ? lastActiveParticipation.actionId
-                                    : -1,
-                            },
-                        },
-                        {},
-                        { sort: { actionId: 1 } },
-                    );
                 const state = await this.fetchParticipationState();
-                let proof = await JoinCampaign.firstStep(
-                    state.index,
-                    state.info,
-                    state.counter,
-                    lastReducedAction
-                        ? Field(lastReducedAction.currentActionState)
-                        : Reducer.initialActionState,
+                let proof =
+                    await ZkApp.Participation.RollupParticipation.firstStep(
+                        state.projectIndexRoot,
+                        state.projectCounterRoot,
+                        state.ipfsHashRoot,
+                        lastReducedAction
+                            ? Field(lastReducedAction.currentActionState)
+                            : Reducer.initialActionState,
+                    );
+                const projectIndexStorage = _.cloneDeep(
+                    this._projectIndexStorage,
                 );
-                const index = _.cloneDeep(this._index);
-                const info = _.cloneDeep(this._info);
-                const counter = _.cloneDeep(this._counter);
+                const projectCounterStorage = _.cloneDeep(
+                    this._projectCounterStorage,
+                );
+                const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
+                const projectCounterMapping: {
+                    [key: number]: number;
+                } = {};
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
-                    const notActiveParticipation = notActiveParticipations[i];
-                    const projectIndex =
-                        (
-                            await this.participationModel.aggregate([
-                                // Step 1: Filter by campaignId
-                                {
-                                    $match: {
-                                        campaignId:
-                                            notActiveParticipation.campaignId,
-                                    },
-                                },
-                                // Step 2: Sort by actionId
-                                {
-                                    $sort: {
-                                        actionId: 1,
-                                    },
-                                },
-                                // Step 3: Group and collect actionIds into an array
-                                {
-                                    $group: {
-                                        _id: '$campaignId',
-                                        actionIds: {
-                                            $push: '$actionId',
-                                        },
-                                    },
-                                },
-                                // Step 4: Project the index of your actionId in the array
-                                {
-                                    $project: {
-                                        order: {
-                                            $indexOfArray: [
-                                                '$actionIds',
-                                                notActiveParticipation.actionId,
-                                            ],
-                                        },
-                                    },
-                                },
-                            ])
-                        )[0]['order'] + 1;
-                    proof = await JoinCampaign.joinCampaign(
-                        proof,
-                        ZkApp.Participation.ParticipationAction.fromFields(
-                            Utilities.stringArrayToFields(
-                                notReducedAction.actions,
+                    const campaignId = notReducedAction.actionData.campaignId;
+                    if (projectCounterMapping[campaignId] == undefined) {
+                        const campaign = await this.campaignModel.findOne({
+                            campaignId: campaignId,
+                        });
+                        projectCounterMapping[campaignId] =
+                            campaign.projectCounter;
+                    }
+                    const level1Index =
+                        projectIndexStorage.calculateLevel1Index({
+                            campaignId: Field(campaignId),
+                            projectId: Field(
+                                notReducedAction.actionData.projectId,
                             ),
-                        ),
-                        index.getLevel1Witness(
-                            index.calculateLevel1Index({
-                                campaignId: Field(
-                                    notActiveParticipation.campaignId,
+                        });
+                    proof =
+                        await ZkApp.Participation.RollupParticipation.participateCampaignStep(
+                            proof,
+                            ZkApp.Participation.ParticipationAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notReducedAction.actions,
                                 ),
-                                projectId: Field(
-                                    notActiveParticipation.projectId,
-                                ),
-                            }),
-                        ),
-                        info.getLevel1Witness(
-                            info.calculateLevel1Index({
-                                campaignId: Field(
-                                    notActiveParticipation.campaignId,
-                                ),
-                                projectId: Field(
-                                    notActiveParticipation.projectId,
-                                ),
-                            }),
-                        ),
-                        Field(projectIndex - 1),
-                        counter.getLevel1Witness(
-                            counter.calculateLevel1Index(
-                                Field(notActiveParticipation.campaignId),
                             ),
-                        ),
+                            Field(projectCounterMapping[campaignId]),
+                            projectIndexStorage.getLevel1Witness(level1Index),
+                            projectCounterStorage.getLevel1Witness(
+                                Field(campaignId),
+                            ),
+                            ipfsHashStorage.getLevel1Witness(level1Index),
+                        );
+                    projectCounterMapping[campaignId] += 1;
+                    projectIndexStorage.updateLeaf(
+                        level1Index,
+                        Field(projectCounterMapping[campaignId]),
                     );
-
-                    index.updateLeaf(
-                        index.calculateLevel1Index({
-                            campaignId: Field(
-                                notActiveParticipation.campaignId,
-                            ),
-                            projectId: Field(notActiveParticipation.projectId),
-                        }),
-                        index.calculateLeaf(Field(projectIndex)),
+                    projectCounterStorage.updateLeaf(
+                        Field(campaignId),
+                        Field(projectCounterMapping[campaignId]),
                     );
-                    info.updateLeaf(
-                        info.calculateLevel1Index({
-                            campaignId: Field(
-                                notActiveParticipation.campaignId,
-                            ),
-                            projectId: Field(notActiveParticipation.projectId),
-                        }),
-                        info.calculateLeaf(
-                            IPFSHash.fromString(
-                                notActiveParticipation.ipfsHash,
+                    ipfsHashStorage.updateLeaf(
+                        level1Index,
+                        ipfsHashStorage.calculateLeaf(
+                            IpfsHash.fromString(
+                                notReducedAction.actionData.ipfsHash,
                             ),
                         ),
-                    );
-                    counter.updateLeaf(
-                        counter.calculateLevel1Index(
-                            Field(notActiveParticipation.campaignId),
-                        ),
-                        counter.calculateLeaf(Field(projectIndex)),
                     );
                 }
-                const participationContract = new ParticipationContract(
-                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
-                );
+
+                const participationContract =
+                    new ZkApp.Participation.ParticipationContract(
+                        PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+                    );
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
@@ -319,8 +215,8 @@ export class ParticipationContractService implements ContractServiceInterface {
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    () => {
-                        participationContract.rollup(proof);
+                    async () => {
+                        await participationContract.rollup(proof);
                     },
                 );
                 await Utilities.proveAndSend(
@@ -362,15 +258,18 @@ export class ParticipationContractService implements ContractServiceInterface {
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
             const currentActionState = Field(action.hash);
+            const actionData = getParticipationActionData(action.actions[0]);
             await this.participationActionModel.findOneAndUpdate(
                 {
                     currentActionState: currentActionState.toString(),
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
+                    actionData: actionData,
                 },
                 { new: true, upsert: true },
             );
@@ -380,60 +279,50 @@ export class ParticipationContractService implements ContractServiceInterface {
     }
 
     private async updateParticipations() {
-        const lastParticipation = await this.participationModel.findOne(
-            {},
-            {},
-            { sort: { actionId: -1 } },
-        );
-        let participationActions: ParticipationAction[];
-        if (lastParticipation != null) {
-            participationActions = await this.participationActionModel.find(
-                { actionId: { $gt: lastParticipation.actionId } },
-                {},
-                { sort: { actionId: 1 } },
-            );
-        } else {
-            participationActions = await this.participationActionModel.find(
-                {},
-                {},
-                { sort: { actionId: 1 } },
-            );
-        }
-        for (let i = 0; i < participationActions.length; i++) {
-            const participationAction = participationActions[i];
-            const participation = getParticipation(participationAction);
-            participation.ipfsData = await this.ipfs.getData(
-                participation.ipfsHash,
-            );
-            await this.participationModel.findOneAndUpdate(
-                { actionId: participationAction.actionId },
-                participation,
-                { new: true, upsert: true },
-            );
-        }
-
-        const rawEvents = await this.queryService.fetchEvents(
-            process.env.PARTICIPATION_ADDRESS,
-        );
-        if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActionState = Field(lastEvent[0].data[0]).toString();
-            const lastActiveParticipationAction =
-                await this.participationActionModel.findOne({
-                    currentActionState: lastActionState,
-                });
-            const notActiveParticipations = await this.participationModel.find(
+        await this.fetchParticipationState();
+        const currentAction = await this.participationActionModel.findOne({
+            currentActionState: this._actionState,
+        });
+        if (currentAction != undefined) {
+            const notActiveActions = await this.participationActionModel.find(
                 {
-                    actionId: { $lte: lastActiveParticipationAction.actionId },
+                    actionId: { $lte: currentAction.actionId },
                     active: false,
                 },
                 {},
                 { sort: { actionId: 1 } },
             );
-            for (let i = 0; i < notActiveParticipations.length; i++) {
-                const notActiveParticipation = notActiveParticipations[i];
-                notActiveParticipation.set('active', true);
-                await notActiveParticipation.save();
+
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                const campaign = await this.campaignModel.findOne({
+                    campaignId: notActiveAction.actionData.campaignId,
+                });
+                const projectIndex = campaign.projectCounter + 1;
+                campaign.set('projectCounter', campaign.projectCounter + 1);
+                const ipfsData = await this.ipfs.getData(
+                    notActiveAction.actionData.ipfsHash,
+                );
+                await Promise.all([
+                    notActiveAction.save(),
+                    campaign.save(),
+                    this.participationModel.findOneAndUpdate(
+                        {
+                            campaignId: notActiveAction.actionData.campaignId,
+                            projectId: notActiveAction.actionData.projectId,
+                        },
+                        {
+                            campaignId: notActiveAction.actionData.campaignId,
+                            projectId: notActiveAction.actionData.projectId,
+                            ipfsHash: notActiveAction.actionData.ipfsHash,
+                            ipfsData: ipfsData,
+                            timestamp: notActiveAction.actionData.timestamp,
+                            projectIndex: projectIndex,
+                        },
+                        { new: true, upsert: true },
+                    ),
+                ]);
             }
         }
     }
@@ -441,8 +330,7 @@ export class ParticipationContractService implements ContractServiceInterface {
     async updateMerkleTrees() {
         try {
             const participations = await this.participationModel.aggregate([
-                { $match: { active: true } },
-                { $sort: { actionId: 1 } },
+                { $sort: { timestamp: 1 } },
                 {
                     $group: {
                         _id: '$campaignId',
@@ -451,28 +339,30 @@ export class ParticipationContractService implements ContractServiceInterface {
                 },
             ]);
             for (let i = 0; i < participations.length; i++) {
-                const campaignId = participations[i]._id;
+                const campaignId = Field(participations[i]._id);
                 const projects: Participation[] = participations[i].projects;
 
-                const level1Index = this._counter.calculateLevel1Index(
-                    Field(campaignId),
-                );
-                const counterLeaf = this._counter.calculateLeaf(
-                    Field(projects.length),
-                );
-                this._counter.updateLeaf(level1Index, counterLeaf);
                 for (let j = 0; j < projects.length; j++) {
                     const project = projects[j];
-                    const index = this._index.calculateLevel1Index({
-                        campaignId: Field(campaignId),
-                        projectId: Field(project.projectId),
-                    });
-                    const indexLeaf = this._index.calculateLeaf(Field(j + 1));
-                    this._index.updateLeaf(index, indexLeaf);
-                    const infoLeaf = this._info.calculateLeaf(
-                        IPFSHash.fromString(project.ipfsHash),
+                    const projectId = Field(project.projectId);
+                    const level1Index =
+                        this._projectIndexStorage.calculateLevel1Index({
+                            campaignId: campaignId,
+                            projectId: projectId,
+                        });
+                    const projectIndexLeaf = Field(project.projectIndex);
+                    this._projectIndexStorage.updateLeaf(
+                        level1Index,
+                        projectIndexLeaf,
                     );
-                    this._info.updateLeaf(index, infoLeaf);
+                    const ipfsHashLeaf = this._ipfsHashStorage.calculateLeaf(
+                        IpfsHash.fromString(project.ipfsHash),
+                    );
+                    this._ipfsHashStorage.updateLeaf(level1Index, ipfsHashLeaf);
+                    this._projectCounterStorage.updateLeaf(
+                        campaignId,
+                        Field(projects.length),
+                    );
                 }
             }
         } catch (err) {}

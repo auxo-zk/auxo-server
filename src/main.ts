@@ -37,7 +37,7 @@ async function bootstrap() {
     // app.use(helmet());
     app.enableCors();
     app.setGlobalPrefix('v0');
-    app.useGlobalPipes(new ValidationPipe({}));
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document);
     await app.listen(3000, '127.0.0.1');

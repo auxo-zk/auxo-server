@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import {
+    fetchAccount,
     Field,
     Group,
     Mina,
@@ -8,51 +9,59 @@ import {
     Provable,
     PublicKey,
     Reducer,
+    UInt8,
 } from 'o1js';
 import { Model } from 'mongoose';
-import { DkgAction, getDkg } from 'src/schemas/actions/dkg-action.schema';
+import {
+    DkgAction,
+    getDkgActionData,
+} from 'src/schemas/actions/dkg-action.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     Round1Action,
-    getRound1,
+    getRound1ActionData,
 } from 'src/schemas/actions/round-1-action.schema';
 import {
+    getRound2ActionData,
     Round2Action,
-    getRound2,
 } from 'src/schemas/actions/round-2-action.schema';
-import { Dkg } from 'src/schemas/dkg.schema';
-import { Round1 } from 'src/schemas/round-1.schema';
-import { Round2 } from 'src/schemas/round-2.schema';
 import { Key } from 'src/schemas/key.schema';
 import {
+    BatchEncryption,
+    calculateKeyIndex,
     calculatePublicKey,
     Constants,
-    Libs,
-    Round1Contribution,
-    Storage,
-    ZkApp,
-    DKGContract,
-    Round1Contract,
-    Round2Contract,
-    UpdateKey,
-    ReduceRound1,
+    DKG_LEVEL_2_TREE,
+    DkgContract,
+    EncryptionHashArray,
     FinalizeRound1,
-    ReduceRound2,
-    BatchEncryption,
+    FinalizeRound1Input,
     FinalizeRound2,
+    FinalizeRound2Input,
+    Libs,
+    Round1Contract,
+    Round1Contribution,
+    Round2Contract,
+    Storage,
+    UpdateKey,
+    UpdateKeyInput,
+    ZkApp,
 } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-import { Bit255 } from '@auxo-dev/auxo-libs';
+import { Bit255, Utils } from '@auxo-dev/auxo-libs';
 import { Committee } from 'src/schemas/committee.schema';
 import {
     ActionReduceStatusEnum,
     DkgActionEnum,
+    DkgEventEnum,
+    EventEnum,
     KeyStatusEnum,
     MaxRetries,
-    ZkAppEnum,
-    zkAppCache,
+    ZkAppCache,
+    ZkAppIndex,
 } from 'src/constants';
 import { Action } from 'src/interfaces/action.interface';
+import { Event } from 'src/interfaces/event.interface';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import {
     DkgState,
@@ -61,54 +70,73 @@ import {
 } from 'src/interfaces/zkapp-state.interface';
 import { CommitteeContractService } from '../committee-contract/committee-contract.service';
 import * as _ from 'lodash';
+import { RollupAction } from 'src/schemas/actions/rollup-action.schema';
+import {
+    DkgEvent,
+    getDkgEventData,
+} from 'src/schemas/actions/dkg-event.schema';
+import {
+    getRound1EventData,
+    Round1Event,
+} from 'src/schemas/actions/round-1-event.schema';
+import {
+    getRound2EventData,
+    Round2Event,
+} from 'src/schemas/actions/round-2-event.schema';
+import { RollupContractService } from '../rollup-contract/rollup-contract.service';
 
 @Injectable()
 export class DkgContractsService implements ContractServiceInterface {
     private readonly logger = new Logger(DkgContractsService.name);
-    private readonly _dkg: {
-        zkApp: Storage.SharedStorage.AddressStorage;
-        keyCounter: Storage.CommitteeStorage.KeyCounterStorage;
-        keyStatus: Storage.DKGStorage.KeyStatusStorage;
+    private _dkg: {
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        keyCounterStorage: Storage.CommitteeStorage.KeyCounterStorage;
+        keyStatusStorage: Storage.DKGStorage.KeyStatusStorage;
+        keyStorage: Storage.DKGStorage.KeyStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     };
-    private readonly _round1: {
-        zkApp: Storage.SharedStorage.AddressStorage;
-        reduceState: Storage.SharedStorage.ReduceStorage;
-        contribution: Storage.DKGStorage.Round1ContributionStorage;
-        publicKey: Storage.DKGStorage.PublicKeyStorage;
-        reducedActions: Field[];
+    private _round1: {
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.Round1ContributionStorage;
+        publicKeyStorage: Storage.DKGStorage.PublicKeyStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     };
-    private readonly _round2: {
-        zkApp: Storage.SharedStorage.AddressStorage;
-        reduceState: Storage.SharedStorage.ReduceStorage;
-        contribution: Storage.DKGStorage.Round2ContributionStorage;
-        encryption: Storage.DKGStorage.EncryptionStorage;
-        reducedActions: Field[];
+    private _round2: {
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.Round2ContributionStorage;
+        encryptionStorage: Storage.DKGStorage.EncryptionStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     };
 
     public get dkg(): {
-        zkApp: Storage.SharedStorage.AddressStorage;
-        keyCounter: Storage.CommitteeStorage.KeyCounterStorage;
-        keyStatus: Storage.DKGStorage.KeyStatusStorage;
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        keyCounterStorage: Storage.CommitteeStorage.KeyCounterStorage;
+        keyStatusStorage: Storage.DKGStorage.KeyStatusStorage;
+        keyStorage: Storage.DKGStorage.KeyStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
     } {
         return this._dkg;
     }
 
     public get round1(): {
-        zkApp: Storage.SharedStorage.AddressStorage;
-        reduceState: Storage.SharedStorage.ReduceStorage;
-        contribution: Storage.DKGStorage.Round1ContributionStorage;
-        publicKey: Storage.DKGStorage.PublicKeyStorage;
-        reducedActions: Field[];
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.Round1ContributionStorage;
+        publicKeyStorage: Storage.DKGStorage.PublicKeyStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     } {
         return this._round1;
     }
 
     public get round2(): {
-        zkApp: Storage.SharedStorage.AddressStorage;
-        reduceState: Storage.SharedStorage.ReduceStorage;
-        contribution: Storage.DKGStorage.Round2ContributionStorage;
-        encryption: Storage.DKGStorage.EncryptionStorage;
-        reducedActions: Field[];
+        zkAppStorage: Storage.AddressStorage.AddressStorage;
+        contributionStorage: Storage.DKGStorage.Round2ContributionStorage;
+        encryptionStorage: Storage.DKGStorage.EncryptionStorage;
+        processStorage: Storage.ProcessStorage.ProcessStorage;
+        processStorageMapping: { [key: string]: number };
     } {
         return this._round2;
     }
@@ -116,74 +144,49 @@ export class DkgContractsService implements ContractServiceInterface {
     constructor(
         private readonly queryService: QueryService,
         private readonly committeeContractService: CommitteeContractService,
+        private readonly rollupContractService: RollupContractService,
         @InjectModel(DkgAction.name)
         private readonly dkgActionModel: Model<DkgAction>,
-        @InjectModel(Dkg.name)
-        private readonly dkgModel: Model<Dkg>,
+        @InjectModel(DkgEvent.name)
+        private readonly dkgEventModel: Model<DkgEvent>,
         @InjectModel(Round1Action.name)
         private readonly round1ActionModel: Model<Round1Action>,
-        @InjectModel(Round1.name)
-        private readonly round1Model: Model<Round1>,
+        @InjectModel(Round1Event.name)
+        private readonly round1EventModel: Model<Round1Event>,
         @InjectModel(Round2Action.name)
         private readonly round2ActionModel: Model<Round2Action>,
-        @InjectModel(Round2.name)
-        private readonly round2Model: Model<Round2>,
+        @InjectModel(Round2Event.name)
+        private readonly round2EventModel: Model<Round2Event>,
         @InjectModel(Key.name)
         private readonly keyModel: Model<Key>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
+        @InjectModel(RollupAction.name)
+        private readonly rollupActionModel: Model<RollupAction>,
     ) {
         this._dkg = {
-            zkApp: new Storage.SharedStorage.AddressStorage([
-                {
-                    index: Constants.ZkAppEnum.COMMITTEE,
-                    address: PublicKey.fromBase58(
-                        process.env.COMMITTEE_ADDRESS,
-                    ),
-                },
-            ]),
-            keyCounter: new Storage.CommitteeStorage.KeyCounterStorage(),
-            keyStatus: new Storage.DKGStorage.KeyStatusStorage(),
+            zkAppStorage: Utilities.getZkAppStorageForDkg(),
+            keyCounterStorage: new Storage.CommitteeStorage.KeyCounterStorage(),
+            keyStatusStorage: new Storage.DKGStorage.KeyStatusStorage(),
+            keyStorage: new Storage.DKGStorage.KeyStorage(),
+            processStorage: new Storage.ProcessStorage.ProcessStorage(),
+            processStorageMapping: {},
         };
         this._round1 = {
-            zkApp: new Storage.SharedStorage.AddressStorage([
-                {
-                    index: Constants.ZkAppEnum.COMMITTEE,
-                    address: PublicKey.fromBase58(
-                        process.env.COMMITTEE_ADDRESS,
-                    ),
-                },
-                {
-                    index: Constants.ZkAppEnum.DKG,
-                    address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
-                },
-            ]),
-            reduceState: new Storage.SharedStorage.ReduceStorage(),
-            contribution: new Storage.DKGStorage.Round1ContributionStorage(),
-            publicKey: new Storage.DKGStorage.PublicKeyStorage(),
-            reducedActions: [],
+            zkAppStorage: Utilities.getZkAppStorageForDkg(),
+            contributionStorage:
+                new Storage.DKGStorage.Round1ContributionStorage(),
+            publicKeyStorage: new Storage.DKGStorage.PublicKeyStorage(),
+            processStorage: new Storage.ProcessStorage.ProcessStorage(),
+            processStorageMapping: {},
         };
         this._round2 = {
-            zkApp: new Storage.SharedStorage.AddressStorage([
-                {
-                    index: Constants.ZkAppEnum.COMMITTEE,
-                    address: PublicKey.fromBase58(
-                        process.env.COMMITTEE_ADDRESS,
-                    ),
-                },
-                {
-                    index: Constants.ZkAppEnum.DKG,
-                    address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
-                },
-                {
-                    index: Constants.ZkAppEnum.ROUND1,
-                    address: PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-                },
-            ]),
-            reduceState: new Storage.SharedStorage.ReduceStorage(),
-            contribution: new Storage.DKGStorage.Round2ContributionStorage(),
-            encryption: new Storage.DKGStorage.EncryptionStorage(),
-            reducedActions: [],
+            zkAppStorage: Utilities.getZkAppStorageForDkg(),
+            contributionStorage:
+                new Storage.DKGStorage.Round2ContributionStorage(),
+            encryptionStorage: new Storage.DKGStorage.EncryptionStorage(),
+            processStorage: new Storage.ProcessStorage.ProcessStorage(),
+            processStorageMapping: {},
         };
     }
 
@@ -191,20 +194,11 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // console.log(await this.getKeysReadyForRound1Finalization());
-            // console.log(await this.getKeysReadyForRound2Finalization());
-            // await this.committeeContractService.compile();
-            // Provable.log(await this.fetchRound1State());
-            // Provable.log(this._round1.contribution.root);
-            // Provable.log(this._round1.publicKey.root);
-            // Provable.log(this._round1.reduceState.root);
-            // Provable.log(this._round1.zkApp.root);
+            // await this.rollupContractService.compile();
             // await this.compile();
-            // await this.reduceRound1();
             // await this.rollupDkg();
-            // await this.finalizeRound1(3, 0);
-            // await this.reduceRound2();
-            // await this.finalizeRound2(4, 0);
+            // await this.rollupRound1();
+            // await this.rollupRound2();
         } catch (err) {
             console.log(err);
         }
@@ -223,599 +217,574 @@ export class DkgContractsService implements ContractServiceInterface {
                 await this.fetchDkgActions();
                 await this.fetchRound1Actions();
                 await this.fetchRound2Actions();
-                await this.updateDkgs();
-                await this.updateRound1s();
-                await this.updateRound2s();
-                await this.updateKeys();
+                await this.updateDkgActions();
+                await this.updateRound1Actions();
+                await this.updateRound2Actions();
                 count = MaxRetries;
             } catch (err) {
+                console.log(err);
                 this.logger.error(err);
             }
         }
     }
 
     async compile() {
-        const cache = zkAppCache;
-        await Utilities.compile(UpdateKey, cache, this.logger);
-        await Utilities.compile(DKGContract, cache, this.logger);
-        await Utilities.compile(ReduceRound1, cache, this.logger);
-        await Utilities.compile(FinalizeRound1, cache, this.logger);
-        await Utilities.compile(Round1Contract, cache, this.logger);
-        await Utilities.compile(ReduceRound2, cache, this.logger);
-        await Utilities.compile(BatchEncryption, cache, this.logger);
-        await Utilities.compile(FinalizeRound2, cache, this.logger);
-        await Utilities.compile(Round2Contract, cache, this.logger);
+        const cache = ZkAppCache;
+        await UpdateKey.compile({ cache });
+        await DkgContract.compile({ cache });
+        await FinalizeRound1.compile({ cache });
+        await Round1Contract.compile({ cache });
+        await FinalizeRound2.compile({ cache });
+        await BatchEncryption.compile({ cache });
+        await Round2Contract.compile({ cache });
     }
 
-    async rollupDkg(): Promise<boolean> {
+    async rollupDkg() {
         try {
-            const lastActiveDkg = await this.dkgModel.findOne(
-                { active: true },
-                {},
-                { sort: { actionId: -1 } },
-            );
-            const lastReducedAction = lastActiveDkg
-                ? await this.dkgActionModel.findOne({
-                      actionId: lastActiveDkg.actionId,
-                  })
-                : undefined;
-            const notReducedActions = await this.dkgActionModel.find(
-                {
-                    actionId: {
-                        $gt: lastReducedAction
-                            ? lastReducedAction.actionId
-                            : -1,
-                    },
-                },
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.DKG,
+                active: true,
+            });
+            const notActiveActions = await this.dkgActionModel.find(
+                { active: false, actionId: { $lt: numRollupedActions } },
                 {},
                 { sort: { actionId: 1 } },
             );
-            if (notReducedActions.length > 0) {
+            if (notActiveActions.length > 0) {
                 const state = await this.fetchDkgState();
-                let proof = await UpdateKey.firstStep(
-                    lastReducedAction
-                        ? ZkApp.DKG.Action.fromFields(
-                              Utilities.stringArrayToFields(
-                                  lastReducedAction.actions,
-                              ),
-                          )
-                        : ZkApp.DKG.Action.empty(),
-                    state.keyCounter,
-                    state.keyStatus,
-                    lastReducedAction
-                        ? Field(lastReducedAction.currentActionState)
-                        : Reducer.initialActionState,
-                );
-                const notActiveDkgs = await this.dkgModel.find(
-                    {
-                        actionId: {
-                            $gt: lastReducedAction
-                                ? lastReducedAction.actionId
-                                : -1,
-                        },
-                    },
-                    {},
-                    { sort: { actionId: 1 } },
-                );
-                const rawKeyMapping = await this.keyModel.aggregate([
-                    {
-                        $group: {
-                            _id: '$committeeId',
-                            items: { $push: '$$ROOT' },
-                        },
-                    },
-                ]);
-                const keyMapping: {
-                    [key: string]: {
-                        [key: string]: {
-                            committeeId: number;
-                            keyId: number;
-                            status: KeyStatusEnum;
-                        };
-                    };
-                } = {};
-                for (let i = 0; i < rawKeyMapping.length; i++) {
-                    const committeeId: number = rawKeyMapping[i]._id;
-                    const keys = rawKeyMapping[i].items;
-                    keyMapping[committeeId] = {};
-                    for (let j = 0; j < keys.length; j++) {
-                        keyMapping[committeeId][keys[j]['keyId']] = keys[j];
-                    }
-                }
-                const keyCounter = _.cloneDeep(this._dkg.keyCounter);
-                const keyStatus = _.cloneDeep(this._dkg.keyStatus);
-                for (let i = 0; i < notReducedActions.length; i++) {
-                    const notReducedAction = notReducedActions[i];
-                    const notActiveDkg = notActiveDkgs[i];
-                    const committeeId = notActiveDkg.committeeId;
-                    let key: {
-                        committeeId: number;
-                        keyId: number;
-                        status: KeyStatusEnum;
-                    };
-                    if (!keyMapping[committeeId]) {
-                        keyMapping[committeeId] = {};
-                    }
-                    if (notActiveDkg.keyId != undefined) {
-                        key = keyMapping[committeeId][notActiveDkg.keyId];
-                        switch (notActiveDkg.actionEnum) {
-                            case DkgActionEnum.FINALIZE_ROUND_2:
-                                key.status = KeyStatusEnum.ACTIVE;
-                                break;
-                            case DkgActionEnum.FINALIZE_ROUND_1:
-                                key.status = KeyStatusEnum.ROUND_2_CONTRIBUTION;
-                                break;
-                            case DkgActionEnum.DEPRECATE_KEY:
-                                key.status = KeyStatusEnum.DEPRECATED;
-                                break;
-                        }
-                        proof = await UpdateKey.nextStep(
-                            ZkApp.DKG.Action.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
-                                ),
-                            ),
-                            proof,
-                            keyStatus.getWitness(
-                                Storage.DKGStorage.KeyStatusStorage.calculateLevel1Index(
-                                    {
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(key.keyId),
-                                    },
-                                ),
-                            ),
-                        );
-                        keyMapping[committeeId][key.keyId] = key;
-                        keyStatus.updateLeaf(
-                            {
-                                level1Index:
-                                    Storage.DKGStorage.KeyStatusStorage.calculateLevel1Index(
-                                        {
-                                            committeeId: Field(committeeId),
-                                            keyId: Field(key.keyId),
-                                        },
-                                    ),
-                            },
-                            Field(key.status),
-                        );
-                    } else {
-                        key = {
-                            committeeId: committeeId,
-                            keyId: Object.keys(keyMapping[committeeId]).length,
-                            status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
-                        };
 
-                        proof = await UpdateKey.nextStepGeneration(
-                            ZkApp.DKG.Action.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
-                                ),
-                            ),
-                            proof,
-                            Field(key.keyId),
-                            keyCounter.getWitness(
-                                Storage.CommitteeStorage.KeyCounterStorage.calculateLevel1Index(
-                                    Field(committeeId),
-                                ),
-                            ),
-                            keyStatus.getWitness(
-                                Storage.DKGStorage.KeyStatusStorage.calculateLevel1Index(
-                                    {
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(key.keyId),
-                                    },
-                                ),
-                            ),
-                        );
-                        keyMapping[committeeId][key.keyId] = key;
-                        keyCounter.updateLeaf(
-                            {
-                                level1Index:
-                                    Storage.CommitteeStorage.KeyCounterStorage.calculateLevel1Index(
-                                        Field(committeeId),
-                                    ),
-                            },
-                            Field(Object.keys(keyMapping[committeeId]).length),
-                        );
-                        keyStatus.updateLeaf(
-                            {
-                                level1Index:
-                                    Storage.DKGStorage.KeyStatusStorage.calculateLevel1Index(
-                                        {
-                                            committeeId: Field(committeeId),
-                                            keyId: Field(key.keyId),
-                                        },
-                                    ),
-                            },
-                            Field(key.status),
-                        );
+                const keyCounterStorage = _.cloneDeep(
+                    this._dkg.keyCounterStorage,
+                );
+                const keyStatusStorage = _.cloneDeep(
+                    this._dkg.keyStatusStorage,
+                );
+                const keyStorage = _.cloneDeep(this._dkg.keyStorage);
+                const processStorage = _.cloneDeep(this._dkg.processStorage);
+                const processStorageMapping = _.cloneDeep(
+                    this._dkg.processStorageMapping,
+                );
+                const rollupStorage = _.cloneDeep(
+                    this.rollupContractService.rollupStorage,
+                );
+                const nextKeyIdMapping: {
+                    [committeeId: number]: number;
+                } = {};
+                let proof = await Utils.prove(
+                    UpdateKey.name,
+                    'init',
+                    async () =>
+                        UpdateKey.init(
+                            UpdateKeyInput.empty(),
+                            rollupStorage.root,
+                            state.keyCounterRoot,
+                            state.keyStatusRoot,
+                            state.keyRoot,
+                            state.processRoot,
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
+                for (let i = 0; i < notActiveActions.length; i++) {
+                    const notActiveAction = notActiveActions[i];
+                    const committeeId = notActiveAction.actionData.committeeId;
+                    if (nextKeyIdMapping[committeeId] == undefined) {
+                        const lastKeyByCommitteeId =
+                            await this.keyModel.findOne(
+                                {
+                                    committeeId: committeeId,
+                                },
+                                {},
+                                { sort: { keyId: -1 } },
+                            );
+                        if (lastKeyByCommitteeId != undefined) {
+                            nextKeyIdMapping[committeeId] =
+                                lastKeyByCommitteeId.keyId + 1;
+                        } else {
+                            nextKeyIdMapping[committeeId] = 0;
+                        }
                     }
+                    const dkgAction = ZkApp.DKG.DkgAction.fromFields(
+                        Utilities.stringArrayToFields(notActiveAction.actions),
+                    );
+                    switch (notActiveAction.actionData.actionEnum) {
+                        case DkgActionEnum.GENERATE_KEY:
+                            const nextKeyId = Field(
+                                nextKeyIdMapping[
+                                    notActiveAction.actionData.committeeId
+                                ],
+                            );
+                            proof = await Utils.prove(
+                                UpdateKey.name,
+                                'generate',
+                                async () =>
+                                    UpdateKey.generate(
+                                        {
+                                            previousActionState: Field(
+                                                notActiveAction.previousActionState,
+                                            ),
+                                            action: dkgAction,
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        },
+                                        proof,
+                                        nextKeyId,
+                                        keyCounterStorage.getLevel1Witness(
+                                            Field(committeeId),
+                                        ),
+                                        keyStatusStorage.getLevel1Witness(
+                                            keyStatusStorage.calculateLevel1Index(
+                                                {
+                                                    committeeId:
+                                                        Field(committeeId),
+                                                    keyId: nextKeyId,
+                                                },
+                                            ),
+                                        ),
+                                        rollupStorage.getWitness(
+                                            rollupStorage.calculateLevel1Index({
+                                                zkAppIndex: Field(
+                                                    ZkAppIndex.DKG,
+                                                ),
+                                                actionId: Field(
+                                                    notActiveAction.actionId,
+                                                ),
+                                            }),
+                                        ),
+                                        processStorage.getWitness(
+                                            Field(notActiveAction.actionId),
+                                        ),
+                                    ),
+                                undefined,
+                                { info: true, error: true },
+                            );
+                            keyCounterStorage.updateLeaf(
+                                { level1Index: Field(committeeId) },
+                                nextKeyId,
+                            );
+                            keyStatusStorage.updateLeaf(
+                                {
+                                    level1Index:
+                                        keyStatusStorage.calculateLevel1Index({
+                                            committeeId: Field(committeeId),
+                                            keyId: nextKeyId,
+                                        }),
+                                },
+                                Field(KeyStatusEnum.ROUND_1_CONTRIBUTION),
+                            );
+                            nextKeyIdMapping[
+                                notActiveAction.actionData.committeeId
+                            ] += 1;
+                            break;
+                        case DkgActionEnum.FINALIZE_ROUND_1:
+                            proof = await Utils.prove(
+                                UpdateKey.name,
+                                'update',
+                                async () =>
+                                    UpdateKey.update(
+                                        {
+                                            previousActionState: Field(
+                                                notActiveAction.previousActionState,
+                                            ),
+                                            action: dkgAction,
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        },
+                                        proof,
+                                        keyStatusStorage.getLevel1Witness(
+                                            keyStatusStorage.calculateLevel1Index(
+                                                {
+                                                    committeeId:
+                                                        Field(committeeId),
+                                                    keyId: Field(
+                                                        notActiveAction
+                                                            .actionData.keyId,
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        keyStorage.getLevel1Witness(
+                                            keyStorage.calculateLevel1Index({
+                                                committeeId: Field(committeeId),
+                                                keyId: Field(
+                                                    notActiveAction.actionData
+                                                        .keyId,
+                                                ),
+                                            }),
+                                        ),
+                                        rollupStorage.getWitness(
+                                            rollupStorage.calculateLevel1Index({
+                                                zkAppIndex: Field(
+                                                    ZkAppIndex.DKG,
+                                                ),
+                                                actionId: Field(
+                                                    notActiveAction.actionId,
+                                                ),
+                                            }),
+                                        ),
+                                        processStorage.getWitness(
+                                            Field(notActiveAction.actionId),
+                                        ),
+                                    ),
+                                undefined,
+                                { info: true, error: true },
+                            );
+                            keyStatusStorage.updateLeaf(
+                                {
+                                    level1Index:
+                                        keyStatusStorage.calculateLevel1Index({
+                                            committeeId: Field(committeeId),
+                                            keyId: Field(
+                                                notActiveAction.actionData
+                                                    .keyId,
+                                            ),
+                                        }),
+                                },
+                                Field(KeyStatusEnum.ROUND_2_CONTRIBUTION),
+                            );
+                            keyStorage.updateLeaf(
+                                {
+                                    level1Index:
+                                        keyStorage.calculateLevel1Index({
+                                            committeeId: Field(committeeId),
+                                            keyId: Field(
+                                                notActiveAction.actionData
+                                                    .keyId,
+                                            ),
+                                        }),
+                                },
+                                keyStorage.calculateLeaf(
+                                    PublicKey.fromBase58(
+                                        notActiveAction.actionData.key,
+                                    ).toGroup(),
+                                ),
+                            );
+                            break;
+                        case DkgActionEnum.FINALIZE_ROUND_2:
+                            proof = await Utils.prove(
+                                UpdateKey.name,
+                                'update',
+                                async () =>
+                                    UpdateKey.update(
+                                        {
+                                            previousActionState: Field(
+                                                notActiveAction.previousActionState,
+                                            ),
+                                            action: dkgAction,
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        },
+                                        proof,
+                                        keyStatusStorage.getLevel1Witness(
+                                            keyStatusStorage.calculateLevel1Index(
+                                                {
+                                                    committeeId:
+                                                        Field(committeeId),
+                                                    keyId: Field(
+                                                        notActiveAction
+                                                            .actionData.keyId,
+                                                    ),
+                                                },
+                                            ),
+                                        ),
+                                        keyStorage.getLevel1Witness(
+                                            keyStorage.calculateLevel1Index({
+                                                committeeId: Field(committeeId),
+                                                keyId: Field(
+                                                    notActiveAction.actionData
+                                                        .keyId,
+                                                ),
+                                            }),
+                                        ),
+                                        rollupStorage.getWitness(
+                                            rollupStorage.calculateLevel1Index({
+                                                zkAppIndex: Field(
+                                                    ZkAppIndex.DKG,
+                                                ),
+                                                actionId: Field(
+                                                    notActiveAction.actionId,
+                                                ),
+                                            }),
+                                        ),
+                                        processStorage.getWitness(
+                                            Field(notActiveAction.actionId),
+                                        ),
+                                    ),
+                                undefined,
+                                { info: true, error: true },
+                            );
+                            keyStatusStorage.updateLeaf(
+                                {
+                                    level1Index:
+                                        keyStatusStorage.calculateLevel1Index({
+                                            committeeId: Field(committeeId),
+                                            keyId: Field(
+                                                notActiveAction.actionData
+                                                    .keyId,
+                                            ),
+                                        }),
+                                },
+                                Field(KeyStatusEnum.ACTIVE),
+                            );
+
+                            break;
+                        case DkgActionEnum.DEPRECATE_KEY:
+                            break;
+                    }
+                    if (
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ] == undefined
+                    ) {
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ] = 0;
+                    } else {
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ] += 1;
+                    }
+                    processStorage.updateLeaf(
+                        {
+                            level1Index: Field(notActiveAction.actionId),
+                        },
+                        processStorage.calculateLeaf({
+                            actionState: Field(
+                                notActiveAction.currentActionState,
+                            ),
+                            processCounter: new UInt8(
+                                processStorageMapping[
+                                    notActiveAction.currentActionState
+                                ],
+                            ),
+                        }),
+                    );
                 }
-                const dkgContract = new DKGContract(
+                const dkgContract = new DkgContract(
                     PublicKey.fromBase58(process.env.DKG_ADDRESS),
                 );
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
-                    {
-                        sender: feePayerPrivateKey.toPublicKey(),
-                        fee: process.env.FEE,
-                        nonce: await this.queryService.fetchAccountNonce(
-                            feePayerPrivateKey.toPublicKey().toBase58(),
-                        ),
-                    },
-                    () => {
-                        dkgContract.updateKeys(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
-                );
-                return true;
-            }
-        } catch (err) {
-            this.logger.error(err);
-        } finally {
-            return false;
-        }
-    }
-
-    async reduceRound1(): Promise<boolean> {
-        try {
-            const lastActiveRound1 = await this.round1Model.findOne(
-                { active: true },
-                {},
-                { sort: { actionId: -1 } },
-            );
-
-            const lastReducedAction = lastActiveRound1
-                ? await this.round1ActionModel.findOne({
-                      actionId: lastActiveRound1.actionId,
-                  })
-                : undefined;
-            const notReducedActions = await this.round1ActionModel.find(
-                {
-                    actionId: {
-                        $gt: lastReducedAction
-                            ? lastReducedAction.actionId
-                            : -1,
-                    },
-                },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            if (notReducedActions.length > 0) {
-                const state = await this.fetchRound1State();
-                let proof = await ReduceRound1.firstStep(
-                    lastReducedAction
-                        ? ZkApp.Round1.Action.fromFields(
-                              Utilities.stringArrayToFields(
-                                  lastReducedAction.actions,
-                              ),
-                          )
-                        : ZkApp.Round1.Action.empty(),
-                    state.reduceState,
-                    lastReducedAction
-                        ? Field(lastReducedAction.currentActionState)
-                        : Reducer.initialActionState,
-                );
-                const reduceState = _.cloneDeep(this._round1.reduceState);
-                for (let i = 0; i < notReducedActions.length; i++) {
-                    const notReducedAction = notReducedActions[i];
-                    proof = await ReduceRound1.nextStep(
-                        ZkApp.Round1.Action.fromFields(
-                            Utilities.stringArrayToFields(
-                                notReducedAction.actions,
+                await Utils.proveAndSendTx(
+                    DkgContract.name,
+                    'update',
+                    async () =>
+                        dkgContract.update(
+                            proof,
+                            this._dkg.zkAppStorage.getZkAppRef(
+                                ZkAppIndex.ROLLUP,
+                                PublicKey.fromBase58(
+                                    process.env.ROLLUP_ADDRESS,
+                                ),
                             ),
                         ),
-                        proof,
-                        reduceState.getWitness(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                    );
-                    reduceState.updateLeaf(
-                        Storage.SharedStorage.ReduceStorage.calculateIndex(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                        Storage.SharedStorage.ReduceStorage.calculateLeaf(
-                            Number(ActionReduceStatusEnum.REDUCED),
-                        ),
-                    );
-                }
-                const round1Contract = new Round1Contract(
-                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                const tx = await Mina.transaction(
                     {
-                        sender: feePayerPrivateKey.toPublicKey(),
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
                         fee: process.env.FEE,
+                        memo: '',
                         nonce: await this.queryService.fetchAccountNonce(
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    () => {
-                        round1Contract.reduce(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 return true;
             }
+            return false;
         } catch (err) {
-            this.logger.error(err);
             console.log(err);
-        } finally {
             return false;
         }
     }
 
-    async reduceRound2(): Promise<boolean> {
+    async rollupRound1() {
         try {
-            const lastActiveRound2 = await this.round2Model.findOne(
-                { active: true },
-                {},
-                { sort: { actionId: -1 } },
-            );
-            const lastReducedAction = lastActiveRound2
-                ? await this.round2ActionModel.findOne({
-                      actionId: lastActiveRound2.actionId,
-                  })
-                : undefined;
-            const notReducedActions = await this.round2ActionModel.find({
-                actionId: {
-                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
-                },
-            });
-            if (notReducedActions.length > 0) {
-                const state = await this.fetchRound2State();
-                let proof = await ReduceRound2.firstStep(
-                    lastReducedAction
-                        ? ZkApp.Round2.Action.fromFields(
-                              Utilities.stringArrayToFields(
-                                  lastReducedAction.actions,
-                              ),
-                          )
-                        : ZkApp.Round2.Action.empty(),
-                    state.reduceState,
-                    lastReducedAction
-                        ? Field(lastReducedAction.currentActionState)
-                        : Reducer.initialActionState,
-                );
-                const reduceState = _.cloneDeep(this._round2.reduceState);
-                for (let i = 0; i < notReducedActions.length; i++) {
-                    const notReducedAction = notReducedActions[i];
-                    proof = await ReduceRound2.nextStep(
-                        ZkApp.Round2.Action.fromFields(
-                            Utilities.stringArrayToFields(
-                                notReducedAction.actions,
-                            ),
-                        ),
-                        proof,
-                        reduceState.getWitness(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                    );
-                    reduceState.updateLeaf(
-                        Storage.SharedStorage.ReduceStorage.calculateIndex(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                        Storage.SharedStorage.ReduceStorage.calculateLeaf(
-                            Number(ActionReduceStatusEnum.REDUCED),
-                        ),
-                    );
-                }
-                const round2Contract = new Round2Contract(
-                    PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                const tx = await Mina.transaction(
-                    {
-                        sender: feePayerPrivateKey.toPublicKey(),
-                        fee: process.env.FEE,
-                        nonce: await this.queryService.fetchAccountNonce(
-                            feePayerPrivateKey.toPublicKey().toBase58(),
-                        ),
-                    },
-                    () => {
-                        round2Contract.reduce(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
-                );
-                return true;
-            }
-        } catch (err) {
-            this.logger.error(err);
-        } finally {
-            return false;
-        }
-    }
-
-    async getKeysReadyForRound1Finalization(): Promise<Key[]> {
-        const keys = await this.keyModel.find({
-            status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
-        });
-        const result: Key[] = [];
-        for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            const committee = await this.committeeModel.findOne({
-                committeeId: key.committeeId,
-            });
-            const round1s = await this.round1Model.find({
-                committeeId: key.committeeId,
-                keyId: key.keyId,
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.ROUND1,
                 active: true,
             });
-            if (round1s.length == committee.numberOfMembers) {
-                if (
-                    !(await this.dkgModel.exists({
-                        committeeId: key.committeeId,
-                        keyId: key.keyId,
-                        actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
-                    }))
-                ) {
-                    result.push(key);
-                }
-            }
-        }
-        return result;
-    }
-
-    async finalizeRound1(committeeId: number, keyId: number): Promise<boolean> {
-        try {
-            const key = await this.keyModel.findById(
-                Utilities.getKeyObjectId(committeeId, keyId),
-            );
-            if (key && key.status == KeyStatusEnum.ROUND_1_CONTRIBUTION) {
+            const keys = await this.keyModel.find({
+                status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
+            });
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
                 const committee = await this.committeeModel.findOne({
-                    committeeId: committeeId,
+                    committeeId: key.committeeId,
                 });
-                const round1s = await this.round1Model.find(
+                const notActiveActions = await this.round1ActionModel.find(
                     {
-                        committeeId: committeeId,
-                        keyId: keyId,
-                        active: true,
+                        'actionData.keyId': key.keyId,
+                        'actionData.committeeId': key.committeeId,
+                        active: false,
+                        actionId: {
+                            $lt: numRollupedActions,
+                        },
                     },
                     {},
-                    { sort: { memberId: 1 } },
+                    { sort: { 'actionData.memberId': 1 } },
                 );
-                if (round1s.length == committee.numberOfMembers) {
-                    const round1State = await this.fetchRound1State();
-                    let proof = await FinalizeRound1.firstStep(
-                        new ZkApp.Round1.Round1Input({
-                            previousActionState: Field(0),
-                            action: ZkApp.Round1.Action.empty(),
-                        }),
-                        Field(committee.threshold),
-                        Field(committee.numberOfMembers),
-                        round1State.contribution,
-                        round1State.publicKey,
-                        round1State.reduceState,
-                        this._round1.contribution.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
-                        }),
-                        this._round1.contribution.getLevel1Witness(
-                            this._round1.contribution.calculateLevel1Index({
-                                committeeId: Field(committeeId),
-                                keyId: Field(keyId),
-                            }),
-                        ),
-                        this._round1.publicKey.getLevel1Witness(
-                            this._round1.contribution.calculateLevel1Index({
-                                committeeId: Field(committeeId),
-                                keyId: Field(keyId),
-                            }),
-                        ),
+                if (notActiveActions.length == committee.numberOfMembers) {
+                    const state = await this.fetchRound1State();
+                    const contributionStorage = _.cloneDeep(
+                        this._round1.contributionStorage,
                     );
-                    const contribution = _.cloneDeep(this._round1.contribution);
-                    const publicKey = _.cloneDeep(this._round1.publicKey);
-                    contribution.updateInternal(
-                        contribution.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
-                        }),
-                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                    const publicKeyStorage = _.cloneDeep(
+                        this._round1.publicKeyStorage,
                     );
-                    publicKey.updateInternal(
-                        publicKey.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
-                        }),
-                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                    const processStorage = _.cloneDeep(
+                        this._round1.processStorage,
                     );
-                    for (let i = 0; i < round1s.length; i++) {
-                        const round1 = round1s[i];
+                    const processStorageMapping = _.cloneDeep(
+                        this._round1.processStorageMapping,
+                    );
+                    const rollupStorage = _.cloneDeep(
+                        this.rollupContractService.rollupStorage,
+                    );
+                    let proof = await Utils.prove(
+                        FinalizeRound1.name,
+                        'init',
+                        async () =>
+                            FinalizeRound1.init(
+                                FinalizeRound1Input.empty(),
+                                rollupStorage.root,
+                                Field(committee.threshold),
+                                Field(committee.numberOfMembers),
+                                state.contributionRoot,
+                                state.publicKeyRoot,
+                                state.processRoot,
+                                Field(key.keyIndex),
+                                contributionStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
+                                ),
+                                publicKeyStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+                    contributionStorage.updateInternal(
+                        Field(key.keyIndex),
+                        DKG_LEVEL_2_TREE(),
+                    );
+                    publicKeyStorage.updateInternal(
+                        Field(key.keyIndex),
+                        DKG_LEVEL_2_TREE(),
+                    );
+                    for (let j = 0; j < notActiveActions.length; j++) {
+                        const notActiveAction = notActiveActions[j];
                         const round1Action =
-                            await this.round1ActionModel.findOne({
-                                actionId: round1.actionId,
-                            });
-                        proof = await FinalizeRound1.nextStep(
-                            new ZkApp.Round1.Round1Input({
-                                previousActionState: Field(
-                                    round1Action.previousActionState,
+                            ZkApp.Round1.Round1Action.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
                                 ),
-                                action: ZkApp.Round1.Action.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        round1Action.actions,
+                            );
+
+                        proof = await Utils.prove(
+                            FinalizeRound1.name,
+                            'contribute',
+                            async () =>
+                                FinalizeRound1.contribute(
+                                    {
+                                        previousActionState: Field(
+                                            notActiveAction.previousActionState,
+                                        ),
+                                        action: round1Action,
+                                        actionId: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    },
+                                    proof,
+                                    contributionStorage.getWitness(
+                                        Field(key.keyIndex),
+                                        Field(
+                                            notActiveAction.actionData.memberId,
+                                        ),
                                     ),
+                                    publicKeyStorage.getWitness(
+                                        Field(key.keyIndex),
+                                        Field(
+                                            notActiveAction.actionData.memberId,
+                                        ),
+                                    ),
+                                    rollupStorage.getWitness(
+                                        rollupStorage.calculateLevel1Index({
+                                            zkAppIndex: Field(
+                                                ZkAppIndex.ROUND1,
+                                            ),
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        }),
+                                    ),
+                                    processStorage.getWitness(
+                                        Field(notActiveAction.actionId),
+                                    ),
+                                ),
+                            undefined,
+                            { info: true, error: true },
+                        );
+
+                        const contribution: Group[] =
+                            notActiveAction.actionData.contribution.map(
+                                (point) => Group.from(point.x, point.y),
+                            );
+                        contributionStorage.updateRawLeaf(
+                            {
+                                level1Index: Field(key.keyIndex),
+                                level2Index: Field(
+                                    notActiveAction.actionData.memberId,
+                                ),
+                            },
+                            new Round1Contribution({
+                                C: Libs.Committee.CArray.from(contribution),
+                            }),
+                        );
+                        publicKeyStorage.updateRawLeaf(
+                            {
+                                level1Index: Field(key.keyIndex),
+                                level2Index: Field(
+                                    notActiveAction.actionData.memberId,
+                                ),
+                            },
+                            contribution[0],
+                        );
+                        if (
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] == undefined
+                        ) {
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] = 0;
+                        } else {
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] += 1;
+                        }
+                        processStorage.updateLeaf(
+                            {
+                                level1Index: Field(notActiveAction.actionId),
+                            },
+                            processStorage.calculateLeaf({
+                                actionState: Field(
+                                    notActiveAction.currentActionState,
+                                ),
+                                processCounter: new UInt8(
+                                    processStorageMapping[
+                                        notActiveAction.currentActionState
+                                    ],
                                 ),
                             }),
-                            proof,
-                            contribution.getWitness(
-                                contribution.calculateLevel1Index({
-                                    committeeId: Field(committeeId),
-                                    keyId: Field(keyId),
-                                }),
-                                contribution.calculateLevel2Index(
-                                    Field(round1.memberId),
-                                ),
-                            ),
-                            publicKey.getWitness(
-                                publicKey.calculateLevel1Index({
-                                    committeeId: Field(committeeId),
-                                    keyId: Field(keyId),
-                                }),
-                                publicKey.calculateLevel2Index(
-                                    Field(round1.memberId),
-                                ),
-                            ),
-                            this._round1.reduceState.getWitness(
-                                Field(round1Action.currentActionState),
-                            ),
-                        );
-                        contribution.updateLeaf(
-                            {
-                                level1Index: contribution.calculateLevel1Index({
-                                    committeeId: Field(committeeId),
-                                    keyId: Field(keyId),
-                                }),
-                                level2Index: contribution.calculateLevel2Index(
-                                    Field(round1.memberId),
-                                ),
-                            },
-                            contribution.calculateLeaf(
-                                ZkApp.Round1.Action.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        round1Action.actions,
-                                    ),
-                                ).contribution,
-                            ),
-                        );
-                        publicKey.updateLeaf(
-                            {
-                                level1Index: publicKey.calculateLevel1Index({
-                                    committeeId: Field(committeeId),
-                                    keyId: Field(keyId),
-                                }),
-                                level2Index: publicKey.calculateLevel2Index(
-                                    Field(round1.memberId),
-                                ),
-                            },
-                            publicKey.calculateLeaf(
-                                ZkApp.Round1.Action.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        round1Action.actions,
-                                    ),
-                                ).contribution.C.get(Field(0)),
-                            ),
                         );
                     }
                     const round1Contract = new Round1Contract(
@@ -824,228 +793,262 @@ export class DkgContractsService implements ContractServiceInterface {
                     const feePayerPrivateKey = PrivateKey.fromBase58(
                         process.env.FEE_PAYER_PRIVATE_KEY,
                     );
-                    await this.committeeContractService.fetchCommitteeState();
-                    await this.fetchDkgState();
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                        },
-                        () => {
+                    await Utils.proveAndSendTx(
+                        Round1Contract.name,
+                        'finalize',
+                        async () =>
                             round1Contract.finalize(
                                 proof,
-                                new Storage.SharedStorage.ZkAppRef({
-                                    address: PublicKey.fromBase58(
+                                this.committeeContractService.settingStorage.getLevel1Witness(
+                                    Field(key.committeeId),
+                                ),
+                                this._dkg.keyStatusStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
+                                ),
+                                this._dkg.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.COMMITTEE,
+                                    PublicKey.fromBase58(
                                         process.env.COMMITTEE_ADDRESS,
                                     ),
-                                    witness: this._round1.zkApp.getWitness(
-                                        Field(ZkAppEnum.COMMITTEE),
-                                    ),
-                                }),
-                                new Storage.SharedStorage.ZkAppRef({
-                                    address: PublicKey.fromBase58(
+                                ),
+                                this._dkg.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.DKG,
+                                    PublicKey.fromBase58(
                                         process.env.DKG_ADDRESS,
                                     ),
-                                    witness: this._round1.zkApp.getWitness(
-                                        Field(ZkAppEnum.DKG),
+                                ),
+                                this._dkg.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.ROLLUP,
+                                    PublicKey.fromBase58(
+                                        process.env.ROLLUP_ADDRESS,
                                     ),
-                                }),
-                                this.committeeContractService.settingTree.getWitness(
-                                    Field(committeeId),
                                 ),
-                                this._dkg.keyStatus.getWitness(
-                                    this._dkg.keyStatus.calculateLevel1Index({
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(keyId),
-                                    }),
+                                this._dkg.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.ROUND1,
+                                    PublicKey.fromBase58(
+                                        process.env.ROUND_1_ADDRESS,
+                                    ),
                                 ),
-                            );
+                            ),
+                        {
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
+                            },
+                            fee: process.env.FEE,
+                            memo: '',
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
                     );
                     return true;
                 }
             }
         } catch (err) {
-            this.logger.error(err);
-        } finally {
-            return false;
+            console.log(err);
         }
     }
 
-    async getKeysReadyForRound2Finalization(): Promise<Key[]> {
-        const keys = await this.keyModel.find({
-            status: KeyStatusEnum.ROUND_2_CONTRIBUTION,
-        });
-        const result: Key[] = [];
-        for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            const committee = await this.committeeModel.findOne({
-                committeeId: key.committeeId,
-            });
-            const round2s = await this.round2Model.find({
-                committeeId: key.committeeId,
-                keyId: key.keyId,
+    async rollupRound2() {
+        try {
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.ROUND2,
                 active: true,
             });
-            if (round2s.length == committee.numberOfMembers) {
-                if (
-                    !(await this.dkgModel.find({
-                        committeeId: key.committeeId,
-                        keyId: key.keyId,
-                        actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
-                    }))
-                ) {
-                    result.push(key);
-                }
-            }
-        }
-        return result;
-    }
-
-    async finalizeRound2(committeeId: number, keyId: number): Promise<boolean> {
-        try {
-            const key = await this.keyModel.findById(
-                Utilities.getKeyObjectId(committeeId, keyId),
-            );
-            if (key && key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION) {
+            const keys = await this.keyModel.find({
+                status: KeyStatusEnum.ROUND_2_CONTRIBUTION,
+            });
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
                 const committee = await this.committeeModel.findOne({
-                    committeeId: committeeId,
+                    committeeId: key.committeeId,
                 });
-                const round2s = await this.round2Model.find(
-                    {
-                        committeeId: committeeId,
-                        keyId: keyId,
-                        active: true,
-                    },
-                    {},
-                    {
-                        sort: {
-                            memberId: 1,
+                // const notActiveActions = await this.round2ActionModel.find(
+                //     {
+                //         'actionData.keyId': key.keyId,
+                //         'actionData.committeeId': key.committeeId,
+                //         active: false,
+                //         actionId: {
+                //             $lt: numRollupedActions,
+                //         },
+                //     },
+                //     {},
+                //     { sort: { 'actionData.memberId': 1 } },
+                // );
+                const notActiveActions = await this.round2ActionModel.aggregate(
+                    [
+                        {
+                            $match: {
+                                'actionData.keyId': key.keyId,
+                                'actionData.committeeId': key.committeeId,
+                                active: false,
+                                actionId: { $lt: numRollupedActions },
+                            },
                         },
-                    },
+                        {
+                            $sort: { actionId: -1 },
+                        },
+                        {
+                            $group: {
+                                _id: '$actionData.memberId',
+                                latestAction: { $first: '$$ROOT' },
+                            },
+                        },
+                        {
+                            $replaceRoot: { newRoot: '$latestAction' },
+                        },
+                        {
+                            $sort: { 'actionData.memberId': 1 },
+                        },
+                    ],
                 );
-                if (round2s.length == committee.numberOfMembers) {
-                    const round2State = await this.fetchRound2State();
-                    const initialHashArray =
-                        new Libs.Committee.EncryptionHashArray(
-                            [...Array(committee.numberOfMembers).keys()].map(
-                                () => Field(0),
-                            ),
-                        );
-                    let proof = await FinalizeRound2.firstStep(
-                        new ZkApp.Round2.Round2Input({
-                            previousActionState: Field(0),
-                            action: ZkApp.Round2.Action.empty(),
-                        }),
-                        Field(committee.threshold),
-                        Field(committee.numberOfMembers),
-                        round2State.contribution,
-                        round2State.reduceState,
-                        this._round2.contribution.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
-                        }),
-                        initialHashArray,
-                        this._round2.contribution.getLevel1Witness(
-                            this._round2.contribution.calculateLevel1Index({
-                                committeeId: Field(committeeId),
-                                keyId: Field(keyId),
-                            }),
-                        ),
+                if (notActiveActions.length == committee.numberOfMembers) {
+                    const state = await this.fetchRound2State();
+                    const contributionStorage = _.cloneDeep(
+                        this._round2.contributionStorage,
                     );
-                    const contribution = _.cloneDeep(this._round2.contribution);
-                    const encryption = _.cloneDeep(this._round2.encryption);
-                    contribution.updateInternal(
-                        contribution.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
-                        }),
-                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
+                    const encryptionStorage = _.cloneDeep(
+                        this._round2.encryptionStorage,
                     );
-                    const contributions = [];
-                    for (let i = 0; i < round2s.length; i++) {
-                        const round2 = round2s[i];
-                        const round2Action =
-                            await this.round2ActionModel.findOne({
-                                actionId: round2.actionId,
-                            });
-                        contributions.push(
-                            ZkApp.Round2.Action.fromFields(
-                                Utilities.stringArrayToFields(
-                                    round2Action.actions,
+                    const processStorage = _.cloneDeep(
+                        this._round2.processStorage,
+                    );
+                    const processStorageMapping = _.cloneDeep(
+                        this._round2.processStorageMapping,
+                    );
+                    const rollupStorage = _.cloneDeep(
+                        this.rollupContractService.rollupStorage,
+                    );
+                    let proof = await Utils.prove(
+                        FinalizeRound2.name,
+                        'init',
+                        async () =>
+                            FinalizeRound2.init(
+                                FinalizeRound2Input.empty(),
+                                rollupStorage.root,
+                                Field(committee.threshold),
+                                Field(committee.numberOfMembers),
+                                state.contributionRoot,
+                                state.processRoot,
+                                Field(key.keyIndex),
+                                new EncryptionHashArray(
+                                    [...Array(committee.numberOfMembers)].map(
+                                        () => Field(0),
+                                    ),
                                 ),
-                            ).contribution,
+                                contributionStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+                    const contributions: Libs.Committee.Round2Contribution[] =
+                        [];
+                    for (let j = 0; j < notActiveActions.length; j++) {
+                        const round2 = notActiveActions[j].actionData;
+                        const c: Bit255[] = round2.contribution.c.map((value) =>
+                            Bit255.fromBigInt(BigInt(value)),
+                        );
+                        const u: Group[] = round2.contribution.u.map((point) =>
+                            Group.from(point.x, point.y),
+                        );
+                        contributions.push(
+                            new Libs.Committee.Round2Contribution({
+                                c: Libs.Committee.cArray.from(c),
+                                U: Libs.Committee.UArray.from(u),
+                            }),
                         );
                     }
-
-                    for (let i = 0; i < round2s.length; i++) {
-                        const round2 = round2s[i];
+                    contributionStorage.updateInternal(
+                        Field(key.keyIndex),
+                        DKG_LEVEL_2_TREE(),
+                    );
+                    for (let j = 0; j < notActiveActions.length; j++) {
+                        const notActiveAction = notActiveActions[j];
                         const round2Action =
-                            await this.round2ActionModel.findOne({
-                                actionId: round2.actionId,
-                            });
-                        proof = await FinalizeRound2.nextStep(
-                            new ZkApp.Round2.Round2Input({
-                                previousActionState: Field(
-                                    round2Action.previousActionState,
+                            ZkApp.Round2.Round2Action.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
                                 ),
-                                action: ZkApp.Round2.Action.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        round2Action.actions,
+                            );
+                        proof = await Utils.prove(
+                            FinalizeRound2.name,
+                            'contribute',
+                            async () =>
+                                FinalizeRound2.contribute(
+                                    {
+                                        previousActionState: Field(
+                                            notActiveAction.previousActionState,
+                                        ),
+                                        action: round2Action,
+                                        actionId: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    },
+                                    proof,
+                                    contributionStorage.getWitness(
+                                        Field(key.keyIndex),
+                                        Field(
+                                            notActiveAction.actionData.memberId,
+                                        ),
+                                    ),
+                                    rollupStorage.getWitness(
+                                        rollupStorage.calculateLevel1Index({
+                                            zkAppIndex: Field(
+                                                ZkAppIndex.ROUND2,
+                                            ),
+                                            actionId: Field(
+                                                notActiveAction.actionId,
+                                            ),
+                                        }),
+                                    ),
+                                    processStorage.getWitness(
+                                        Field(notActiveAction.actionId),
                                     ),
                                 ),
-                            }),
-                            proof,
-                            contribution.getWitness(
-                                contribution.calculateLevel1Index({
-                                    committeeId: Field(committeeId),
-                                    keyId: Field(keyId),
-                                }),
-                                contribution.calculateLevel2Index(
-                                    Field(round2.memberId),
-                                ),
-                            ),
-                            this._round2.reduceState.getWitness(
-                                Field(round2Action.currentActionState),
-                            ),
+                            undefined,
+                            { info: true, error: true },
                         );
-                        contribution.updateLeaf(
+                        contributionStorage.updateRawLeaf(
                             {
-                                level1Index: contribution.calculateLevel1Index({
-                                    committeeId: Field(committeeId),
-                                    keyId: Field(keyId),
-                                }),
-                                level2Index: contribution.calculateLevel2Index(
-                                    Field(round2.memberId),
+                                level1Index: Field(key.keyIndex),
+                                level2Index: Field(
+                                    notActiveAction.actionData.memberId,
                                 ),
                             },
-                            contribution.calculateLeaf(
-                                ZkApp.Round2.Action.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        round2Action.actions,
-                                    ),
-                                ).contribution,
-                            ),
+                            contributions[j],
                         );
-                        encryption.updateLeaf(
+                        if (
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] == undefined
+                        ) {
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] = 0;
+                        } else {
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ] += 1;
+                        }
+                        processStorage.updateLeaf(
                             {
-                                level1Index: contribution.calculateLevel1Index({
-                                    committeeId: Field(committeeId),
-                                    keyId: Field(keyId),
-                                }),
-                                level2Index: contribution.calculateLevel2Index(
-                                    Field(round2.memberId),
-                                ),
+                                level1Index: Field(notActiveAction.actionId),
                             },
-                            encryption.calculateLeaf({
-                                contributions: contributions,
-                                memberId: Field(round2.memberId),
+                            processStorage.calculateLeaf({
+                                actionState: Field(
+                                    notActiveAction.currentActionState,
+                                ),
+                                processCounter: new UInt8(
+                                    processStorageMapping[
+                                        notActiveAction.currentActionState
+                                    ],
+                                ),
                             }),
                         );
                     }
@@ -1055,106 +1058,110 @@ export class DkgContractsService implements ContractServiceInterface {
                     const feePayerPrivateKey = PrivateKey.fromBase58(
                         process.env.FEE_PAYER_PRIVATE_KEY,
                     );
-                    await this.committeeContractService.fetchCommitteeState();
-                    await this.fetchDkgState();
-                    const tx = await Mina.transaction(
-                        {
-                            sender: feePayerPrivateKey.toPublicKey(),
-                            fee: process.env.FEE,
-                        },
-                        () => {
+                    await Utils.proveAndSendTx(
+                        Round2Contract.name,
+                        'finalize',
+                        async () =>
                             round2Contract.finalize(
                                 proof,
-                                encryption.getLevel1Witness(
-                                    encryption.calculateLevel1Index({
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(keyId),
-                                    }),
+                                encryptionStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
                                 ),
-                                new Storage.SharedStorage.ZkAppRef({
-                                    address: PublicKey.fromBase58(
+                                this.committeeContractService.settingStorage.getLevel1Witness(
+                                    Field(key.committeeId),
+                                ),
+                                this._dkg.keyStatusStorage.getLevel1Witness(
+                                    Field(key.keyIndex),
+                                ),
+                                this._dkg.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.COMMITTEE,
+                                    PublicKey.fromBase58(
                                         process.env.COMMITTEE_ADDRESS,
                                     ),
-                                    witness: this._round2.zkApp.getWitness(
-                                        Field(ZkAppEnum.COMMITTEE),
-                                    ),
-                                }),
-                                new Storage.SharedStorage.ZkAppRef({
-                                    address: PublicKey.fromBase58(
+                                ),
+                                this._dkg.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.DKG,
+                                    PublicKey.fromBase58(
                                         process.env.DKG_ADDRESS,
                                     ),
-                                    witness: this._round2.zkApp.getWitness(
-                                        Field(ZkAppEnum.DKG),
+                                ),
+                                this._dkg.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.ROLLUP,
+                                    PublicKey.fromBase58(
+                                        process.env.ROLLUP_ADDRESS,
                                     ),
-                                }),
-                                this.committeeContractService.settingTree.getLevel1Witness(
-                                    Field(committeeId),
                                 ),
-                                this._dkg.keyStatus.getLevel1Witness(
-                                    this._dkg.keyStatus.calculateLevel1Index({
-                                        committeeId: Field(committeeId),
-                                        keyId: Field(keyId),
-                                    }),
+                                this._dkg.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.ROUND2,
+                                    PublicKey.fromBase58(
+                                        process.env.ROUND_2_ADDRESS,
+                                    ),
                                 ),
-                            );
+                            ),
+                        {
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
+                            },
+                            fee: process.env.FEE,
+                            memo: '',
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
                         },
-                    );
-                    await Utilities.proveAndSend(
-                        tx,
-                        feePayerPrivateKey,
-                        false,
-                        this.logger,
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
                     );
                     return true;
                 }
+                return false;
             }
-            return false;
         } catch (err) {
-            this.logger.error(err);
-        } finally {
-            return false;
+            console.log(err);
         }
     }
 
-    async fetchDkgState(): Promise<DkgState> {
+    // ============ PRIVATE FUNCTIONS ============
+    private async fetchDkgState(): Promise<DkgState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.DKG_ADDRESS,
         );
-        const dkgState: DkgState = {
-            zkApp: Field(state[0]),
-            keyCounter: Field(state[1]),
-            keyStatus: Field(state[2]),
+        const result: DkgState = {
+            zkAppRoot: Field(state[0]),
+            keyCounterRoot: Field(state[1]),
+            keyStatusRoot: Field(state[2]),
+            keyRoot: Field(state[3]),
+            processRoot: Field(state[4]),
         };
-        return dkgState;
+        return result;
     }
 
-    async fetchRound1State(): Promise<Round1State> {
+    private async fetchRound1State(): Promise<Round1State> {
         const state = await this.queryService.fetchZkAppState(
             process.env.ROUND_1_ADDRESS,
         );
-        const round1State: Round1State = {
-            zkApp: Field(state[0]),
-            reduceState: Field(state[1]),
-            contribution: Field(state[2]),
-            publicKey: Field(state[3]),
+        const result: Round1State = {
+            zkAppRoot: Field(state[0]),
+            contributionRoot: Field(state[1]),
+            publicKeyRoot: Field(state[2]),
+            processRoot: Field(state[3]),
         };
-        return round1State;
+        return result;
     }
 
-    async fetchRound2State(): Promise<Round2State> {
+    private async fetchRound2State(): Promise<Round2State> {
         const state = await this.queryService.fetchZkAppState(
             process.env.ROUND_2_ADDRESS,
         );
-        const round2State: Round2State = {
-            zkApp: Field(state[0]),
-            reduceState: Field(state[1]),
-            contribution: Field(state[2]),
-            encryption: Field(state[3]),
+        const result: Round2State = {
+            zkAppRoot: Field(state[0]),
+            contributionRoot: Field(state[1]),
+            encryptionRoot: Field(state[2]),
+            processRoot: Field(state[3]),
         };
-        return round2State;
+        return result;
     }
-
-    // ============ PRIVATE FUNCTIONS ============
 
     private async fetchDkgActions() {
         const lastAction = await this.dkgActionModel.findOne(
@@ -1166,33 +1173,68 @@ export class DkgContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.DKG_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
+            const actionData = getDkgActionData(action.actions[0]);
             await this.dkgActionModel.findOneAndUpdate(
                 {
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                 },
                 {
                     actionId: actionId,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
+                    currentActionState: currentActionState,
+                    previousActionState: previousActionState,
                     actions: action.actions[0],
+                    actionData: actionData,
                 },
                 { new: true, upsert: true },
             );
             previousActionState = currentActionState;
             actionId += 1;
+        }
+    }
+
+    private async fetchDkgEvents() {
+        const lastEvent = await this.dkgEventModel.findOne(
+            {},
+            {},
+            { sort: { eventId: -1 } },
+        );
+        let events: Event[] = await this.queryService.fetchEvents(
+            process.env.DKG_ADDRESS,
+        );
+        let eventId: number;
+        if (!lastEvent) {
+            eventId = 0;
+        } else {
+            events = events.slice(lastEvent.eventId + 1);
+            eventId = lastEvent.eventId + 1;
+        }
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+            await this.dkgEventModel.findOneAndUpdate(
+                {
+                    eventId: eventId,
+                },
+                {
+                    eventId: eventId,
+                    rawData: event.events[0].data,
+                    data: getDkgEventData(event.events[0].data),
+                },
+                { new: true, upsert: true },
+            );
+            eventId += 1;
         }
     }
 
@@ -1205,33 +1247,68 @@ export class DkgContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.ROUND_1_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
+            const actionData = getRound1ActionData(action.actions[0]);
             await this.round1ActionModel.findOneAndUpdate(
                 {
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                 },
                 {
                     actionId: actionId,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
+                    currentActionState: currentActionState,
+                    previousActionState: previousActionState,
                     actions: action.actions[0],
+                    actionData: actionData,
                 },
                 { new: true, upsert: true },
             );
             previousActionState = currentActionState;
             actionId += 1;
+        }
+    }
+
+    private async fetchRound1Events() {
+        const lastEvent = await this.round1EventModel.findOne(
+            {},
+            {},
+            { sort: { eventId: -1 } },
+        );
+        let events: Event[] = await this.queryService.fetchEvents(
+            process.env.ROUND_1_ADDRESS,
+        );
+        let eventId: number;
+        if (!lastEvent) {
+            eventId = 0;
+        } else {
+            events = events.slice(lastEvent.eventId + 1);
+            eventId = lastEvent.eventId + 1;
+        }
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+            await this.round1EventModel.findOneAndUpdate(
+                {
+                    eventId: eventId,
+                },
+                {
+                    eventId: eventId,
+                    rawData: event.events[0].data,
+                    data: getRound1EventData(event.events[0].data),
+                },
+                { new: true, upsert: true },
+            );
+            eventId += 1;
         }
     }
 
@@ -1245,28 +1322,30 @@ export class DkgContractsService implements ContractServiceInterface {
         let actions: Action[] = await this.queryService.fetchActions(
             process.env.ROUND_2_ADDRESS,
         );
-        let previousActionState: Field;
+        let previousActionState: string;
         let actionId: number;
         if (!lastAction) {
-            previousActionState = Reducer.initialActionState;
+            previousActionState = Reducer.initialActionState.toString();
             actionId = 0;
         } else {
             actions = actions.slice(lastAction.actionId + 1);
-            previousActionState = Field(lastAction.currentActionState);
+            previousActionState = lastAction.currentActionState;
             actionId = lastAction.actionId + 1;
         }
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
-            const currentActionState = Field(action.hash);
+            const currentActionState = action.hash;
+            const actionData = getRound2ActionData(action.actions[0]);
             await this.round2ActionModel.findOneAndUpdate(
                 {
-                    currentActionState: currentActionState.toString(),
+                    currentActionState: currentActionState,
                 },
                 {
                     actionId: actionId,
-                    currentActionState: currentActionState.toString(),
-                    previousActionState: previousActionState.toString(),
+                    currentActionState: currentActionState,
+                    previousActionState: previousActionState,
                     actions: action.actions[0],
+                    actionData: actionData,
                 },
                 { new: true, upsert: true },
             );
@@ -1275,648 +1354,504 @@ export class DkgContractsService implements ContractServiceInterface {
         }
     }
 
-    private async updateDkgs() {
-        let promises = [];
-        const lastDkg = await this.dkgModel.findOne(
+    private async fetchRound2Events() {
+        const lastEvent = await this.round2EventModel.findOne(
             {},
             {},
-            { sort: { actionId: -1 } },
+            { sort: { eventId: -1 } },
         );
-
-        let dkgActions: DkgAction[];
-        if (lastDkg != null) {
-            dkgActions = await this.dkgActionModel.find(
-                { actionId: { $gt: lastDkg.actionId } },
-                {},
-                { sort: { actionId: 1 } },
-            );
-        } else {
-            dkgActions = await this.dkgActionModel.find(
-                {},
-                {},
-                { sort: { actionId: 1 } },
-            );
-        }
-
-        for (let i = 0; i < dkgActions.length; i++) {
-            const dkgAction = dkgActions[i];
-            promises.push(
-                this.dkgModel.findOneAndUpdate(
-                    { actionId: dkgAction.actionId },
-                    getDkg(dkgAction),
-                    { new: true, upsert: true },
-                ),
-            );
-        }
-        await Promise.all(promises);
-        promises = [];
-        const rawEvents = await this.queryService.fetchEvents(
-            process.env.DKG_ADDRESS,
-        );
-        if (rawEvents.length > 0) {
-            // const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActionState = Field(lastEvent[0].data[0]).toString();
-            const lastActiveDkgAction = await this.dkgActionModel.findOne({
-                currentActionState: lastActionState,
-            });
-            const notActiveDkgs = await this.dkgModel.find(
-                {
-                    actionId: { $lte: lastActiveDkgAction.actionId },
-                    active: false,
-                },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            for (let i = 0; i < notActiveDkgs.length; i++) {
-                const notActiveDkg = notActiveDkgs[i];
-                notActiveDkg.set('active', true);
-                promises.push(notActiveDkg.save());
-            }
-            await Promise.all(promises);
-        }
-    }
-
-    private async updateRound1s() {
-        let promises = [];
-        const lastRound1Contribution = await this.round1Model.findOne(
-            {},
-            {},
-            { sort: { actionId: -1 } },
-        );
-
-        let round1Actions: Round1Action[];
-        if (lastRound1Contribution != null) {
-            round1Actions = await this.round1ActionModel.find(
-                { actionId: { $gt: lastRound1Contribution.actionId } },
-                {},
-                { sort: { actionId: 1 } },
-            );
-        } else {
-            round1Actions = await this.round1ActionModel.find(
-                {},
-                {},
-                { sort: { actionId: 1 } },
-            );
-        }
-        for (let i = 0; i < round1Actions.length; i++) {
-            const round1Action = round1Actions[i];
-            promises.push(
-                this.round1Model.findOneAndUpdate(
-                    { actionId: round1Action.actionId },
-                    getRound1(round1Action),
-                    { new: true, upsert: true },
-                ),
-            );
-        }
-        await Promise.all(promises);
-        promises = [];
-        const rawEvents = await this.queryService.fetchEvents(
-            process.env.ROUND_1_ADDRESS,
-        );
-        if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActionState = Field(lastEvent[0].data[0]).toString();
-            const lastActiveRound1Action = await this.round1ActionModel.findOne(
-                {
-                    currentActionState: lastActionState,
-                },
-            );
-            const notActiveRound1Contributions = await this.round1Model.find(
-                {
-                    actionId: { $lte: lastActiveRound1Action.actionId },
-                    active: false,
-                },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            for (let i = 0; i < notActiveRound1Contributions.length; i++) {
-                const notActiveRound1Contribution =
-                    notActiveRound1Contributions[i];
-                notActiveRound1Contribution.set('active', true);
-                promises.push(notActiveRound1Contribution.save());
-            }
-            await Promise.all(promises);
-        }
-    }
-
-    private async updateRound2s() {
-        let promises = [];
-        const lastRound2Contribution = await this.round2Model.findOne(
-            {},
-            {},
-            { sort: { actionId: -1 } },
-        );
-
-        let round2Actions: Round2Action[];
-        if (lastRound2Contribution != null) {
-            round2Actions = await this.round2ActionModel.find(
-                { actionId: { $gt: lastRound2Contribution.actionId } },
-                {},
-                { sort: { actionId: 1 } },
-            );
-        } else {
-            round2Actions = await this.round2ActionModel.find(
-                {},
-                {},
-                { sort: { actionId: 1 } },
-            );
-        }
-        for (let i = 0; i < round2Actions.length; i++) {
-            const round2Action = round2Actions[i];
-            promises.push(
-                this.round2Model.findOneAndUpdate(
-                    { actionId: round2Action.actionId },
-                    getRound2(round2Action),
-                    { new: true, upsert: true },
-                ),
-            );
-        }
-        await Promise.all(promises);
-        promises = [];
-        const rawEvents = await this.queryService.fetchEvents(
+        let events: Event[] = await this.queryService.fetchEvents(
             process.env.ROUND_2_ADDRESS,
         );
-        if (rawEvents.length > 0) {
-            // const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActionState = Field(lastEvent[0].data[0]).toString();
-            const lastActiveRound2Action = await this.round2ActionModel.findOne(
+        let eventId: number;
+        if (!lastEvent) {
+            eventId = 0;
+        } else {
+            events = events.slice(lastEvent.eventId + 1);
+            eventId = lastEvent.eventId + 1;
+        }
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+
+            await this.round2EventModel.findOneAndUpdate(
                 {
-                    currentActionState: lastActionState,
+                    eventId: eventId,
                 },
-            );
-            const notActiveRound2Contributions = await this.round2Model.find(
                 {
-                    actionId: { $lte: lastActiveRound2Action.actionId },
-                    active: false,
+                    eventId: eventId,
+                    rawData: event.events[0].data,
+                    data: getRound2EventData(event.events[0].data),
                 },
-                {},
-                { sort: { actionId: 1 } },
+                { new: true, upsert: true },
             );
-            for (let i = 0; i < notActiveRound2Contributions.length; i++) {
-                const notActiveRound2Contribution =
-                    notActiveRound2Contributions[i];
-                notActiveRound2Contribution.set('active', true);
-                promises.push(notActiveRound2Contribution.save());
-            }
-            await Promise.all(promises);
+            eventId += 1;
         }
     }
 
-    private async updateKeys() {
-        const keyCounters: { _id: number; count: number }[] =
-            await this.dkgModel.aggregate([
-                {
-                    $match: {
-                        active: true,
-                        actionEnum: DkgActionEnum.GENERATE_KEY,
-                    },
-                },
-                {
-                    $group: {
-                        _id: '$committeeId',
-                        count: { $count: {} },
-                    },
-                },
-            ]);
-        for (let i = 0; i < keyCounters.length; i++) {
-            const keyCounter = keyCounters[i];
-            const committeeId = keyCounter._id;
-            await this.dkgModel.find(
-                { active: true },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
-                const keyObjectId = Utilities.getKeyObjectId(
-                    committeeId,
-                    keyId,
-                );
-                const existed = await this.keyModel.exists({
-                    _id: keyObjectId,
+    private async updateDkgActions() {
+        await this.fetchDkgState();
+        await this.fetchDkgEvents();
+
+        const notActiveActions = await this.dkgActionModel.find(
+            {
+                active: false,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notActiveActions.length > 0) {
+            const nextKeyIdMapping: {
+                [committeeId: number]: number;
+            } = {};
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const promises = [];
+                const notActiveAction = notActiveActions[i];
+                const exist = await this.dkgEventModel.exists({
+                    data: { $in: [notActiveAction.currentActionState] },
                 });
-                if (!existed) {
-                    await this.keyModel.create({
-                        _id: keyObjectId,
-                        committeeId: committeeId,
-                        keyId: keyId,
-                        status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
-                    });
-                }
-                const deprecated = await this.dkgModel.exists({
-                    committeeId: committeeId,
-                    keyId: keyId,
-                    actionEnum: DkgActionEnum.DEPRECATE_KEY,
-                    active: true,
-                });
-                const key = await this.keyModel.findOne({
-                    _id: keyObjectId,
-                });
-                if (deprecated) {
-                    key.set('status', KeyStatusEnum.DEPRECATED);
-                } else {
-                    const finalizedRound2 = await this.dkgModel.exists({
-                        committeeId: committeeId,
-                        keyId: keyId,
-                        actionEnum: DkgActionEnum.FINALIZE_ROUND_2,
-                        active: true,
-                    });
-                    if (finalizedRound2) {
-                        key.set('status', KeyStatusEnum.ACTIVE);
-                    } else {
-                        const finalizedRound1 = await this.dkgModel.exists({
-                            committeeId: committeeId,
-                            keyId: keyId,
-                            actionEnum: DkgActionEnum.FINALIZE_ROUND_1,
-                            active: true,
-                        });
-                        if (finalizedRound1) {
+                if (exist) {
+                    notActiveAction.set('active', true);
+                    const committeeId = notActiveAction.actionData.committeeId;
+                    if (nextKeyIdMapping[committeeId] == undefined) {
+                        const lastKeyByCommitteeId =
+                            await this.keyModel.findOne(
+                                {
+                                    committeeId: committeeId,
+                                },
+                                {},
+                                { sort: { keyId: -1 } },
+                            );
+                        if (lastKeyByCommitteeId != undefined) {
+                            nextKeyIdMapping[committeeId] =
+                                lastKeyByCommitteeId.keyId + 1;
+                        } else {
+                            nextKeyIdMapping[committeeId] = 0;
+                        }
+                    }
+                    switch (notActiveAction.actionData.actionEnum) {
+                        case DkgActionEnum.GENERATE_KEY: {
+                            const keyIndex = Utilities.getKeyIndex(
+                                committeeId,
+                                nextKeyIdMapping[committeeId],
+                            );
+                            promises.push(
+                                this.keyModel.create({
+                                    keyIndex: keyIndex,
+                                    committeeId: committeeId,
+                                    keyId: nextKeyIdMapping[committeeId],
+                                    status: KeyStatusEnum.ROUND_1_CONTRIBUTION,
+                                }),
+                            );
+                            nextKeyIdMapping[committeeId] += 1;
+                            break;
+                        }
+                        case DkgActionEnum.FINALIZE_ROUND_1: {
+                            const keyIndex = Utilities.getKeyIndex(
+                                committeeId,
+                                notActiveAction.actionData.keyId,
+                            );
+                            const key = await this.keyModel.findOne({
+                                keyIndex: keyIndex,
+                            });
                             key.set(
                                 'status',
                                 KeyStatusEnum.ROUND_2_CONTRIBUTION,
                             );
+                            key.set('key', notActiveAction.actionData.key);
+                            promises.push(key.save());
+                            break;
+                        }
+                        case DkgActionEnum.FINALIZE_ROUND_2: {
+                            const keyIndex = Utilities.getKeyIndex(
+                                committeeId,
+                                notActiveAction.actionData.keyId,
+                            );
+                            const key = await this.keyModel.findOne({
+                                keyIndex: keyIndex,
+                            });
+                            key.set('status', KeyStatusEnum.ACTIVE);
+                            promises.push(key.save());
+                            break;
+                        }
+                        case DkgActionEnum.DEPRECATE_KEY: {
+                            const keyIndex = Utilities.getKeyIndex(
+                                committeeId,
+                                notActiveAction.actionData.keyId,
+                            );
+                            const key = await this.keyModel.findOne({
+                                keyIndex: keyIndex,
+                            });
+                            key.set('status', KeyStatusEnum.DEPRECATED);
+                            promises.push(key.save());
+                            break;
                         }
                     }
-                    if (
-                        key.status >= KeyStatusEnum.ROUND_2_CONTRIBUTION &&
-                        !key.publicKey
-                    ) {
-                        const round1s = await this.round1Model.find({
-                            committeeId: committeeId,
-                            keyId: keyId,
-                            active: true,
-                        });
-
-                        const round1Contributions = round1s.map(
-                            (e) =>
-                                new Round1Contribution({
-                                    C: new Libs.Committee.CArray(
-                                        e.contribution.map((g) =>
-                                            Group.from(g.x, g.y),
-                                        ),
-                                    ),
-                                }),
-                        );
-
-                        const publicKey = PublicKey.fromGroup(
-                            calculatePublicKey(round1Contributions),
-                        );
-                        key.set('publicKey', publicKey.toBase58());
-                    }
+                    await Promise.all(promises);
+                    await notActiveAction.save();
+                } else {
+                    break;
                 }
-                await key.save();
+            }
+        }
+    }
+
+    private async updateRound1Actions() {
+        await this.fetchRound1State();
+        await this.fetchRound1Events();
+
+        const notActiveActions = await this.round1ActionModel.find(
+            {
+                active: false,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notActiveActions.length > 0) {
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                const exist = await this.round1EventModel.exists({
+                    data: {
+                        $in: [notActiveAction.currentActionState],
+                    },
+                });
+                if (exist) {
+                    notActiveAction.set('active', true);
+                    const keyIndex = Utilities.getKeyIndex(
+                        notActiveAction.actionData.committeeId,
+                        notActiveAction.actionData.keyId,
+                    );
+                    const key = await this.keyModel.findOne({
+                        keyIndex: keyIndex,
+                    });
+                    key.round1s.push({
+                        memberId: notActiveAction.actionData.memberId,
+                        contribution: notActiveAction.actionData.contribution,
+                    });
+                    key.save().then(async () => {
+                        await notActiveAction.save();
+                    });
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    private async updateRound2Actions() {
+        await this.fetchRound2State();
+        await this.fetchRound2Events();
+
+        const notActiveActions = await this.round2ActionModel.find(
+            {
+                active: false,
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notActiveActions.length > 0) {
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                const exist = await this.round2EventModel.exists({
+                    data: { $in: [notActiveAction.currentActionState] },
+                });
+                if (exist) {
+                    notActiveAction.set('active', true);
+                    const keyIndex = Utilities.getKeyIndex(
+                        notActiveAction.actionData.committeeId,
+                        notActiveAction.actionData.keyId,
+                    );
+                    const key = await this.keyModel.findOne({
+                        keyIndex: keyIndex,
+                    });
+                    key.round2s.push({
+                        memberId: notActiveAction.actionData.memberId,
+                        contribution: notActiveAction.actionData.contribution,
+                    });
+                    key.save().then(async () => {
+                        await notActiveAction.save();
+                    });
+                } else {
+                    break;
+                }
             }
         }
     }
 
     async updateMerkleTrees() {
         try {
-            await this.updateMerkleTreesForDkg();
-            await this.updateMerkleTreesForRound1();
-            await this.updateMerkleTreesForRound2();
-        } catch (err) {}
-    }
-
-    private async updateMerkleTreesForDkg() {
-        const keyCounters: { _id: number; count: number }[] =
-            await this.dkgModel.aggregate([
-                {
-                    $match: {
-                        active: true,
-                        actionEnum: DkgActionEnum.GENERATE_KEY,
-                    },
-                },
-                {
-                    $group: {
-                        _id: '$committeeId',
-                        count: { $count: {} },
-                    },
-                },
-            ]);
-        for (let i = 0; i < keyCounters.length; i++) {
-            const keyCounter = keyCounters[i];
-            const committeeId = keyCounter._id;
-
-            this._dkg.keyCounter.updateLeaf(
-                {
-                    level1Index: this._dkg.keyCounter.calculateLevel1Index(
-                        Field(committeeId),
-                    ),
-                },
-                this._dkg.keyCounter.calculateLeaf(Field(keyCounter.count)),
+            const committees = await this.committeeModel.find(
+                {},
+                {},
+                { sort: { committeeId: 1 } },
             );
-
-            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
-                const keyObjectId = Utilities.getKeyObjectId(
-                    committeeId,
-                    keyId,
-                );
-                const key = await this.keyModel.findOne({ _id: keyObjectId });
-                const level1Index = this._dkg.keyStatus.calculateLevel1Index({
-                    committeeId: Field(committeeId),
-                    keyId: Field(keyId),
-                });
-                const leaf = this._dkg.keyStatus.calculateLeaf(
-                    key.status as any,
-                );
-                this._dkg.keyStatus.updateLeaf(
-                    { level1Index: level1Index },
-                    leaf,
-                );
-            }
-        }
-    }
-    private async updateMerkleTreesForRound1() {
-        // Create reduce tree
-        const lastActiveAction = await this.round1Model.findOne(
-            {
-                active: true,
-            },
-            {},
-            { sort: { actionId: -1 } },
-        );
-        const round1s = lastActiveAction
-            ? await this.round1ActionModel.find(
-                  {
-                      actionId: { $lte: lastActiveAction.actionId },
-                  },
-                  {},
-                  { sort: { actionId: 1 } },
-              )
-            : [];
-        round1s.map((action) => {
-            this._round1.reducedActions.push(Field(action.currentActionState));
-            this._round1.reduceState.updateLeaf(
-                this._round1.reduceState.calculateIndex(
-                    Field(action.currentActionState),
-                ),
-                this._round1.reduceState.calculateLeaf(
-                    Number(ActionReduceStatusEnum.REDUCED),
-                ),
-            );
-        });
-
-        // Create contribution and publicKey tree
-        const keyCounters: { _id: number; count: number }[] =
-            await this.dkgModel.aggregate([
-                {
-                    $match: {
-                        active: true,
-                        actionEnum: DkgActionEnum.GENERATE_KEY,
-                    },
-                },
-                {
-                    $group: {
-                        _id: '$committeeId',
-                        count: { $count: {} },
-                    },
-                },
-            ]);
-        for (let i = 0; i < keyCounters.length; i++) {
-            const keyCounter = keyCounters[i];
-            const committeeId = keyCounter._id;
-            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
-                const key = await this.keyModel.findOne({
-                    _id: Utilities.getKeyObjectId(committeeId, keyId),
-                });
-                const round1s = await this.round1Model.find({
-                    committeeId: committeeId,
-                    keyId: keyId,
-                    active: true,
-                });
-                if (key.status >= KeyStatusEnum.ROUND_2_CONTRIBUTION) {
-                    const level1IndexContribution =
-                        this._round1.contribution.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
-                        });
-                    const level1IndexPublicKey =
-                        this._round1.publicKey.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
-                        });
-                    this._round1.contribution.updateInternal(
-                        level1IndexContribution,
-                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
-                    );
-                    this._round1.publicKey.updateInternal(
-                        level1IndexPublicKey,
-                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
-                    );
-                    for (let j = 0; j < round1s.length; j++) {
-                        const round1 = round1s[j];
-                        const tmp: Group[] = [];
-                        for (let k = 0; k < round1.contribution.length; k++) {
-                            tmp.push(
-                                Group.from(
-                                    round1.contribution[k].x,
-                                    round1.contribution[k].y,
-                                ),
-                            );
-                        }
-                        const level2IndexContribution =
-                            this._round1.contribution.calculateLevel2Index(
-                                Field(round1.memberId),
-                            );
-                        const contributionLeaf =
-                            this._round1.contribution.calculateLeaf(
-                                new Libs.Committee.Round1Contribution({
-                                    C: Libs.Committee.CArray.from(tmp),
-                                }),
-                            );
-                        this._round1.contribution.updateLeaf(
-                            {
-                                level1Index: level1IndexContribution,
-                                level2Index: level2IndexContribution,
-                            },
-                            contributionLeaf,
-                        );
-                        const level2IndexPublicKey =
-                            this._round1.contribution.calculateLevel2Index(
-                                Field(round1.memberId),
-                            );
-                        const publicKeyLeaf =
-                            this._round1.publicKey.calculateLeaf(
-                                Group.from(
-                                    round1.contribution[0].x,
-                                    round1.contribution[0].y,
-                                ),
-                            );
-                        this._round1.publicKey.updateLeaf(
-                            {
-                                level1Index: level1IndexPublicKey,
-                                level2Index: level2IndexPublicKey,
-                            },
-                            publicKeyLeaf,
-                        );
-                    }
-                }
-            }
-        }
-    }
-    private async updateMerkleTreesForRound2() {
-        // Create reduce tree
-        const lastActiveAction = await this.round2Model.findOne(
-            {
-                active: true,
-            },
-            {},
-            { sort: { actionId: -1 } },
-        );
-        const round1s = lastActiveAction
-            ? await this.round2ActionModel.find(
-                  {
-                      actionId: { $lte: lastActiveAction.actionId },
-                  },
-                  {},
-                  { sort: { actionId: 1 } },
-              )
-            : [];
-        round1s.map((action) => {
-            this._round2.reducedActions.push(Field(action.currentActionState));
-            this._round2.reduceState.updateLeaf(
-                this._round2.reduceState.calculateIndex(
-                    Field(action.currentActionState),
-                ),
-                this._round2.reduceState.calculateLeaf(
-                    Number(ActionReduceStatusEnum.REDUCED),
-                ),
-            );
-        });
-
-        // Create contribution and encryption tree
-        const keyCounters: { _id: number; count: number }[] =
-            await this.dkgModel.aggregate([
-                {
-                    $match: {
-                        active: true,
-                        actionEnum: DkgActionEnum.GENERATE_KEY,
-                    },
-                },
-                {
-                    $group: {
-                        _id: '$committeeId',
-                        count: { $count: {} },
-                    },
-                },
-            ]);
-        for (let i = 0; i < keyCounters.length; i++) {
-            const keyCounter = keyCounters[i];
-            const committeeId = keyCounter._id;
-            for (let keyId = 0; keyId < keyCounter.count; keyId++) {
-                const key = await this.keyModel.findOne({
-                    _id: committeeId + '_' + keyId,
-                });
-                const round2s = await this.round2Model.find(
+            for (let i = 0; i < committees.length; i++) {
+                const committee = committees[i];
+                const keys = await this.keyModel.find(
                     {
-                        committeeId: committeeId,
-                        keyId: keyId,
-                        active: true,
+                        committeeId: committee.committeeId,
                     },
                     {},
-                    { sort: { memberId: 1 } },
+                    { sort: { keyId: 1 } },
                 );
-                if (key.status >= KeyStatusEnum.ACTIVE) {
-                    const level1IndexContribution =
-                        this._round2.contribution.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
+                this._dkg.keyCounterStorage.updateRawLeaf(
+                    {
+                        level1Index:
+                            this._dkg.keyCounterStorage.calculateLevel1Index(
+                                Field(committee.committeeId),
+                            ),
+                    },
+                    Field(keys.length),
+                );
+                for (let j = 0; j < keys.length; j++) {
+                    const key = keys[j];
+                    const level1Index =
+                        this._dkg.keyStatusStorage.calculateLevel1Index({
+                            committeeId: Field(committee.committeeId),
+                            keyId: Field(key.keyId),
                         });
-                    const level1IndexEncryption =
-                        this._round2.contribution.calculateLevel1Index({
-                            committeeId: Field(committeeId),
-                            keyId: Field(keyId),
+                    this._dkg.keyStatusStorage.updateRawLeaf(
+                        { level1Index },
+                        Field(key.status),
+                    );
+                    const round1ActionsCount =
+                        await this.round1ActionModel.count({
+                            'actionData.committeeId': key.committeeId,
+                            'actionData.keyId': key.keyId,
+                            active: true,
                         });
-                    this._round2.contribution.updateInternal(
-                        level1IndexContribution,
-                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
-                    );
-                    this._round2.encryption.updateInternal(
-                        level1IndexEncryption,
-                        Storage.DKGStorage.EMPTY_LEVEL_2_TREE(),
-                    );
-
-                    const contributions: Libs.Committee.Round2Contribution[] =
-                        [];
-                    for (let j = 0; j < round2s.length; j++) {
-                        const round2 = round2s[j];
-                        const tmp1: Bit255[] = [];
-                        for (let k = 0; k < round2.contribution.u.length; k++) {
-                            tmp1.push(
-                                Bit255.fromBigInt(
-                                    BigInt(round2.contribution.c[k]),
-                                ),
-                            );
-                        }
-                        const tmp2: Group[] = [];
-                        for (let k = 0; k < round2.contribution.u.length; k++) {
-                            tmp2.push(
-                                Group.from(
-                                    round2.contribution.u[k].x,
-                                    round2.contribution.u[k].y,
-                                ),
-                            );
-                        }
-                        contributions.push(
-                            new Libs.Committee.Round2Contribution({
-                                c: Libs.Committee.cArray.from(tmp1),
-                                U: Libs.Committee.UArray.from(tmp2),
-                            }),
+                    if (
+                        key.status == KeyStatusEnum.ROUND_2_CONTRIBUTION ||
+                        key.status == KeyStatusEnum.ACTIVE
+                    ) {
+                        this._dkg.keyStorage.updateRawLeaf(
+                            { level1Index },
+                            PublicKey.fromBase58(key.key).toGroup(),
                         );
                     }
-                    for (let j = 0; j < round2s.length; j++) {
-                        const round2 = round2s[j];
-                        const tmp1: Bit255[] = [];
-                        for (let k = 0; k < round2.contribution.u.length; k++) {
-                            tmp1.push(
-                                Bit255.fromBigInt(
-                                    BigInt(round2.contribution.c[k]),
-                                ),
+                    if (round1ActionsCount == committee.numberOfMembers) {
+                        this._round1.contributionStorage.updateInternal(
+                            Field(key.keyIndex),
+                            DKG_LEVEL_2_TREE(),
+                        );
+                        this._round1.publicKeyStorage.updateInternal(
+                            Field(key.keyIndex),
+                            DKG_LEVEL_2_TREE(),
+                        );
+                        const round1s = key.round1s.sort(
+                            (a, b) => a.memberId - b.memberId,
+                        );
+                        for (let k = 0; k < round1s.length; k++) {
+                            const round1 = round1s[k];
+                            const contribution: Group[] =
+                                round1.contribution.map((point) =>
+                                    Group.from(point.x, point.y),
+                                );
+
+                            const level2Index =
+                                this._round1.contributionStorage.calculateLevel2Index(
+                                    Field(round1.memberId),
+                                );
+                            this._round1.contributionStorage.updateRawLeaf(
+                                { level1Index, level2Index },
+                                new Round1Contribution({
+                                    C: Libs.Committee.CArray.from(contribution),
+                                }),
+                            );
+                            this._round1.publicKeyStorage.updateRawLeaf(
+                                {
+                                    level1Index,
+                                    level2Index,
+                                },
+                                contribution[0],
                             );
                         }
-                        const tmp2: Group[] = [];
-                        for (let k = 0; k < round2.contribution.u.length; k++) {
-                            tmp2.push(
-                                Group.from(
-                                    round2.contribution.u[k].x,
-                                    round2.contribution.u[k].y,
-                                ),
+                    }
+                    const round2ActionsCount =
+                        await this.round2ActionModel.count({
+                            'actionData.committeeId': key.committeeId,
+                            'actionData.keyId': key.keyId,
+                            active: true,
+                        });
+                    if (round2ActionsCount == committee.numberOfMembers) {
+                        const round2s = key.round2s.sort(
+                            (a, b) => a.memberId - b.memberId,
+                        );
+                        const contributions: Libs.Committee.Round2Contribution[] =
+                            [];
+                        for (let k = 0; k < round2s.length; k++) {
+                            const round2 = round2s[k];
+                            const c: Bit255[] = round2.contribution.c.map(
+                                (value) => Bit255.fromBigInt(BigInt(value)),
+                            );
+                            const u: Group[] = round2.contribution.u.map(
+                                (point) => Group.from(point.x, point.y),
+                            );
+                            contributions.push(
+                                new Libs.Committee.Round2Contribution({
+                                    c: Libs.Committee.cArray.from(c),
+                                    U: Libs.Committee.UArray.from(u),
+                                }),
                             );
                         }
-                        const level2IndexContribution =
-                            this._round2.contribution.calculateLevel2Index(
-                                Field(round2.memberId),
+
+                        for (let k = 0; k < round2s.length; k++) {
+                            const round2 = round2s[k];
+                            const level2Index =
+                                this._round2.contributionStorage.calculateLevel2Index(
+                                    Field(round2.memberId),
+                                );
+                            this._round2.contributionStorage.updateRawLeaf(
+                                { level1Index, level2Index },
+                                contributions[k],
                             );
-                        const contributionLeaf =
-                            this._round2.contribution.calculateLeaf(
-                                contributions[j],
+                            this._round2.encryptionStorage.updateRawLeaf(
+                                { level1Index, level2Index },
+                                {
+                                    memberId: Field(round2.memberId),
+                                    contributions: contributions,
+                                },
                             );
-                        this._round2.contribution.updateLeaf(
-                            {
-                                level1Index: level1IndexContribution,
-                                level2Index: level2IndexContribution,
-                            },
-                            contributionLeaf,
-                        );
-                        const level2IndexEncryption =
-                            this._round2.contribution.calculateLevel2Index(
-                                Field(round2.memberId),
-                            );
-                        const encryptionLeaf =
-                            this._round2.encryption.calculateLeaf({
-                                memberId: Field(round2.memberId),
-                                contributions: contributions,
-                            });
-                        this._round2.encryption.updateLeaf(
-                            {
-                                level1Index: level1IndexEncryption,
-                                level2Index: level2IndexEncryption,
-                            },
-                            encryptionLeaf,
-                        );
+                        }
                     }
                 }
+            }
+            await this.updateProcessStorageForDkg();
+            await this.updateProcessStorageForRound1();
+            await this.updateProcessStorageForRound2();
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    private async updateProcessStorageForDkg() {
+        const dkgEvents = await this.dkgEventModel.find(
+            {},
+            {},
+            { sort: { eventId: 1 } },
+        );
+        for (let i = 0; i < dkgEvents.length; i++) {
+            const dkgEvent = dkgEvents[i];
+            for (let j = 0; j < dkgEvent.data.length; j++) {
+                const actionState = dkgEvent.data[j];
+                if (!this._dkg.processStorageMapping[actionState]) {
+                    this._dkg.processStorageMapping[actionState] = 0;
+                } else {
+                    this._dkg.processStorageMapping[actionState] += 1;
+                }
+            }
+        }
+        const dkgActions = await this.dkgActionModel.find(
+            { active: true },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        for (let i = 0; i < dkgActions.length; i++) {
+            const dkgAction = dkgActions[i];
+            if (
+                this._dkg.processStorageMapping[dkgAction.currentActionState] !=
+                undefined
+            ) {
+                this._dkg.processStorage.updateLeaf(
+                    { level1Index: Field(dkgAction.actionId) },
+                    this._dkg.processStorage.calculateLeaf({
+                        actionState: Field(dkgAction.currentActionState),
+                        processCounter: new UInt8(
+                            this._dkg.processStorageMapping[
+                                dkgAction.currentActionState
+                            ],
+                        ),
+                    }),
+                );
+            }
+        }
+    }
+
+    private async updateProcessStorageForRound1() {
+        const round1Events = await this.round1EventModel.find(
+            {},
+            {},
+            { sort: { eventId: 1 } },
+        );
+        for (let i = 0; i < round1Events.length; i++) {
+            const round1Event = round1Events[i];
+            for (let j = 0; j < round1Event.data.length; j++) {
+                const actionState = round1Event.data[j];
+                if (!this._round1.processStorageMapping[actionState]) {
+                    this._round1.processStorageMapping[actionState] = 0;
+                } else {
+                    this._round1.processStorageMapping[actionState] += 1;
+                }
+            }
+        }
+
+        const round1Actions = await this.round1ActionModel.find(
+            { active: true },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        for (let i = 0; i < round1Actions.length; i++) {
+            const round1Action = round1Actions[i];
+            if (
+                this._round1.processStorageMapping[
+                    round1Action.currentActionState
+                ] != undefined
+            ) {
+                this._round1.processStorage.updateAction(
+                    Field(round1Action.actionId),
+                    {
+                        actionState: Field(round1Action.currentActionState),
+                        processCounter: new UInt8(
+                            this._round1.processStorageMapping[
+                                round1Action.currentActionState
+                            ],
+                        ),
+                    },
+                );
+            }
+        }
+    }
+
+    private async updateProcessStorageForRound2() {
+        const round2Events = await this.round2EventModel.find(
+            {},
+            {},
+            { sort: { eventId: 1 } },
+        );
+        for (let i = 0; i < round2Events.length; i++) {
+            const round2Event = round2Events[i];
+            for (let j = 0; j < round2Event.data.length; j++) {
+                const actionState = round2Event.data[j];
+                if (!this._round2.processStorageMapping[actionState]) {
+                    this._round2.processStorageMapping[actionState] = 0;
+                } else {
+                    this._round2.processStorageMapping[actionState] += 1;
+                }
+            }
+        }
+
+        const round2Actions = await this.round2ActionModel.find(
+            { active: true },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        for (let i = 0; i < round2Actions.length; i++) {
+            const round2Action = round2Actions[i];
+            if (
+                this._round2.processStorageMapping[
+                    round2Action.currentActionState
+                ] != undefined
+            ) {
+                this._round2.processStorage.updateAction(
+                    Field(round2Action.actionId),
+                    {
+                        actionState: Field(round2Action.currentActionState),
+                        processCounter: new UInt8(
+                            this._round2.processStorageMapping[
+                                round2Action.currentActionState
+                            ],
+                        ),
+                    },
+                );
             }
         }
     }

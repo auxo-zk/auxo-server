@@ -3,7 +3,7 @@ import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     FundingAction,
-    getFunding,
+    getFundingActionData,
 } from 'src/schemas/actions/funding-action.schema';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
@@ -20,56 +20,36 @@ import { Funding } from 'src/schemas/funding.schema';
 import {
     ActionReduceStatusEnum,
     FundingEventEnum,
+    FundingStateEnum,
     MaxRetries,
-    zkAppCache,
+    ZkAppCache,
 } from 'src/constants';
-import {
-    Constants,
-    CreateReduceProof,
-    CreateRollupProof,
-    FundingContract,
-    ProofRollupAction,
-    Storage,
-    ZkApp,
-} from '@auxo-dev/platform';
+import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
 import { ZkApp as DkgZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
 import { FundingResult } from 'src/schemas/funding-result.schema';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { FundingState } from 'src/interfaces/zkapp-state.interface';
+import _ from 'lodash';
 
 @Injectable()
 export class FundingContractService implements ContractServiceInterface {
     private readonly logger = new Logger(FundingContractService.name);
-    private readonly _totalM: Storage.FundingStorage.ValueStorage;
-    private readonly _totalR: Storage.FundingStorage.ValueStorage;
-    private readonly _requestId: Storage.FundingStorage.RequestIdStorage;
-    private readonly _zkApp: Storage.SharedStorage.AddressStorage;
-    private readonly _reduceState: Storage.SharedStorage.ReduceStorage;
-    private readonly _reduceActions: Field[];
+    private _nextFundingId: number;
+    private readonly _fundingInformationStorage: Storage.FundingStorage.FundingInformationStorage;
+    private readonly _zkAppStorage: Storage.SharedStorage.ZkAppStorage;
+    private _actionState: string;
 
-    public get totalM(): Storage.FundingStorage.ValueStorage {
-        return this._totalM;
+    public get nextFundingId(): number {
+        return this._nextFundingId;
     }
 
-    public get totalR(): Storage.FundingStorage.ValueStorage {
-        return this._totalR;
+    public get fundingInformationStorage(): Storage.FundingStorage.FundingInformationStorage {
+        return this._fundingInformationStorage;
     }
 
-    public get requestId(): Storage.FundingStorage.RequestIdStorage {
-        return this._requestId;
-    }
-
-    public get zkApp(): Storage.SharedStorage.AddressStorage {
-        return this._zkApp;
-    }
-
-    public get reduceState(): Storage.SharedStorage.ReduceStorage {
-        return this._reduceState;
-    }
-
-    public get reduceActions(): Field[] {
-        return this._reduceActions;
+    public get zkAppStorage(): Storage.SharedStorage.ZkAppStorage {
+        return this._zkAppStorage;
     }
 
     constructor(
@@ -81,66 +61,17 @@ export class FundingContractService implements ContractServiceInterface {
         @InjectModel(FundingResult.name)
         private readonly fundingResultModel: Model<FundingResult>,
     ) {
-        this._totalM = new Storage.FundingStorage.ValueStorage();
-        this._totalR = new Storage.FundingStorage.ValueStorage();
-        this._requestId = new Storage.FundingStorage.RequestIdStorage();
-        this._zkApp = new Storage.SharedStorage.AddressStorage([
-            {
-                index: Constants.ZkAppEnum.COMMITTEE,
-                address: PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.DKG,
-                address: PublicKey.fromBase58(process.env.DKG_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.ROUND1,
-                address: PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.ROUND2,
-                address: PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.RESPONSE,
-                address: PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.REQUEST,
-                address: PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.PROJECT,
-                address: PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.CAMPAIGN,
-                address: PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.PARTICIPATION,
-                address: PublicKey.fromBase58(
-                    process.env.PARTICIPATION_ADDRESS,
-                ),
-            },
-            {
-                index: Constants.ZkAppEnum.FUNDING,
-                address: PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-            },
-            {
-                index: Constants.ZkAppEnum.TREASURY,
-                address: PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-            },
-        ]);
-        this._reduceState = new Storage.SharedStorage.ReduceStorage();
-        this._reduceActions = [];
+        this._nextFundingId = 0;
+        this._actionState = '';
+        this._fundingInformationStorage =
+            new Storage.FundingStorage.FundingInformationStorage();
+        this._zkAppStorage = Utilities.getZkAppStorageForPlatform();
     }
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
-            await this.bruteForceFundingResults();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -164,40 +95,35 @@ export class FundingContractService implements ContractServiceInterface {
     }
 
     async compile() {
-        const cache = zkAppCache;
-        await Utilities.compile(CreateReduceProof, cache, this.logger);
-        await Utilities.compile(CreateRollupProof, cache, this.logger);
-        await Utilities.compile(FundingContract, cache, this.logger);
+        const cache = ZkAppCache;
     }
 
     async fetchFundingState(): Promise<FundingState> {
         const state = await this.queryService.fetchZkAppState(
             process.env.FUNDING_CONTRACT,
         );
-        return {
-            actionState: Field(state[0]),
-            reduceState: Field(state[1]),
-            R: Field(state[2]),
-            M: Field(state[3]),
-            requestId: Field(state[4]),
-            zkApp: Field(state[5]),
+        const result: FundingState = {
+            nextFundingId: Field(state[0]),
+            fundingInformationRoot: Field(state[1]),
+            zkAppRoot: Field(state[2]),
+            actionState: Field(state[3]),
         };
+        this._nextFundingId = Number(result.nextFundingId);
+        this._actionState = result.actionState.toString();
+        return result;
     }
 
-    async reduce(): Promise<boolean> {
+    async rollup(): Promise<boolean> {
         try {
-            const lastActiveFunding = await this.fundingModel.findOne(
-                {
-                    active: true,
-                },
+            const lastReducedAction = await this.fundingActionModel.findOne(
+                { active: true },
                 {},
-                { sort: { actionId: -1 } },
+                {
+                    sort: {
+                        actionId: -1,
+                    },
+                },
             );
-            const lastReducedAction = lastActiveFunding
-                ? await this.fundingActionModel.findOne({
-                      actionId: lastActiveFunding.actionId,
-                  })
-                : undefined;
             const notReducedActions = await this.fundingActionModel.find(
                 {
                     actionId: {
@@ -210,33 +136,61 @@ export class FundingContractService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             if (notReducedActions.length > 0) {
-                const fundingState = await this.fetchFundingState();
-                let proof = await CreateReduceProof.firstStep(
-                    fundingState.actionState,
-                    fundingState.reduceState,
+                const state = await this.fetchFundingState();
+                let nextFundingId = state.nextFundingId;
+                let proof = await ZkApp.Funding.RollupFunding.firstStep(
+                    state.nextFundingId,
+                    state.fundingInformationRoot,
+                    state.actionState,
                 );
-                const reduceState = this._reduceState;
+                const fundingInformationStorage = _.cloneDeep(
+                    this._fundingInformationStorage,
+                );
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
-                    proof = await CreateReduceProof.nextStep(
-                        proof,
-                        ZkApp.Funding.FundingAction.fromFields(
-                            Utilities.stringArrayToFields(
-                                notReducedAction.actions,
+                    if (
+                        notReducedAction.actionData.actionType ==
+                        Storage.FundingStorage.FundingActionEnum.FUND
+                    ) {
+                        proof = await ZkApp.Funding.RollupFunding.fundStep(
+                            proof,
+                            ZkApp.Funding.FundingAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notReducedAction.actions,
+                                ),
                             ),
-                        ),
-                        reduceState.getWitness(
-                            Field(notReducedAction.currentActionState),
-                        ),
-                    );
-                    reduceState.updateLeaf(
-                        Field(notReducedAction.currentActionState),
-                        reduceState.calculateLeaf(
-                            Number(ActionReduceStatusEnum.REDUCED),
-                        ),
-                    );
+                            fundingInformationStorage.getLevel1Witness(
+                                nextFundingId,
+                            ),
+                        );
+                        fundingInformationStorage.updateLeaf(
+                            nextFundingId,
+                            fundingInformationStorage.calculateLeaf(
+                                notReducedAction.actionData.toFundingInformation(),
+                            ),
+                        );
+                        nextFundingId = nextFundingId.add(1);
+                    } else {
+                        proof = await ZkApp.Funding.RollupFunding.fundStep(
+                            proof,
+                            ZkApp.Funding.FundingAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notReducedAction.actions,
+                                ),
+                            ),
+                            fundingInformationStorage.getLevel1Witness(
+                                Field(notReducedAction.actionData.fundingId),
+                            ),
+                        );
+                        fundingInformationStorage.updateLeaf(
+                            Field(notReducedAction.actionData.fundingId),
+                            fundingInformationStorage.calculateLeaf(
+                                notReducedAction.actionData.toFundingInformation(),
+                            ),
+                        );
+                    }
                 }
-                const fundingContract = new FundingContract(
+                const fundingContract = new ZkApp.Funding.FundingContract(
                     PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
                 );
                 const feePayerPrivateKey = PrivateKey.fromBase58(
@@ -250,8 +204,8 @@ export class FundingContractService implements ContractServiceInterface {
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    () => {
-                        fundingContract.reduce(proof);
+                    async () => {
+                        await fundingContract.rollup(proof);
                     },
                 );
                 await Utilities.proveAndSend(
@@ -268,9 +222,8 @@ export class FundingContractService implements ContractServiceInterface {
             return false;
         }
     }
-    async getCampaignsReadyForRollup() {}
 
-    async rollup(campaignId: number) {}
+    // ======== PRIVATE FUNCTIONS ===========
 
     private async fetchFundingActions() {
         const lastAction = await this.fundingActionModel.findOne(
@@ -294,15 +247,18 @@ export class FundingContractService implements ContractServiceInterface {
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
             const currentActionState = Field(action.hash);
+            const actionData = getFundingActionData(action.actions[0]);
             await this.fundingActionModel.findOneAndUpdate(
                 {
                     currentActionState: currentActionState.toString(),
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
+                    actionData: actionData,
                 },
                 { new: true, upsert: true },
             );
@@ -312,196 +268,81 @@ export class FundingContractService implements ContractServiceInterface {
     }
 
     private async updateFundings() {
-        const lastFunding = await this.fundingModel.findOne(
-            {},
-            {},
-            { sort: { actionId: -1 } },
-        );
-        let fundingActions: FundingAction[];
-        if (lastFunding != null) {
-            fundingActions = await this.fundingActionModel.find(
-                { actionId: { $gt: lastFunding.actionId } },
-                {},
-                { sort: { actionId: 1 } },
-            );
-        } else {
-            fundingActions = await this.fundingActionModel.find(
-                {},
-                {},
-                { sort: { actionId: 1 } },
-            );
-        }
-        for (let i = 0; i < fundingActions.length; i++) {
-            const fundingAction = fundingActions[i];
-            await this.fundingModel.findOneAndUpdate(
-                { actionId: fundingAction.actionId },
-                getFunding(fundingAction),
-                { new: true, upsert: true },
-            );
-        }
-
-        const rawEvents = await this.queryService.fetchEvents(
-            process.env.FUNDING_ADDRESS,
-        );
-        let lastActionHash: string = null;
-        for (let i = 0; i < rawEvents.length; i++) {
-            const event = this.readFundingEvent(rawEvents[i].events[0].data);
-            if (event.fundingEventEnum == FundingEventEnum.REQUEST_SENT) {
-                await this.fundingResultModel.findOneAndUpdate(
-                    {
-                        campaignId: event.campaignId,
-                    },
-                    {
-                        campaignId: event.campaignId,
-                        requestId: event.requestId,
-                        committeeId: event.committeeId,
-                        keyId: event.keyId,
-                        sumM: event.sumM,
-                        sumR: event.sumR,
-                    },
-                    { new: true, upsert: true },
-                );
-            } else {
-                lastActionHash = event.actionHash;
-            }
-        }
-        if (lastActionHash != null) {
-            const lastFundingAction = await this.fundingActionModel.findOne({
-                currentActionState: lastActionHash,
-            });
-
-            const notActiveFundings = await this.fundingModel.find(
+        await this.fetchFundingState();
+        const currentAction = await this.fundingActionModel.findOne({
+            currentActionState: this._actionState,
+        });
+        if (currentAction != undefined) {
+            const notActiveActions = await this.fundingActionModel.find(
                 {
-                    actionId: { $lte: lastFundingAction.actionId },
+                    actionId: { $lte: currentAction.actionId },
                     active: false,
                 },
                 {},
                 { sort: { actionId: 1 } },
             );
-            for (let i = 0; i < notActiveFundings.length; i++) {
-                const notActiveFunding = notActiveFundings[i];
-                notActiveFunding.set('active', true);
-                await notActiveFunding.save();
-            }
-        }
-    }
 
-    private readFundingEvent(data: string[]): {
-        fundingEventEnum: FundingEventEnum;
-        actionHash?: string;
-        campaignId?: number;
-        committeeId?: number;
-        keyId?: number;
-        requestId?: string;
-        sumR?: { x: string; y: string }[];
-        sumM?: { x: string; y: string }[];
-    } {
-        if (Number(data[0]) == FundingEventEnum.ACTIONS_REDUCED) {
-            return {
-                fundingEventEnum: FundingEventEnum.ACTIONS_REDUCED,
-                actionHash: Field(data[1]).toString(),
-            };
-        } else if (Number(data[0]) == FundingEventEnum.REQUEST_SENT) {
-            data = data.slice(1);
-            const event = ZkApp.Funding.RequestSent.fromFields(
-                Utilities.stringArrayToFields(data),
-            );
-            const sumR: { x: string; y: string }[] = [];
-            const sumM: { x: string; y: string }[] = [];
-            for (let i = 0; i < event.sumM.length.toBigInt(); i++) {
-                const x = event.sumM.values[i].x.toString();
-                const y = event.sumM.values[i].y.toString();
-                sumM.push({ x: x, y: y });
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const promises = [];
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                promises.push(notActiveAction.save());
+                if (
+                    notActiveAction.actionData.actionType ==
+                    Storage.FundingStorage.FundingActionEnum.FUND
+                ) {
+                    promises.push(
+                        this.fundingModel.findOneAndUpdate(
+                            {
+                                fundingId: this._nextFundingId,
+                            },
+                            {
+                                fundingId: this._nextFundingId,
+                                campaignId:
+                                    notActiveAction.actionData.campaignId,
+                                investor: notActiveAction.actionData.investor,
+                                amount: notActiveAction.actionData.amount,
+                            },
+                            { new: true, upsert: true },
+                        ),
+                    );
+                    this._nextFundingId += 1;
+                } else {
+                    promises.push(
+                        this.fundingModel.findOneAndUpdate(
+                            {
+                                fundingId: notActiveAction.actionData.fundingId,
+                            },
+                            {
+                                state: FundingStateEnum.REFUNDED,
+                            },
+                            { new: true, upsert: true },
+                        ),
+                    );
+                }
+                await Promise.all(promises);
             }
-            for (let i = 0; i < event.sumR.length.toBigInt(); i++) {
-                const x = event.sumR.values[i].x.toString();
-                const y = event.sumR.values[i].y.toString();
-                sumR.push({ x: x, y: y });
-            }
-            return {
-                fundingEventEnum: FundingEventEnum.REQUEST_SENT,
-                campaignId: Number(event.campaignId.toString()),
-                committeeId: Number(event.committeeId.toString()),
-                keyId: Number(event.keyId.toString()),
-                requestId: event.requestId.toString(),
-                sumM: sumM,
-                sumR: sumR,
-            };
         }
     }
 
     async updateMerkleTrees() {
         try {
-            const lastActiveFunding = await this.fundingModel.findOne(
-                {
-                    active: true,
-                },
-                {},
-                { sort: { actionId: -1 } },
-            );
-            const fundingActions: FundingAction[] = lastActiveFunding
-                ? await this.fundingActionModel.find({
-                      actionId: {
-                          $lte: lastActiveFunding.actionId,
-                      },
-                  })
-                : [];
-            fundingActions.map((action) => {
-                this._reduceActions.push(Field(action.currentActionState));
-                this._reduceState.updateLeaf(
-                    this._reduceState.calculateIndex(
-                        Field(action.currentActionState),
-                    ),
-                    this._reduceState.calculateLeaf(
-                        Number(ActionReduceStatusEnum.REDUCED),
-                    ),
-                );
-            });
-
-            const fundingResults = await this.fundingResultModel.find({});
-            for (let i = 0; i < fundingResults.length; i++) {
-                const fundingResult = fundingResults[i];
-                const level1Index = this._requestId.calculateLevel1Index(
-                    Field(fundingResult.campaignId),
-                );
-                const requestIdLeaf = this._requestId.calculateLeaf(
-                    Field(fundingResult.requestId),
-                );
-                this._requestId.updateLeaf(level1Index, requestIdLeaf);
-                const totalR = DkgZkApp.Request.RequestVector.empty();
-                fundingResult.sumR.map((dimension, index) => {
-                    totalR.set(
-                        Field(index),
-                        Group.from(dimension.x, dimension.y),
+            const fundings = await this.fundingModel.find({});
+            for (let i = 0; i < fundings.length; i++) {
+                const funding = fundings[i];
+                const level1Index =
+                    this._fundingInformationStorage.calculateLevel1Index(
+                        Field(funding.fundingId),
                     );
-                });
-                const totalM = DkgZkApp.Request.RequestVector.empty();
-                fundingResult.sumM.map((dimension, index) => {
-                    totalM.set(
-                        Field(index),
-                        Group.from(dimension.x, dimension.y),
+                const fundingInformationLeaf =
+                    this._fundingInformationStorage.calculateLeaf(
+                        funding.toFundingInformation(),
                     );
-                });
-                const totalRLeaf = this._totalR.calculateLeaf(totalR);
-                this._totalR.updateLeaf(level1Index, totalRLeaf);
-                const totalMLeaf = this._totalR.calculateLeaf(totalM);
-                this._totalM.updateLeaf(level1Index, totalMLeaf);
+                this._fundingInformationStorage.updateLeaf(
+                    level1Index,
+                    fundingInformationLeaf,
+                );
             }
         } catch (err) {}
-    }
-
-    async bruteForceFundingResults() {
-        const incompleteFundingResults = await this.fundingResultModel.find({
-            result: undefined,
-        });
-        for (let i = 0; i < incompleteFundingResults.length; i++) {
-            const incompleteFundingResult = incompleteFundingResults[i];
-            const result: string[] = [];
-            for (let j = 0; j < incompleteFundingResult.sumM.length; j++) {
-                result.push('0');
-            }
-            incompleteFundingResult.set('result', result);
-            await incompleteFundingResult.save();
-        }
     }
 }

@@ -96,15 +96,10 @@ export class CampaignsService {
     async getCampaign(campaignId: number): Promise<Campaign> {
         const exist = await this.campaignModel.exists({
             campaignId: campaignId,
-            active: true,
         });
         if (exist) {
-            // return await this.campaignModel.findOne({
-            //     campaignId: campaignId,
-            //     active: true,
-            // });
             const result = await this.campaignModel.aggregate([
-                { $match: { campaignId: campaignId, active: true } },
+                { $match: { campaignId: campaignId } },
                 {
                     $lookup: {
                         from: 'organizers',
@@ -136,7 +131,6 @@ export class CampaignsService {
             {
                 $match: {
                     campaignId: campaignId,
-                    active: true,
                 },
             },
             {
@@ -160,13 +154,12 @@ export class CampaignsService {
     async getCampaignResult(campaignId: number): Promise<{ projects: any }> {
         const exist = await this.campaignModel.exists({
             campaignId: campaignId,
-            active: true,
         });
         if (exist) {
             const projects = await this.participationModel.aggregate([
-                { $match: { campaignId: campaignId, active: true } },
-                { $sort: { actionId: 1 } },
-                { $project: { campaignId: 0, active: 0, actionId: 0, _id: 0 } },
+                { $match: { campaignId: campaignId } },
+                { $sort: { projectIndex: 1 } },
+                { $project: { campaignId: 0, active: 0, _id: 0 } },
                 {
                     $addFields: {
                         totalRaising: {

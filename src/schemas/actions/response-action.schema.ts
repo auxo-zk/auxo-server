@@ -1,10 +1,46 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
-import { DkgResponse } from '../response.schema';
 import { ZkApp } from '@auxo-dev/dkg';
 import { Utilities } from 'src/mina-contracts/utilities';
 
+export class ResponseActionData {
+    committeeId: number;
+    keyId: number;
+    memberId: number;
+    requestId: number;
+    dimension: number;
+    responseRootD: string;
+
+    constructor(
+        committeeId: number,
+        keyId: number,
+        memberId: number,
+        requestId: number,
+        dimension: number,
+        responseRootD: string,
+    ) {
+        this.committeeId = committeeId;
+        this.keyId = keyId;
+        this.memberId = memberId;
+        this.requestId = requestId;
+        this.dimension = dimension;
+        this.responseRootD = responseRootD;
+    }
+
+    static fromAction(
+        action: ZkApp.Response.ResponseAction,
+    ): ResponseActionData {
+        return new ResponseActionData(
+            Number(action.committeeId.toBigInt()),
+            Number(action.keyId.toBigInt()),
+            Number(action.memberId.toBigInt()),
+            Number(action.requestId.toBigInt()),
+            Number(action.dimension.toBigInt()),
+            action.responseRootD.toString(),
+        );
+    }
+}
 @Schema({ versionKey: false })
 export class ResponseAction {
     @Prop({ required: true, unique: true, index: true, _id: true })
@@ -18,29 +54,21 @@ export class ResponseAction {
 
     @Prop()
     actions: string[];
+
+    @Prop({ type: ResponseActionData })
+    actionData: ResponseActionData;
+
+    @Prop({ required: true, default: false })
+    active?: boolean;
 }
 
 export type ResponseActionDocument = HydratedDocument<ResponseAction>;
 export const ResponseActionSchema =
     SchemaFactory.createForClass(ResponseAction);
 
-export function getDkgResponse(responseAction: ResponseAction): DkgResponse {
-    const action = ZkApp.Response.Action.fromFields(
-        Utilities.stringArrayToFields(responseAction.actions),
+export function getResponseActionData(actions: string[]): ResponseActionData {
+    const action = ZkApp.Response.ResponseAction.fromFields(
+        Utilities.stringArrayToFields(actions),
     );
-    const contribution: { x: string; y: string }[] = [];
-    for (let i = 0; i < action.contribution.D.length.toBigInt(); i++) {
-        const x = action.contribution.D.values[i].x.toString();
-        const y = action.contribution.D.values[i].y.toString();
-        contribution.push({ x: x, y: y });
-    }
-    const result: DkgResponse = {
-        actionId: responseAction.actionId,
-        committeeId: Number(action.committeeId.toString()),
-        keyId: Number(action.keyId.toString()),
-        memberId: Number(action.memberId.toString()),
-        requestId: action.requestId.toString(),
-        contribution: contribution,
-    };
-    return result;
+    return ResponseActionData.fromAction(action);
 }

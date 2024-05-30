@@ -5,10 +5,7 @@ import { CommitteesService } from './committees/committees.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Committee, CommitteeSchema } from 'src/schemas/committee.schema';
 import { Key, KeySchema } from 'src/schemas/key.schema';
-import { Round1, Round1Schema } from 'src/schemas/round-1.schema';
-import { Round2, Round2Schema } from 'src/schemas/round-2.schema';
 import { DkgRequest, DkgRequestSchema } from 'src/schemas/request.schema';
-import { DkgResponse, DkgResponseSchema } from 'src/schemas/response.schema';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { CacheModule } from '@nestjs/cache-manager';
 import { HttpModule } from '@nestjs/axios';
@@ -39,6 +36,13 @@ import {
     FundingResult,
     FundingResultSchema,
 } from 'src/schemas/funding-result.schema';
+import { MethodInputsService } from './method-inputs/method-inputs.service';
+import { MethodInputsController } from './method-inputs/method-inputs.controller';
+import { Task, TaskSchema } from 'src/schemas/task.schema';
+import { RequestsController } from './requests/requests.controller';
+import { RequestsService } from './requests/requests.service';
+import { TasksService } from './tasks/tasks.service';
+import { TasksController } from './tasks/tasks.controller';
 
 @Module({
     imports: [
@@ -46,10 +50,7 @@ import {
         MongooseModule.forFeature([
             { name: Committee.name, schema: CommitteeSchema },
             { name: Key.name, schema: KeySchema },
-            { name: Round1.name, schema: Round1Schema },
-            { name: Round2.name, schema: Round2Schema },
             { name: DkgRequest.name, schema: DkgRequestSchema },
-            { name: DkgResponse.name, schema: DkgResponseSchema },
             { name: Project.name, schema: ProjectSchema },
             { name: Builder.name, schema: BuilderSchema },
             { name: ProjectDraft.name, schema: ProjectDraftSchema },
@@ -57,13 +58,14 @@ import {
             { name: Campaign.name, schema: CampaignSchema },
             { name: Participation.name, schema: ParticipationSchema },
             { name: FundingResult.name, schema: FundingResultSchema },
+            { name: Task.name, schema: TaskSchema },
         ]),
         HttpModule,
         CacheModule.register(),
         JwtModule.register({
             global: true,
             secret: process.env.JWT_SECRET,
-            signOptions: { expiresIn: '10d' },
+            signOptions: { expiresIn: '100d' },
         }),
     ],
     controllers: [
@@ -74,6 +76,9 @@ import {
         BuildersController,
         OrganizersController,
         CampaignsController,
+        MethodInputsController,
+        RequestsController,
+        TasksController,
     ],
     providers: [
         Ipfs,
@@ -85,6 +90,9 @@ import {
         OrganizersService,
         ObjectStorageService,
         CampaignsService,
+        MethodInputsService,
+        RequestsService,
+        TasksService,
     ],
 })
 export class ApisModule {}

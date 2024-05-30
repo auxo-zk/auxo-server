@@ -2,28 +2,50 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { RequestStatusEnum } from 'src/constants';
 
+export class DkgResponse {
+    @Prop()
+    memberId: number;
+
+    @Prop()
+    dimension: number;
+
+    @Prop()
+    rootD: string;
+
+    @Prop({ type: [{ x: String, y: String }] })
+    D: { x: string; y: string }[];
+}
 @Schema({ versionKey: false })
 export class DkgRequest {
     @Prop({ required: true, unique: true, index: true })
-    requestId: string;
+    requestId: number;
 
-    @Prop({ index: true })
-    committeeId?: number;
+    @Prop({ required: true, index: true })
+    keyIndex: number;
 
-    @Prop({ index: true })
-    keyId?: number;
-
-    @Prop()
-    requester?: string;
+    @Prop({ unique: true, index: true })
+    task: string;
 
     @Prop()
-    R?: { x: string; y: string }[];
+    expirationTimestamp: number;
 
     @Prop()
-    D?: { x: string; y: string }[];
+    accumulationRoot: string;
 
-    @Prop({ default: RequestStatusEnum.NOT_YET_REQUESTED })
-    status: RequestStatusEnum;
+    @Prop()
+    resultRoot: string;
+
+    @Prop({ type: [DkgResponse], default: [], required: true })
+    responses: DkgResponse[];
+
+    @Prop({ type: [{ x: String, y: String }], default: [] })
+    finalizedD?: { x: string; y: string }[];
+
+    @Prop({ type: [String] })
+    result?: string[];
+
+    @Prop({ default: RequestStatusEnum.INITIALIZED, required: true })
+    status?: RequestStatusEnum;
 }
 
 export type DkgRequestDocument = HydratedDocument<DkgRequest>;

@@ -8,7 +8,7 @@ import { CampaignContractService } from '../mina-contracts/campaign-contract/cam
 import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
-import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 
 @Processor('boi-contract-services')
 export class BoiContractServicesConsumer {
@@ -21,7 +21,7 @@ export class BoiContractServicesConsumer {
         private readonly participationContractService: ParticipationContractService,
         private readonly projectContractService: ProjectContractService,
         private readonly fundingContractService: FundingContractService,
-        private readonly treasuryContractService: TreasuryContractService,
+        private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
     @Process('updateContractMerkleTrees')
@@ -35,7 +35,7 @@ export class BoiContractServicesConsumer {
                 this.participationContractService.updateMerkleTrees(),
                 this.projectContractService.updateMerkleTrees(),
                 this.fundingContractService.updateMerkleTrees(),
-                this.treasuryContractService.updateMerkleTrees(),
+                this.treasuryManagerContractService.updateMerkleTrees(),
             ]).then(async () => {
                 this.logger.log('All contract trees updated successfully');
                 await job.progress();
@@ -58,7 +58,7 @@ export class BoiContractServicesConsumer {
                 this.participationContractService.update(),
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
-                this.treasuryContractService.update(),
+                this.treasuryManagerContractService.update(),
             ]).then(async () => {
                 this.logger.log('All contracts updated successfully');
                 await job.progress();
@@ -78,17 +78,8 @@ export class BoiContractServicesConsumer {
                 this.participationContractService.update(),
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
-                this.treasuryContractService.update(),
+                this.treasuryManagerContractService.update(),
             ]).then(async () => {
-                const runs = [
-                    await this.campaignContractService.rollup(),
-                    await this.participationContractService.rollup(),
-                    await this.projectContractService.rollup(),
-                    await this.fundingContractService.reduce(),
-                    await this.treasuryContractService.rollup(),
-                ];
-                if (!runs.includes(true)) {
-                }
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
                 return {};
@@ -106,7 +97,7 @@ export class BoiContractServicesConsumer {
                 this.participationContractService.update(),
                 this.projectContractService.update(),
                 this.fundingContractService.update(),
-                this.treasuryContractService.update(),
+                this.treasuryManagerContractService.update(),
             ]).then(async () => {
                 await job.progress();
                 this.logger.log('All contract rolluped successfully');
@@ -125,7 +116,7 @@ export class BoiContractServicesConsumer {
                 this.campaignContractService.compile(),
                 this.participationContractService.compile(),
                 this.projectContractService.compile(),
-                this.treasuryContractService.compile(),
+                this.treasuryManagerContractService.compile(),
                 this.fundingContractService.compile(),
             ]).then(async () => {
                 this.logger.log('All contracts compiled successfully');

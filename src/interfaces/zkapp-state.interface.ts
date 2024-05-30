@@ -1,81 +1,107 @@
 import { Field } from 'o1js';
 
 export interface CommitteeState {
+    zkAppRoot: Field;
     nextCommitteeId: Field;
-    committeeTreeRoot: Field;
-    settingTreeRoot: Field;
+    memberRoot: Field;
+    settingRoot: Field;
+    feeRoot: Field;
+    feeReceiverRoot: Field;
     actionState: Field;
 }
 
 export interface DkgState {
-    zkApp: Field;
-    keyCounter: Field;
-    keyStatus: Field;
+    zkAppRoot: Field;
+    keyCounterRoot: Field;
+    keyStatusRoot: Field;
+    keyRoot: Field;
+    processRoot: Field;
 }
 
 export interface Round1State {
-    zkApp: Field;
-    reduceState: Field;
-    contribution: Field;
-    publicKey: Field;
+    zkAppRoot: Field;
+    contributionRoot: Field;
+    publicKeyRoot: Field;
+    processRoot: Field;
 }
 
 export interface Round2State {
-    zkApp: Field;
-    reduceState: Field;
-    contribution: Field;
-    encryption: Field;
+    zkAppRoot: Field;
+    contributionRoot: Field;
+    encryptionRoot: Field;
+    processRoot: Field;
 }
 
 export interface DkgRequestState {
-    requestStatus: Field;
-    requester: Field;
+    zkAppRoot: Field;
+    requestCounter: Field;
+    keyIndexRoot: Field;
+    taskRoot: Field;
+    accumulationRoot: Field;
+    expirationRoot: Field;
+    resultRoot: Field;
     actionState: Field;
-    responseContractAddress: Field;
 }
 
 export interface DkgResponseState {
-    zkApp: Field;
-    reduceState: Field;
-    contribution: Field;
+    zkAppRoot: Field;
+    contributionRoot: Field;
+    responseRoot: Field;
+    processRoot: Field;
+}
+
+export interface RequesterState {
+    zkAppRoot: Field;
+    counters: Field;
+    keyIndexRoot: Field;
+    timestampRoot: Field;
+    accumulationRoot: Field;
+    commitmentRoot: Field;
+    lastTimestamp: Field;
+    actionState: Field;
+}
+
+export interface RollupState {
+    zkAppRoot: Field;
+    counterRoot: Field;
+    rollupRoot: Field;
+    actionState: Field;
 }
 
 export interface CampaignState {
-    owner: Field;
-    info: Field;
-    status: Field;
-    config: Field;
-    zkApp: Field;
     nextCampaignId: Field;
+    timelineRoot: Field;
+    ipfsHashRoot: Field;
+    keyIndexRoot: Field;
+    zkAppRoot: Field;
     actionState: Field;
 }
 
 export interface ProjectState {
     nextProjectId: Field;
-    member: Field;
-    info: Field;
-    payee: Field;
+    memberRoot: Field;
+    ipfsHashRoot: Field;
+    treasuryAddressRoot: Field;
     actionState: Field;
 }
 export interface ParticipationState {
-    index: Field;
-    info: Field;
-    counter: Field;
-    zkApp: Field;
+    projectIndexRoot: Field;
+    projectCounterRoot: Field;
+    ipfsHashRoot: Field;
+    zkAppRoot: Field;
     actionState: Field;
 }
 
 export interface FundingState {
+    nextFundingId: Field;
+    fundingInformationRoot: Field;
+    zkAppRoot: Field;
     actionState: Field;
-    reduceState: Field;
-    R: Field;
-    M: Field;
-    requestId: Field;
-    zkApp: Field;
 }
 
-export interface TreasuryState {
-    claimed: Field;
+export interface TreasuryManagerState {
+    campaignStateRoot: Field;
+    claimedIndexRoot: Field;
     zkApp: Field;
     actionState: Field;
 }
