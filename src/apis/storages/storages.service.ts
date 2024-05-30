@@ -5,7 +5,6 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { Field, Provable } from 'o1js';
-import { WorkerCronTasksService } from 'src/cron-tasks/worker-cron-tasks.service';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
 import { CampaignContractService } from 'src/mina-contracts/campaign-contract/campaign-contract.service';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
@@ -14,63 +13,29 @@ import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts
 import { FundingContractService } from 'src/mina-contracts/funding-contract/funding-contract.service';
 import { ParticipationContractService } from 'src/mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from 'src/mina-contracts/project-contract/project-contract.service';
-import { TreasuryContractService } from 'src/mina-contracts/treasury-contract/treasury-contract.service';
+import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
+import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 
 @Injectable()
 export class StoragesService {
-    private readonly logger = new Logger(WorkerCronTasksService.name);
+    private readonly logger = new Logger(StoragesService.name);
 
     constructor(
+        private readonly rollupContractService: RollupContractService,
         private readonly committeeContractsService: CommitteeContractService,
         private readonly dkgContractService: DkgContractsService,
         private readonly dkgUsageContractService: DkgUsageContractsService,
-        private readonly campaignContractService: CampaignContractService,
-        private readonly participationContractService: ParticipationContractService,
-        private readonly projectContractService: ProjectContractService,
-        private readonly fundingContractService: FundingContractService,
-        private readonly treasuryContractService: TreasuryContractService,
+        private readonly requesterContractsService: RequesterContractsService,
     ) {}
 
-    getMemberTreeLevel1(): MerkleLeaf[] {
+    getRollupZkAppStorage(): MerkleLeaf[] {
         const leafCount =
-            this.committeeContractsService.memberTree.level1.leafCount;
+            this.rollupContractService.zkAppStorage.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.committeeContractsService.memberTree
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getMemberTreeLevel2(level1Index: number) {
-        const result: MerkleLeaf[] = [];
-        if (this.committeeContractsService.memberTree.level2s[level1Index]) {
-            const leafCount =
-                this.committeeContractsService.memberTree.level2s[level1Index]
-                    .leafCount;
-            for (let i = 0; i < leafCount; i++) {
-                result.push(
-                    this.committeeContractsService.memberTree
-                        .getLevel2Witness(Field(level1Index), Field(i))
-                        .toJSON(),
-                );
-            }
-            return result;
-        } else {
-            throw new NotFoundException();
-        }
-    }
-
-    getSettingTreeLevel1(): MerkleLeaf[] {
-        const leafCount =
-            this.committeeContractsService.settingTree.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.committeeContractsService.settingTree
+                this.rollupContractService.zkAppStorage
                     .getWitness(Field(i))
                     .toJSON(),
             );
@@ -78,53 +43,19 @@ export class StoragesService {
         return result;
     }
 
-    getDKGZkAppTree(): MerkleLeaf[] {
-        this.logger.log(process.pid);
-        const leafCount = this.dkgContractService.dkg.zkApp.addresses.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.dkgContractService.dkg.zkApp.getWitness(Field(i)).toJSON(),
-            );
-        }
-        return result;
+    getRollupZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.rollupContractService.zkAppStorage.addresses;
     }
 
-    getKeyCounterTreeLevel1(): MerkleLeaf[] {
+    getRollupCounterStorageLevel1(): MerkleLeaf[] {
         const leafCount =
-            this.dkgContractService.dkg.keyCounter.level1.leafCount;
+            this.rollupContractService.counterStorage.level1.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.dkgContractService.dkg.keyCounter
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getKeyStatusTreeLevel1(): MerkleLeaf[] {
-        const leafCount =
-            this.dkgContractService.dkg.keyStatus.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.dkgContractService.dkg.keyStatus
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getRound1ZkAppTree(): MerkleLeaf[] {
-        const leafCount =
-            this.dkgContractService.round1.zkApp.addresses.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.dkgContractService.round1.zkApp
+                this.rollupContractService.counterStorage
                     .getWitness(Field(i))
                     .toJSON(),
             );
@@ -132,91 +63,19 @@ export class StoragesService {
         return result;
     }
 
-    getRound1ReduceTree(): { [key: string]: MerkleLeaf } {
-        const indexes = this.dkgContractService.round1.reducedActions;
-        const result: { [key: string]: MerkleLeaf } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgContractService.round1.reduceState
-                    .getWitness(indexes[i])
-                    .toJSON();
-        }
-        return result;
+    getRollupCounterStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.rollupContractService.counterStorage.leafs;
     }
 
-    getRound1ContributionTreeLevel1(): MerkleLeaf[] {
+    getRollupStorageLevel1(): MerkleLeaf[] {
         const leafCount =
-            this.dkgContractService.round1.contribution.level1.leafCount;
+            this.rollupContractService.rollupStorage.level1.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.dkgContractService.round1.contribution
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getRound1ContributionTreeLevel2(level1Index: number): MerkleLeaf[] {
-        const result: MerkleLeaf[] = [];
-        if (this.dkgContractService.round1.contribution.level2s[level1Index]) {
-            const leafCount =
-                this.dkgContractService.round1.contribution.level2s[level1Index]
-                    .leafCount;
-            for (let i = 0; i < leafCount; i++) {
-                result.push(
-                    this.dkgContractService.round1.contribution
-                        .getLevel2Witness(Field(level1Index), Field(i))
-                        .toJSON(),
-                );
-            }
-            return result;
-        } else {
-            throw new NotFoundException();
-        }
-    }
-
-    getRound1PublicKeyTreeLevel1(): MerkleLeaf[] {
-        const leafCount =
-            this.dkgContractService.round1.publicKey.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.dkgContractService.round1.publicKey
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getRound1PublickeyTreeLevel2(level1Index: number): MerkleLeaf[] {
-        const result: MerkleLeaf[] = [];
-        if (this.dkgContractService.round1.publicKey.level2s[level1Index]) {
-            const leafCount =
-                this.dkgContractService.round1.publicKey.level2s[level1Index]
-                    .leafCount;
-            for (let i = 0; i < leafCount; i++) {
-                result.push(
-                    this.dkgContractService.round1.publicKey
-                        .getLevel2Witness(Field(level1Index), Field(i))
-                        .toJSON(),
-                );
-            }
-            return result;
-        } else {
-            throw new NotFoundException();
-        }
-    }
-
-    getRound2ZkAppTree(): MerkleLeaf[] {
-        const leafCount =
-            this.dkgContractService.round2.zkApp.addresses.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.dkgContractService.round2.zkApp
+                this.rollupContractService.rollupStorage
                     .getWitness(Field(i))
                     .toJSON(),
             );
@@ -224,138 +83,19 @@ export class StoragesService {
         return result;
     }
 
-    getRound2ReduceTree(): { [key: string]: MerkleLeaf } {
-        const indexes = this.dkgContractService.round2.reducedActions;
-        const result: { [key: string]: MerkleLeaf } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgContractService.round2.reduceState
-                    .getWitness(indexes[i])
-                    .toJSON();
-        }
-        return result;
+    getRollupStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.rollupContractService.rollupStorage.leafs;
     }
 
-    getRound2ContributionTreeLevel1(): MerkleLeaf[] {
+    getCommitteeZkAppStorage(): MerkleLeaf[] {
         const leafCount =
-            this.dkgContractService.round2.contribution.level1.leafCount;
+            this.committeeContractsService.zkAppStorage.addressMap.leafCount;
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.dkgContractService.round2.contribution
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getRound2ContributionTreeLevel2(level1Index: number): MerkleLeaf[] {
-        const result: MerkleLeaf[] = [];
-        if (this.dkgContractService.round2.contribution.level2s[level1Index]) {
-            const leafCount =
-                this.dkgContractService.round2.contribution.level2s[level1Index]
-                    .leafCount;
-            for (let i = 0; i < leafCount; i++) {
-                result.push(
-                    this.dkgContractService.round2.contribution
-                        .getLevel2Witness(Field(level1Index), Field(i))
-                        .toJSON(),
-                );
-            }
-            return result;
-        } else {
-            throw new NotFoundException();
-        }
-    }
-
-    getRound2EncryptionTreeLevel1(): MerkleLeaf[] {
-        const leafCount =
-            this.dkgContractService.round2.encryption.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.dkgContractService.round2.encryption
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getRound2EncryptionTreeLevel2(level1Index: number): MerkleLeaf[] {
-        const result: MerkleLeaf[] = [];
-        if (this.dkgContractService.round2.encryption.level2s[level1Index]) {
-            const leafCount =
-                this.dkgContractService.round2.encryption.level2s[level1Index]
-                    .leafCount;
-            for (let i = 0; i < leafCount; i++) {
-                result.push(
-                    this.dkgContractService.round2.encryption
-                        .getLevel2Witness(Field(level1Index), Field(i))
-                        .toJSON(),
-                );
-            }
-            return result;
-        } else {
-            throw new NotFoundException();
-        }
-    }
-
-    getRequesterTreeLevel1(): { [key: string]: MerkleLeaf } {
-        const indexes = this.dkgUsageContractService.requestIds;
-        const result: { [key: string]: MerkleLeaf } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgUsageContractService.dkgRequest.requester
-                    .getWitness(Field(indexes[i]))
-                    .toJSON();
-        }
-        return result;
-    }
-
-    getRequesterLeavesLevel1(): { [key: string]: string } {
-        const indexes = this.dkgUsageContractService.requestIds;
-        const result: { [key: string]: string } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgUsageContractService.dkgRequest.requester.level1
-                    .get(Field(indexes[i]))
-                    .toJSON();
-        }
-        return result;
-    }
-
-    getRequestStatusTreeLevel1(): { [key: string]: MerkleLeaf } {
-        const indexes = this.dkgUsageContractService.requestIds;
-        const result: { [key: string]: MerkleLeaf } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgUsageContractService.dkgRequest.requestStatus
-                    .getWitness(Field(indexes[i]))
-                    .toJSON();
-        }
-        return result;
-    }
-
-    getRequestStatusLeavesLevel1(): { [key: string]: string } {
-        const indexes = this.dkgUsageContractService.requestIds;
-        const result: { [key: string]: string } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgUsageContractService.dkgRequest.requestStatus.level1
-                    .get(Field(indexes[i]))
-                    .toJSON();
-        }
-        return result;
-    }
-
-    getResponseZkApTree(): MerkleLeaf[] {
-        const leafCount = this.dkgContractService.dkg.zkApp.addresses.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.dkgUsageContractService.dkgResponse.zkApp
+                this.committeeContractsService.zkAppStorage
                     .getWitness(Field(i))
                     .toJSON(),
             );
@@ -363,313 +103,781 @@ export class StoragesService {
         return result;
     }
 
-    getResponseReduceTree(): { [key: string]: MerkleLeaf } {
-        const indexes = this.dkgUsageContractService.dkgResponse.reducedActions;
-        const result: { [key: string]: MerkleLeaf } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgUsageContractService.dkgResponse.reduceState
-                    .getWitness(indexes[i])
-                    .toJSON();
+    getCommitteeZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.committeeContractsService.zkAppStorage.addresses;
+    }
+
+    getMemberStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.committeeContractsService.memberStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.committeeContractsService.memberStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
         }
         return result;
     }
 
-    getResponseContributionTreeLevel1(): { [key: string]: MerkleLeaf } {
-        const indexes = this.dkgUsageContractService.requestIds;
-        const result: { [key: string]: MerkleLeaf } = {};
-        for (let i = 0; i < indexes.length; i++) {
-            result[indexes[i].toString()] =
-                this.dkgUsageContractService.dkgResponse.contribution
-                    .getLevel1Witness(Field(indexes[i]))
-                    .toJSON();
-        }
-        return result;
+    getMemberStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.committeeContractsService.memberStorage.leafs;
     }
 
-    getResponseContributionTreeLevel2(level1Index: string): MerkleLeaf[] {
-        try {
-            const result: MerkleLeaf[] = [];
-            const index = Field(level1Index);
-            if (
-                this.dkgUsageContractService.dkgResponse.contribution.level2s[
+    getMemberStorageLevel2(level1Index: number) {
+        const result: MerkleLeaf[] = [];
+        if (this.committeeContractsService.memberStorage.level2s[level1Index]) {
+            const leafCount =
+                this.committeeContractsService.memberStorage.level2s[
                     level1Index
-                ]
-            ) {
-                const leafCount =
-                    this.dkgUsageContractService.dkgResponse.contribution
-                        .level2s[level1Index].leafCount;
-                for (let i = 0; i < leafCount; i++) {
-                    result.push(
-                        this.dkgUsageContractService.dkgResponse.contribution
-                            .getLevel2Witness(index, Field(i))
-                            .toJSON(),
-                    );
-                }
-                return result;
-            } else {
-                throw new NotFoundException();
+                ].leafCount;
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.committeeContractsService.memberStorage
+                        .getLevel2Witness(Field(level1Index), Field(i))
+                        .toJSON(),
+                );
             }
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
+    }
+
+    getSettingStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.committeeContractsService.settingStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.committeeContractsService.settingStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getSettingStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.committeeContractsService.settingStorage.leafs;
+    }
+
+    getDkgZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.dkg.zkAppStorage.addressMap.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.dkg.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getDkgZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.zkAppStorage.addresses;
+    }
+
+    getKeyCounterStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.dkg.keyCounterStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.dkg.keyCounterStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getKeyCounterStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.keyCounterStorage.leafs;
+    }
+
+    getKeyStatusStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.dkg.keyStatusStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.dkg.keyStatusStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getKeyStatusStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.keyStatusStorage.leafs;
+    }
+
+    getKeyStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.dkg.keyStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.dkg.keyStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getKeyStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.keyStorage.leafs;
+    }
+
+    getProcessStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.dkg.processStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.dkg.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.dkg.processStorage.leafs;
+    }
+
+    getRound1ZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.round1.zkAppStorage.addressMap.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRound1ZkAppStorageLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round1.zkAppStorage.addresses;
+    }
+
+    getRound1ContributionStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.round1.contributionStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.contributionStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRound1ContributionStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.round1.contributionStorage.leafs;
+    }
+
+    getRound1ContributionStorageLevel2(level1Index: number): MerkleLeaf[] {
+        const result: MerkleLeaf[] = [];
+        if (
+            this.dkgContractService.round1.contributionStorage.level2s[
+                level1Index
+            ]
+        ) {
+            const leafCount =
+                this.dkgContractService.round1.contributionStorage.level2s[
+                    level1Index
+                ].leafCount;
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.contributionStorage
+                        .getLevel2Witness(Field(level1Index), Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
+    }
+
+    getRound1PublicKeyStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.round1.publicKeyStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.publicKeyStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRound1PublicKeyStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.round1.publicKeyStorage.leafs;
+    }
+
+    getRound1PublicKeyStorageLevel2(level1Index: number): MerkleLeaf[] {
+        const result: MerkleLeaf[] = [];
+        if (
+            this.dkgContractService.round1.publicKeyStorage.level2s[level1Index]
+        ) {
+            const leafCount =
+                this.dkgContractService.round1.publicKeyStorage.level2s[
+                    level1Index
+                ].leafCount;
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.publicKeyStorage
+                        .getLevel2Witness(Field(level1Index), Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
+    }
+
+    getRound1ProcessStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.round1.processStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRound1ProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.round1.processStorage.leafs;
+    }
+
+    getRound2ZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.round2.zkAppStorage.addressMap.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRound2ZkAppStorageLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round2.zkAppStorage.addresses;
+    }
+
+    getRound2ContributionStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.round2.contributionStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round2.contributionStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRound2ContributionStorageLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round2.contributionStorage.leafs;
+    }
+
+    getRound2ContributionStorageLevel2(level1Index: number): MerkleLeaf[] {
+        const result: MerkleLeaf[] = [];
+        if (
+            this.dkgContractService.round2.contributionStorage.level2s[
+                level1Index
+            ]
+        ) {
+            const leafCount =
+                this.dkgContractService.round2.contributionStorage.level2s[
+                    level1Index
+                ].leafCount;
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round2.contributionStorage
+                        .getLevel2Witness(Field(level1Index), Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
+    }
+
+    getRound2EncryptionStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.round2.encryptionStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round2.encryptionStorage
+                    .getLevel1Witness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRound2EncryptionStorageLeafs(): { [key: string]: any } {
+        return this.dkgContractService.round2.encryptionStorage.leafs;
+    }
+
+    getRound2EncryptionStorageLevel2(level1Index: number): MerkleLeaf[] {
+        const result: MerkleLeaf[] = [];
+        if (
+            this.dkgContractService.round2.encryptionStorage.level2s[
+                level1Index
+            ]
+        ) {
+            const leafCount =
+                this.dkgContractService.round2.encryptionStorage.level2s[
+                    level1Index
+                ].leafCount;
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round2.encryptionStorage
+                        .getLevel2Witness(Field(level1Index), Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } else {
+            throw new NotFoundException();
+        }
+    }
+
+    getRound2ProcessStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgContractService.round2.processStorage.level1.leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRound2ProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgContractService.round2.processStorage.leafs;
+    }
+
+    getRequestZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.zkAppStorage.addressMap
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgUsageContractService.dkgRequest.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRequestZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.zkAppStorage.addresses;
+    }
+
+    getRequestKeyIndexStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.keyIndexStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRequestKeyIndexStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.keyIndexStorage.leafs;
+    }
+
+    getRequestTaskStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.taskStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRequestTaskStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.taskStorage.leafs;
+    }
+
+    getRequestAccumulationStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.accumulationStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRequestAccumulationStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.accumulationStorage
+            .leafs;
+    }
+
+    getRequestExpirationStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.expirationStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRequestExpirationStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.expirationStorage.leafs;
+    }
+
+    getRequestResultStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgRequest.resultStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getRequestResultStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgRequest.resultStorage.leafs;
+    }
+
+    getResponseZkAppStorage(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgResponse.zkAppStorage.addressMap
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgUsageContractService.dkgRequest.zkAppStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getResponseZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgResponse.zkAppStorage.addresses;
+    }
+
+    getResponseContributionStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgResponse.contributionStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getResponseContributionStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgResponse.contributionStorage
+            .leafs;
+    }
+
+    getResponseResponseStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgResponse.responseStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getResponseResponseStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgResponse.responseStorage.leafs;
+    }
+
+    getResponseProcessStorageLevel1(): MerkleLeaf[] {
+        const leafCount =
+            this.dkgUsageContractService.dkgResponse.processStorage.level1
+                .leafCount;
+        const result: MerkleLeaf[] = [];
+        for (let i = 0; i < leafCount; i++) {
+            result.push(
+                this.dkgContractService.round1.processStorage
+                    .getWitness(Field(i))
+                    .toJSON(),
+            );
+        }
+        return result;
+    }
+
+    getResponseProcessStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.dkgUsageContractService.dkgResponse.processStorage.leafs;
+    }
+
+    getRequesterZkAppStorage(requesterAddress: string): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .zkAppStorage.addressMap.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgUsageContractService.dkgRequest.zkAppStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    getRequesterZkAppStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .zkAppStorage.addresses;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    getRequesterKeyIndexStorageLevel1(requesterAddress: string): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .keyIndexStorage.level1.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.processStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    getRequesterKeyIndexStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .keyIndexStorage.leafs;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    getRequesterTimestampStorageLevel1(requesterAddress: string): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .timestampStorage.level1.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.processStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
         } catch (err) {
             throw new BadRequestException();
         }
     }
 
-    getCampaignInfoTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.campaignContractService.info.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.campaignContractService.info
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
+    getRequesterTimestampStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .timestampStorage.leafs;
+        } catch (err) {
+            throw new BadRequestException(err);
         }
-        return result;
     }
 
-    getCampaignOwnerTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.campaignContractService.owner.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.campaignContractService.owner
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getCampaignStatusTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.campaignContractService.status.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.campaignContractService.status
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getCampaignConfigTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.campaignContractService.config.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.campaignContractService.config
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getCampaignZkAppTree(): MerkleLeaf[] {
-        const leafCount =
-            this.campaignContractService.zkApp.addresses.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.campaignContractService.zkApp
-                    .getWitness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getParticipationCounterTreeLevel1(): MerkleLeaf[] {
-        const leafCount =
-            this.participationContractService.counter.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.participationContractService.counter
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getParticipationIndexTreeLevel1(): MerkleLeaf[] {
-        const leafCount =
-            this.participationContractService.index.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.participationContractService.index
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getParticipationInfoTreeLevel1(): MerkleLeaf[] {
-        const leafCount =
-            this.participationContractService.info.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.participationContractService.info
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getParticipationZkAppTree(): MerkleLeaf[] {
-        const leafCount =
-            this.participationContractService.zkApp.addresses.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.participationContractService.zkApp
-                    .getWitness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getProjectInfoTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.projectContractService.info.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.projectContractService.info
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getProjectMemberTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.projectContractService.member.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.projectContractService.member
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getProjectMemberTreeLevel2(level1Index: number): MerkleLeaf[] {
-        const result: MerkleLeaf[] = [];
-        if (this.projectContractService.member.level2s[level1Index]) {
+    getRequesterAccumulationStorageLevel1(
+        requesterAddress: string,
+    ): MerkleLeaf[] {
+        try {
             const leafCount =
-                this.projectContractService.member.level2s[level1Index]
-                    .leafCount;
+                this.requesterContractsService.storage(requesterAddress)
+                    .accumulationStorage.level1.leafCount;
+            const result: MerkleLeaf[] = [];
             for (let i = 0; i < leafCount; i++) {
                 result.push(
-                    this.projectContractService.member
-                        .getLevel2Witness(Field(level1Index), Field(i))
+                    this.dkgContractService.round1.processStorage
+                        .getWitness(Field(i))
                         .toJSON(),
                 );
             }
             return result;
-        } else {
-            throw new NotFoundException();
+        } catch (err) {
+            throw new BadRequestException(err);
         }
     }
 
-    getProjectAddressTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.projectContractService.address.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.projectContractService.address
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
+    getRequesterAccumulationStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .accumulationStorage.leafs;
+        } catch (err) {
+            throw new BadRequestException(err);
         }
-        return result;
     }
 
-    getFundingTotalMTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.fundingContractService.totalM.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.fundingContractService.totalM
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
+    getRequesterCommitmentStorageLevel1(
+        requesterAddress: string,
+    ): MerkleLeaf[] {
+        try {
+            const leafCount =
+                this.requesterContractsService.storage(requesterAddress)
+                    .commitmentStorage.level1.leafCount;
+            const result: MerkleLeaf[] = [];
+            for (let i = 0; i < leafCount; i++) {
+                result.push(
+                    this.dkgContractService.round1.processStorage
+                        .getWitness(Field(i))
+                        .toJSON(),
+                );
+            }
+            return result;
+        } catch (err) {
+            throw new BadRequestException(err);
         }
-        return result;
     }
 
-    getFundingTotalRTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.fundingContractService.totalR.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.fundingContractService.totalR
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
+    getRequesterCommitmentStorageLeafs(requesterAddress: string): {
+        [key: string]: any;
+    } {
+        try {
+            return this.requesterContractsService.storage(requesterAddress)
+                .commitmentStorage.leafs;
+        } catch (err) {
+            throw new BadRequestException(err);
         }
-        return result;
-    }
-
-    getFundingRequestIdTreeLevel1(): MerkleLeaf[] {
-        const leafCount =
-            this.fundingContractService.requestId.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.fundingContractService.requestId
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getFundingZkAppTree(): MerkleLeaf[] {
-        const leafCount = this.fundingContractService.zkApp.addresses.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.fundingContractService.zkApp.getWitness(Field(i)).toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getTreasuryClaimedTreeLevel1(): MerkleLeaf[] {
-        const leafCount = this.treasuryContractService.claimed.level1.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.treasuryContractService.claimed
-                    .getLevel1Witness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
-    }
-
-    getTreasuryZkAppTree(): MerkleLeaf[] {
-        const leafCount =
-            this.treasuryContractService.zkApp.addresses.leafCount;
-        const result: MerkleLeaf[] = [];
-        for (let i = 0; i < leafCount; i++) {
-            result.push(
-                this.treasuryContractService.zkApp
-                    .getWitness(Field(i))
-                    .toJSON(),
-            );
-        }
-        return result;
     }
 }

@@ -1,43 +1,55 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
-import { Field, Provable, PublicKey, Reducer } from 'o1js';
+import {
+    Field,
+    Mina,
+    PrivateKey,
+    Provable,
+    PublicKey,
+    Reducer,
+    UInt64,
+} from 'o1js';
 import {
     CampaignAction,
-    getRawCampaign,
+    getCampaignActionData,
 } from 'src/schemas/actions/campaign-action.schema';
-import { RawCampaign } from 'src/schemas/raw-campaign.schema';
 import { Campaign } from 'src/schemas/campaign.schema';
-import { CampaignActionEnum } from 'src/constants';
+import { MaxRetries, ZkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
-import { Storage } from '@auxo-dev/platform';
-import { IPFSHash } from '@auxo-dev/auxo-libs';
+import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
+import { IpfsHash } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
+import { Utilities } from '../utilities';
+import { CampaignState } from 'src/interfaces/zkapp-state.interface';
+import * as _ from 'lodash';
 
 @Injectable()
 export class CampaignContractService implements ContractServiceInterface {
-    private readonly _info: Storage.CampaignStorage.InfoStorage;
-    private readonly _owner: Storage.CampaignStorage.OwnerStorage;
-    private readonly _status: Storage.CampaignStorage.StatusStorage;
-    private readonly _config: Storage.CampaignStorage.ConfigStorage;
-    private readonly _zkApp: Storage.SharedStorage.AddressStorage;
+    private readonly logger = new Logger(CampaignContractService.name);
+    private _nextCampaignId: number;
+    private readonly _timelineStorage: Storage.CampaignStorage.TimelineStorage;
+    private readonly _ipfsHashStorage: Storage.CampaignStorage.IpfsHashStorage;
+    private readonly _keyIndexStorage: Storage.CampaignStorage.KeyIndexStorage;
+    private readonly _zkAppStorage: Storage.SharedStorage.ZkAppStorage;
+    private _actionState: string;
 
-    public get info(): Storage.CampaignStorage.InfoStorage {
-        return this._info;
+    public get nextCampaignId(): number {
+        return this._nextCampaignId;
     }
-    public get owner(): Storage.CampaignStorage.OwnerStorage {
-        return this._owner;
+    public get timelineStorage(): Storage.CampaignStorage.TimelineStorage {
+        return this._timelineStorage;
     }
-    public get status(): Storage.CampaignStorage.StatusStorage {
-        return this._status;
+    public get ipfsHashStorage(): Storage.CampaignStorage.IpfsHashStorage {
+        return this._ipfsHashStorage;
     }
-    public get config(): Storage.CampaignStorage.ConfigStorage {
-        return this._config;
+    public get keyIndexStorage(): Storage.CampaignStorage.KeyIndexStorage {
+        return this._keyIndexStorage;
     }
-    public get zkApp(): Storage.SharedStorage.AddressStorage {
-        return this._zkApp;
+    public get zkAppStorage(): Storage.SharedStorage.ZkAppStorage {
+        return this._zkAppStorage;
     }
 
     constructor(
@@ -45,22 +57,21 @@ export class CampaignContractService implements ContractServiceInterface {
         private readonly ipfs: Ipfs,
         @InjectModel(CampaignAction.name)
         private readonly campaignActionModel: Model<CampaignAction>,
-        @InjectModel(RawCampaign.name)
-        private readonly rawCampaignModel: Model<RawCampaign>,
         @InjectModel(Campaign.name)
         private readonly campaignModel: Model<Campaign>,
     ) {
-        this._info = new Storage.CampaignStorage.InfoStorage();
-        this._owner = new Storage.CampaignStorage.OwnerStorage();
-        this._status = new Storage.CampaignStorage.StatusStorage();
-        this._config = new Storage.CampaignStorage.ConfigStorage();
-        this._zkApp = new Storage.SharedStorage.AddressStorage();
+        this._nextCampaignId = 0;
+        this._actionState = '';
+        this._timelineStorage = new Storage.CampaignStorage.TimelineStorage();
+        this._ipfsHashStorage = new Storage.CampaignStorage.IpfsHashStorage();
+        this._keyIndexStorage = new Storage.CampaignStorage.KeyIndexStorage();
+        this._zkAppStorage = Utilities.getZkAppStorageForPlatform();
     }
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -72,12 +83,147 @@ export class CampaignContractService implements ContractServiceInterface {
     }
 
     async fetch() {
-        try {
-            await this.fetchCampaignActions();
-            await this.updateRawCampaigns();
-            await this.updateCampaigns();
-        } catch (err) {}
+        for (let count = 0; count < MaxRetries; count++) {
+            try {
+                await this.fetchCampaignActions();
+                await this.updateCampaignActions();
+                count = MaxRetries;
+            } catch (err) {
+                this.logger.error(err);
+            }
+        }
     }
+
+    async compile() {
+        const cache = ZkAppCache;
+        await Utilities.compile(
+            ZkApp.Campaign.RollupCampaign,
+            cache,
+            this.logger,
+        );
+        await Utilities.compile(
+            ZkApp.Campaign.CampaignContract,
+            cache,
+            this.logger,
+        );
+    }
+
+    async fetchCampaignState(): Promise<CampaignState> {
+        const state = await this.queryService.fetchZkAppState(
+            process.env.CAMPAIGN_ADDRESS,
+        );
+        const result: CampaignState = {
+            nextCampaignId: Field(state[0]),
+            timelineRoot: Field(state[1]),
+            ipfsHashRoot: Field(state[2]),
+            keyIndexRoot: Field(state[3]),
+            zkAppRoot: Field(state[4]),
+            actionState: Field(state[5]),
+        };
+        this._nextCampaignId = Number(result.nextCampaignId.toBigInt());
+        this._actionState = result.actionState.toString();
+        return result;
+    }
+
+    async rollup() {
+        const lastReducedAction = await this.campaignActionModel.findOne(
+            { active: true },
+            {},
+            {
+                sort: {
+                    actionId: -1,
+                },
+            },
+        );
+        const notReducedActions = await this.campaignActionModel.find(
+            {
+                actionId: {
+                    $gt: lastReducedAction ? lastReducedAction.actionId : -1,
+                },
+            },
+            {},
+            { sort: { actionId: 1 } },
+        );
+        if (notReducedActions.length > 0) {
+            const state = await this.fetchCampaignState();
+            const timelineStorage = _.cloneDeep(this._timelineStorage);
+            const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
+            const keyIndexStorage = _.cloneDeep(this._keyIndexStorage);
+            let nextCampaignId = state.nextCampaignId;
+            const proof = await ZkApp.Campaign.RollupCampaign.firstStep(
+                nextCampaignId,
+                state.timelineRoot,
+                state.ipfsHashRoot,
+                state.keyIndexRoot,
+                state.actionState,
+            );
+
+            for (let i = 0; i < notReducedActions.length; i++) {
+                const notReducedAction = notReducedActions[i];
+                await ZkApp.Campaign.RollupCampaign.createCampaignStep(
+                    proof,
+                    ZkApp.Campaign.CampaignAction.fromFields(
+                        Utilities.stringArrayToFields(notReducedAction.actions),
+                    ),
+                    timelineStorage.getLevel1Witness(nextCampaignId),
+                    ipfsHashStorage.getLevel1Witness(nextCampaignId),
+                    keyIndexStorage.getLevel1Witness(nextCampaignId),
+                );
+
+                timelineStorage.updateLeaf(
+                    nextCampaignId,
+                    timelineStorage.calculateLeaf(
+                        notReducedAction.actionData.timeline.toAction(),
+                    ),
+                );
+                ipfsHashStorage.updateLeaf(
+                    nextCampaignId,
+                    ipfsHashStorage.calculateLeaf(
+                        IpfsHash.fromString(
+                            notReducedAction.actionData.ipfsHash,
+                        ),
+                    ),
+                );
+                keyIndexStorage.updateLeaf(
+                    nextCampaignId,
+                    keyIndexStorage.calculateLeaf({
+                        committeeId: Field(
+                            notReducedAction.actionData.committeeId,
+                        ),
+                        keyId: Field(notReducedAction.actionData.keyId),
+                    }),
+                );
+                nextCampaignId = nextCampaignId.add(1);
+            }
+            const campaignContract = new ZkApp.Campaign.CampaignContract(
+                PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                async () => {
+                    await campaignContract.rollup(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+            return true;
+        }
+    }
+
+    // ====== PRIVATE FUNCTIONS =======
 
     private async fetchCampaignActions() {
         const lastAction = await this.campaignActionModel.findOne(
@@ -101,15 +247,18 @@ export class CampaignContractService implements ContractServiceInterface {
         for (let i = 0; i < actions.length; i++) {
             const action = actions[i];
             const currentActionState = Field(action.hash);
+            const actionData = getCampaignActionData(action.actions[0]);
             await this.campaignActionModel.findOneAndUpdate(
                 {
                     currentActionState: currentActionState.toString(),
                 },
                 {
                     actionId: actionId,
+                    actionHash: action.hash,
                     currentActionState: currentActionState.toString(),
                     previousActionState: previousActionState.toString(),
                     actions: action.actions[0],
+                    actionData: actionData,
                 },
                 { new: true, upsert: true },
             );
@@ -118,197 +267,75 @@ export class CampaignContractService implements ContractServiceInterface {
         }
     }
 
-    private async updateRawCampaigns() {
-        const lastRawCampaign = await this.rawCampaignModel.findOne(
-            {},
-            {},
-            { sort: { actionId: -1 } },
-        );
-        let campaignActions: CampaignAction[];
-        if (lastRawCampaign != null) {
-            campaignActions = await this.campaignActionModel.find(
-                { actionId: { $gt: lastRawCampaign.actionId } },
-                {},
-                { sort: { actionId: 1 } },
-            );
-        } else {
-            campaignActions = await this.campaignActionModel.find(
-                {},
-                {},
-                { sort: { actionId: 1 } },
-            );
-        }
-        for (let i = 0; i < campaignActions.length; i++) {
-            const campaignAction = campaignActions[i];
-            await this.rawCampaignModel.findOneAndUpdate(
-                { actionId: campaignAction.actionId },
-                getRawCampaign(campaignAction),
-                { new: true, upsert: true },
-            );
-        }
-    }
-
-    private async updateCampaigns() {
-        const rawCampaigns = await this.rawCampaignModel.find(
-            { actionEnum: CampaignActionEnum.CREATE_CAMPAIGN },
-            {},
-            { sort: { actionId: 1 } },
-        );
-        const lastCampaign = await this.campaignModel.findOne(
-            {},
-            {},
-            { sort: { campaignId: -1 } },
-        );
-        for (
-            let campaignId = lastCampaign ? lastCampaign.campaignId + 1 : 0;
-            campaignId < rawCampaigns.length;
-            campaignId++
-        ) {
-            const rawCampaign = rawCampaigns[campaignId];
-            try {
-                const ipfsData = await this.ipfs.getData(rawCampaign.ipfsHash);
-                await this.campaignModel.create({
-                    campaignId: campaignId,
-                    ipfsHash: rawCampaign.ipfsHash,
-                    owner: rawCampaign.owner,
-                    status: rawCampaign.status,
-                    committeeId: rawCampaign.committeeId,
-                    keyId: rawCampaign.committeeId,
-                    ipfsData: ipfsData,
-                });
-            } catch (err) {
-                await this.campaignModel.create({
-                    campaignId: campaignId,
-                    ipfsHash: rawCampaign.ipfsHash,
-                    owner: rawCampaign.owner,
-                    status: rawCampaign.status,
-                    committeeId: rawCampaign.committeeId,
-                    keyId: rawCampaign.committeeId,
-                    ipfsData: undefined,
-                });
-            }
-        }
-
-        const rawEvents = await this.queryService.fetchEvents(
-            process.env.CAMPAIGN_ADDRESS,
-        );
-
-        if (rawEvents.length > 0) {
-            const lastEvent = rawEvents[rawEvents.length - 1].events;
-            const lastActiveCampaignId = Number(lastEvent[0].data[0]);
-            const notActiveCampaigns = await this.campaignModel.find(
+    private async updateCampaignActions() {
+        await this.fetchCampaignState();
+        const currentAction = await this.campaignActionModel.findOne({
+            currentActionState: this._actionState,
+        });
+        if (currentAction != undefined) {
+            const notActiveActions = await this.campaignActionModel.find(
                 {
-                    campaignId: { $lte: lastActiveCampaignId },
+                    actionId: { $lte: currentAction.actionId },
                     active: false,
                 },
                 {},
-                { sort: { campaignId: 1 } },
+                { sort: { actionId: 1 } },
             );
-            for (let i = 0; i < notActiveCampaigns.length; i++) {
-                const notActiveCampaign = notActiveCampaigns[i];
-                notActiveCampaign.set('active', true);
-                await notActiveCampaign.save();
+
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                notActiveAction.set('active', true);
+                const ipfsData = await this.ipfs.getData(
+                    notActiveAction.actionData.ipfsHash,
+                );
+
+                await this.campaignModel.findOneAndUpdate(
+                    {
+                        campaignId: this._nextCampaignId,
+                    },
+                    {
+                        campaignId: this._nextCampaignId,
+                        ipfsHash: notActiveAction.actionData.ipfsHash,
+                        ipfsData: ipfsData,
+                        owner: notActiveAction.actionData.owner,
+                        timeline: notActiveAction.actionData.timeline,
+                        committeeId: notActiveAction.actionData.committeeId,
+                        keyId: notActiveAction.actionData.keyId,
+                    },
+                    { new: true, upsert: true },
+                );
+                await notActiveAction.save();
+                this._nextCampaignId += 1;
             }
         }
     }
 
     async updateMerkleTrees() {
         try {
-            this._zkApp.addresses.setLeaf(
-                0n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                1n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                2n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                3n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                0n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                4n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                5n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                6n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                7n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                8n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
-                ),
-            );
-            this._zkApp.addresses.setLeaf(
-                9n,
-                this._zkApp.calculateLeaf(
-                    PublicKey.fromBase58(process.env.TREASURY_ADDRESS),
-                ),
-            );
-
             const campaigns = await this.campaignModel.find(
-                { active: true },
+                {},
                 {},
                 { sort: { campaignId: 1 } },
             );
 
             for (let i = 0; i < campaigns.length; i++) {
                 const campaign = campaigns[i];
-                const level1Index = this._info.calculateLevel1Index(
+                const level1Index = this._timelineStorage.calculateLevel1Index(
                     Field(campaign.campaignId),
                 );
-                const infoLeaf = this._info.calculateLeaf(
-                    IPFSHash.fromString(campaign.ipfsHash),
+                const timelineLeaf = this._timelineStorage.calculateLeaf(
+                    campaign.timeline.toAction(),
                 );
-                this._info.updateLeaf(infoLeaf, level1Index);
-                const ownerLeaf = this._owner.calculateLeaf(
-                    PublicKey.fromBase58(campaign.owner),
+                this._timelineStorage.updateLeaf(level1Index, timelineLeaf);
+                const ipfsHashLeaf = this._ipfsHashStorage.calculateLeaf(
+                    IpfsHash.fromString(campaign.ipfsHash),
                 );
-                this._owner.updateLeaf(ownerLeaf, level1Index);
-                const statusLeaf = this._status.calculateLeaf(
-                    campaign.status as number,
-                );
-                this._status.updateLeaf(statusLeaf, level1Index);
-                const configLeaf = this._config.calculateLeaf({
+                this._ipfsHashStorage.updateLeaf(level1Index, ipfsHashLeaf);
+                const keyIndexLeaf = this._keyIndexStorage.calculateLeaf({
                     committeeId: Field(campaign.committeeId),
                     keyId: Field(campaign.keyId),
                 });
-                this._config.updateLeaf(configLeaf, level1Index);
+                this._keyIndexStorage.updateLeaf(level1Index, keyIndexLeaf);
             }
         } catch (err) {}
     }

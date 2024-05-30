@@ -9,28 +9,18 @@ import {
     ValidateNested,
 } from 'class-validator';
 
-class Time {
-    @IsDate()
-    @Type(() => Date)
-    from: Date;
-
-    @IsDate()
-    @Type(() => Date)
-    to: Date;
-}
-
 class Timeline {
-    @ValidateNested()
-    @Type(() => Time)
-    participation: Time;
+    @IsDate()
+    @Type(() => Date)
+    startParticipation: Date;
 
-    @ValidateNested()
-    @Type(() => Time)
-    investment: Time;
+    @IsDate()
+    @Type(() => Date)
+    startFunding: Date;
 
-    @ValidateNested()
-    @Type(() => Time)
-    allocation: Time;
+    @IsDate()
+    @Type(() => Date)
+    startRequesting: Date;
 }
 
 class PrivacyOption {

@@ -3,12 +3,18 @@ import { IsNumber, IsString } from 'class-validator';
 import { HydratedDocument } from 'mongoose';
 
 @Schema({ versionKey: false })
-export class Draft {
+export class ProjectDraft {
     @Prop({ index: true, required: true })
     address: string;
 
     @Prop()
     name?: string;
+
+    @Prop()
+    avatarImage?: string;
+
+    @Prop()
+    coverImage?: string;
 
     @Prop()
     publicKey?: string;
@@ -23,7 +29,7 @@ export class Draft {
     solution?: string;
 
     @Prop()
-    challengeAndRisks?: string;
+    challengeAndRisk?: string;
 
     @Prop()
     members?: Member[];
@@ -43,5 +49,5 @@ class Member {
     link?: string;
 }
 
-export type DraftDocument = HydratedDocument<Draft>;
-export const DraftSchema = SchemaFactory.createForClass(Draft);
+export type ProjectDraftDocument = HydratedDocument<ProjectDraft>;
+export const ProjectDraftSchema = SchemaFactory.createForClass(ProjectDraft);

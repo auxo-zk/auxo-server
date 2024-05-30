@@ -6,20 +6,17 @@ export class Project {
     @Prop({ required: true, unique: true, index: true })
     projectId: number;
 
-    @Prop()
+    @Prop([String])
     members: string[];
-
-    @Prop()
-    payeeAccount: string;
 
     @Prop()
     ipfsHash: string;
 
     @Prop({ type: Object })
-    ipfsData: object;
+    ipfsData?: object;
 
-    @Prop({ required: true, default: false, index: true })
-    active?: boolean;
+    @Prop()
+    treasuryAddress: string;
 }
 
 export type ProjectDocument = HydratedDocument<Project>;

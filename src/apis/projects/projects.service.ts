@@ -32,7 +32,6 @@ export class ProjectsService {
         if (getProjectsDto.member) {
             return await this.projectModel.find({
                 members: getProjectsDto.member,
-                active: true,
             });
         } else {
             return await this.projectModel.find({});
@@ -40,15 +39,11 @@ export class ProjectsService {
     }
 
     async getProject(projectId: number): Promise<Project> {
-        const exist = await this.projectModel.exists({
+        const result = await this.projectModel.findOne({
             projectId: projectId,
-            active: true,
         });
-        if (exist) {
-            return await this.projectModel.findOne({
-                projectId: projectId,
-                active: true,
-            });
+        if (result) {
+            return result;
         } else {
             throw new NotFoundException();
         }
@@ -59,7 +54,7 @@ export class ProjectsService {
         jwtPayload: JwtPayload,
     ): Promise<IpfsResponse> {
         if (jwtPayload.role == AuthRoleEnum.BUILDER) {
-            const result = await this.ipfs.upload(createProjectDto);
+            const result = await this.ipfs.uploadJson(createProjectDto);
             if (result == null) {
                 throw new BadRequestException();
             }
@@ -73,14 +68,10 @@ export class ProjectsService {
         return await this.participationModel.find(
             {
                 projectId: projectId,
-                active: true,
             },
             {
                 projectId: 0,
                 _id: 0,
-                actionId: 0,
-                currentApplicationInfoHash: 0,
-                active: 0,
             },
         );
     }
@@ -89,16 +80,12 @@ export class ProjectsService {
         projectId: number,
         campaignId: number,
     ): Promise<Participation> {
-        const exist = await this.participationModel.exists({
-            projectId: projectId,
+        const result = await this.participationModel.findOne({
             campaignId: campaignId,
+            projectId: projectId,
         });
-        if (exist) {
-            return await this.participationModel.findOne({
-                projectId: projectId,
-                campaignId: campaignId,
-                active: true,
-            });
+        if (result) {
+            return result;
         } else {
             throw new NotFoundException();
         }
@@ -132,18 +119,13 @@ export class ProjectsService {
         createParticipationDto: CreateParticipationDto,
         jwtPayload: JwtPayload,
     ): Promise<IpfsResponse> {
-        // const result = await this.ipfs.upload(createParticipationDto);
-        // if (result == null) {
-        //     throw new BadRequestException();
-        // }
-        // return result;
         if (jwtPayload.role == AuthRoleEnum.BUILDER) {
             const project = await this.projectModel.findOne({
                 projectId: projectId,
             });
             if (project) {
-                if (project.payeeAccount == jwtPayload.sub) {
-                    const result = await this.ipfs.upload(
+                if (project.treasuryAddress == jwtPayload.sub) {
+                    const result = await this.ipfs.uploadJson(
                         createParticipationDto,
                     );
                     if (result == null) {

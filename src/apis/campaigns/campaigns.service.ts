@@ -33,7 +33,7 @@ export class CampaignsService {
         jwtPayload: JwtPayload,
     ): Promise<IpfsResponse> {
         if (jwtPayload.role == AuthRoleEnum.ORGANIZER) {
-            const result = await this.ipfs.upload(createCampaignDto);
+            const result = await this.ipfs.uploadJson(createCampaignDto);
             if (result == null) {
                 throw new BadRequestException();
             }
@@ -96,15 +96,10 @@ export class CampaignsService {
     async getCampaign(campaignId: number): Promise<Campaign> {
         const exist = await this.campaignModel.exists({
             campaignId: campaignId,
-            active: true,
         });
         if (exist) {
-            // return await this.campaignModel.findOne({
-            //     campaignId: campaignId,
-            //     active: true,
-            // });
             const result = await this.campaignModel.aggregate([
-                { $match: { campaignId: campaignId, active: true } },
+                { $match: { campaignId: campaignId } },
                 {
                     $lookup: {
                         from: 'organizers',
@@ -162,9 +157,9 @@ export class CampaignsService {
         });
         if (exist) {
             const projects = await this.participationModel.aggregate([
-                { $match: { campaignId: campaignId, active: true } },
-                { $sort: { actionId: 1 } },
-                { $project: { campaignId: 0, active: 0, actionId: 0, _id: 0 } },
+                { $match: { campaignId: campaignId } },
+                { $sort: { projectIndex: 1 } },
+                { $project: { campaignId: 0, active: 0, _id: 0 } },
                 {
                     $addFields: {
                         totalRaising: {
