@@ -921,10 +921,13 @@ export class DkgContractsService implements ContractServiceInterface {
                         undefined,
                         { info: true, error: true },
                     );
+                    const sortedActions = notActiveActions.sort(
+                        (a, b) => a.actionData.memberId - b.actionData.memberId,
+                    );
                     const contributions: Libs.Committee.Round2Contribution[] =
                         [];
-                    for (let j = 0; j < notActiveActions.length; j++) {
-                        const round2 = notActiveActions[j].actionData;
+                    for (let j = 0; j < sortedActions.length; j++) {
+                        const round2 = sortedActions[j].actionData;
                         const c: Bit255[] = round2.contribution.c.map((value) =>
                             Bit255.fromBigInt(BigInt(value)),
                         );
@@ -942,8 +945,8 @@ export class DkgContractsService implements ContractServiceInterface {
                         Field(key.keyIndex),
                         DKG_LEVEL_2_TREE(),
                     );
-                    for (let j = 0; j < notActiveActions.length; j++) {
-                        const notActiveAction = notActiveActions[j];
+                    for (let j = 0; j < sortedActions.length; j++) {
+                        const notActiveAction = sortedActions[j];
                         const round2Action =
                             ZkApp.Round2.Round2Action.fromFields(
                                 Utilities.stringArrayToFields(
@@ -952,7 +955,7 @@ export class DkgContractsService implements ContractServiceInterface {
                             );
                         proof = await Utils.prove(
                             FinalizeRound2.name,
-                            'init',
+                            'contribute',
                             async () =>
                                 FinalizeRound2.contribute(
                                     {
