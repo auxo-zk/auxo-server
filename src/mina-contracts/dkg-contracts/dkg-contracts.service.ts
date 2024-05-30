@@ -194,11 +194,11 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            await this.rollupContractService.compile();
-            await this.compile();
+            // await this.rollupContractService.compile();
+            // await this.compile();
             // await this.rollupDkg();
             // await this.rollupRound1();
-            await this.rollupRound2();
+            // await this.rollupRound2();
         } catch (err) {
             console.log(err);
         }
