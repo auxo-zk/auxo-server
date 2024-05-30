@@ -194,11 +194,11 @@ export class DkgContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // await this.rollupContractService.compile();
-            // await this.compile();
+            await this.rollupContractService.compile();
+            await this.compile();
             // await this.rollupDkg();
             // await this.rollupRound1();
-            // await this.rollupRound2();
+            await this.rollupRound2();
         } catch (err) {
             console.log(err);
         }
@@ -867,17 +867,44 @@ export class DkgContractsService implements ContractServiceInterface {
                 const committee = await this.committeeModel.findOne({
                     committeeId: key.committeeId,
                 });
-                const notActiveActions = await this.round2ActionModel.find(
-                    {
-                        'actionData.keyId': key.keyId,
-                        'actionData.committeeId': key.committeeId,
-                        active: false,
-                        actionId: {
-                            $lt: numRollupedActions,
+                // const notActiveActions = await this.round2ActionModel.find(
+                //     {
+                //         'actionData.keyId': key.keyId,
+                //         'actionData.committeeId': key.committeeId,
+                //         active: false,
+                //         actionId: {
+                //             $lt: numRollupedActions,
+                //         },
+                //     },
+                //     {},
+                //     { sort: { 'actionData.memberId': 1 } },
+                // );
+                const notActiveActions = await this.round2ActionModel.aggregate(
+                    [
+                        {
+                            $match: {
+                                'actionData.keyId': key.keyId,
+                                'actionData.committeeId': key.committeeId,
+                                active: false,
+                                actionId: { $lt: numRollupedActions },
+                            },
                         },
-                    },
-                    {},
-                    { sort: { 'actionData.memberId': 1 } },
+                        {
+                            $sort: { actionId: -1 },
+                        },
+                        {
+                            $group: {
+                                _id: '$actionData.memberId',
+                                latestAction: { $first: '$$ROOT' },
+                            },
+                        },
+                        {
+                            $replaceRoot: { newRoot: '$latestAction' },
+                        },
+                        {
+                            $sort: { 'actionData.memberId': 1 },
+                        },
+                    ],
                 );
                 if (notActiveActions.length == committee.numberOfMembers) {
                     const state = await this.fetchRound2State();
@@ -896,7 +923,6 @@ export class DkgContractsService implements ContractServiceInterface {
                     const rollupStorage = _.cloneDeep(
                         this.rollupContractService.rollupStorage,
                     );
-
                     let proof = await Utils.prove(
                         FinalizeRound2.name,
                         'init',
@@ -921,13 +947,10 @@ export class DkgContractsService implements ContractServiceInterface {
                         undefined,
                         { info: true, error: true },
                     );
-                    const sortedActions = notActiveActions.sort(
-                        (a, b) => a.actionData.memberId - b.actionData.memberId,
-                    );
                     const contributions: Libs.Committee.Round2Contribution[] =
                         [];
-                    for (let j = 0; j < sortedActions.length; j++) {
-                        const round2 = sortedActions[j].actionData;
+                    for (let j = 0; j < notActiveActions.length; j++) {
+                        const round2 = notActiveActions[j].actionData;
                         const c: Bit255[] = round2.contribution.c.map((value) =>
                             Bit255.fromBigInt(BigInt(value)),
                         );
@@ -945,8 +968,8 @@ export class DkgContractsService implements ContractServiceInterface {
                         Field(key.keyIndex),
                         DKG_LEVEL_2_TREE(),
                     );
-                    for (let j = 0; j < sortedActions.length; j++) {
-                        const notActiveAction = sortedActions[j];
+                    for (let j = 0; j < notActiveActions.length; j++) {
+                        const notActiveAction = notActiveActions[j];
                         const round2Action =
                             ZkApp.Round2.Round2Action.fromFields(
                                 Utilities.stringArrayToFields(
