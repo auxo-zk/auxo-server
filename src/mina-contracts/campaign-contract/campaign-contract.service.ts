@@ -70,8 +70,8 @@ export class CampaignContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
+            await this.fetch();
+            await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -281,7 +281,12 @@ export class CampaignContractService implements ContractServiceInterface {
                 {},
                 { sort: { actionId: 1 } },
             );
-
+            const lastCampaign = await this.campaignModel.findOne(
+                {},
+                {},
+                { sort: { campaignId: -1 } },
+            );
+            let nextCampaignId = lastCampaign ? lastCampaign.campaignId + 1 : 0;
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
@@ -291,10 +296,10 @@ export class CampaignContractService implements ContractServiceInterface {
 
                 await this.campaignModel.findOneAndUpdate(
                     {
-                        campaignId: this._nextCampaignId,
+                        campaignId: nextCampaignId,
                     },
                     {
-                        campaignId: this._nextCampaignId,
+                        campaignId: nextCampaignId,
                         ipfsHash: notActiveAction.actionData.ipfsHash,
                         ipfsData: ipfsData,
                         owner: notActiveAction.actionData.owner,
@@ -305,7 +310,7 @@ export class CampaignContractService implements ContractServiceInterface {
                     { new: true, upsert: true },
                 );
                 await notActiveAction.save();
-                this._nextCampaignId += 1;
+                nextCampaignId += 1;
             }
         }
     }

@@ -63,8 +63,8 @@ export class ParticipationContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
+            await this.fetch();
+            await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -81,6 +81,7 @@ export class ParticipationContractService implements ContractServiceInterface {
                 await this.fetchParticipationActions();
                 await this.updateParticipations();
             } catch (err) {
+                console.log(err);
                 this.logger.error(err);
             }
         }

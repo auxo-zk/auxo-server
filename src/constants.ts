@@ -128,7 +128,7 @@ export enum ZkAppIndex {
 export const MaxRetries = 5;
 
 export const RequesterAddresses = [
-    'B62qovNcjV7L6BQEZu8tHBocUZetcnuzKWLyjp2ZEMpkQeHMSUF5MWL',
+    process.env.FUNDING_REQUESTER_ADDRESS as string,
 ];
 // export const RequesterAddresses = [process.env.FUNDING_REQUESTER];
 
@@ -136,17 +136,9 @@ const RequesterAddressMapping: {
     [key: string]: { taskManagerAddress: string; submissionAddress: string };
 } = {};
 
-// RequesterAddressMapping[process.env.FUNDING_REQUESTER] = {
-//     taskManagerAddress: process.env.CAMPAIGN_ADDRESS,
-//     submissionAddress: process.env.FUNDING_ADDRESS,
-// };
-RequesterAddressMapping[
-    'B62qovNcjV7L6BQEZu8tHBocUZetcnuzKWLyjp2ZEMpkQeHMSUF5MWL'
-] = {
-    taskManagerAddress:
-        'B62qqcL3Uk8aTLj2Sr2ZWLnG9uUZLaAJ46EnLAhiXqYkDXtwsLJnwsx',
-    submissionAddress:
-        'B62qk4y3YGNT6sT23BeQihK7CwnKBLBe4NQ6mgUTaBZEBWgFjWEpxxi',
+RequesterAddressMapping[process.env.FUNDING_REQUESTER_ADDRESS as string] = {
+    taskManagerAddress: process.env.CAMPAIGN_ADDRESS as string,
+    submissionAddress: process.env.FUNDING_ADDRESS as string,
 };
 
 export function getFullDimensionEmptyGroupVector(): {

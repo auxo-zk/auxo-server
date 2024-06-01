@@ -70,8 +70,8 @@ export class FundingContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
+            await this.fetch();
+            await this.updateMerkleTrees();
         } catch (err) {}
     }
 
@@ -100,7 +100,7 @@ export class FundingContractService implements ContractServiceInterface {
 
     async fetchFundingState(): Promise<FundingState> {
         const state = await this.queryService.fetchZkAppState(
-            process.env.FUNDING_CONTRACT,
+            process.env.FUNDING_ADDRESS,
         );
         const result: FundingState = {
             nextFundingId: Field(state[0]),
@@ -281,7 +281,12 @@ export class FundingContractService implements ContractServiceInterface {
                 {},
                 { sort: { actionId: 1 } },
             );
-
+            const lastFunding = await this.fundingModel.findOne(
+                {},
+                {},
+                { sort: { fundingId: -1 } },
+            );
+            let nextFundingId = lastFunding ? lastFunding.fundingId + 1 : 0;
             for (let i = 0; i < notActiveActions.length; i++) {
                 const promises = [];
                 const notActiveAction = notActiveActions[i];
@@ -294,10 +299,10 @@ export class FundingContractService implements ContractServiceInterface {
                     promises.push(
                         this.fundingModel.findOneAndUpdate(
                             {
-                                fundingId: this._nextFundingId,
+                                fundingId: nextFundingId,
                             },
                             {
-                                fundingId: this._nextFundingId,
+                                fundingId: nextFundingId,
                                 campaignId:
                                     notActiveAction.actionData.campaignId,
                                 investor: notActiveAction.actionData.investor,
@@ -306,7 +311,7 @@ export class FundingContractService implements ContractServiceInterface {
                             { new: true, upsert: true },
                         ),
                     );
-                    this._nextFundingId += 1;
+                    nextFundingId += 1;
                 } else {
                     promises.push(
                         this.fundingModel.findOneAndUpdate(
