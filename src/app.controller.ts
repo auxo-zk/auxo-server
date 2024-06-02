@@ -96,40 +96,40 @@ export class AppController {
         private readonly treasuryActionModel: Model<TreasuryManagerAction>,
     ) {}
 
-    @Get()
-    getServerConfig(): ServerConfig {
-        return this.appService.getServerConfig();
-    }
+    // @Get()
+    // getServerConfig(): ServerConfig {
+    //     return this.appService.getServerConfig();
+    // }
 
-    @Post('reset-contract-collections')
-    async resetContractCollections() {
-        await this.committeeActionModel.deleteMany({});
-        await this.committeeModel.deleteMany({});
-        await this.dkgActionModel.deleteMany({});
-        await this.dkgEventModel.deleteMany({});
-        await this.round1ActionModel.deleteMany({});
-        await this.round1EventModel.deleteMany({});
-        await this.round2ActionModel.deleteMany({});
-        await this.round2EventModel.deleteMany({});
-        await this.keyModel.deleteMany({});
-        await this.requestActionModel.deleteMany({});
-        await this.dkgRequestModel.deleteMany({});
-        await this.responseActionModel.deleteMany({});
-        await this.responseProcessedEventModel.deleteMany({});
-        await this.responseRespondedEventModel.deleteMany({});
-        await this.responseFinalizedEventModel.deleteMany({});
-        await this.requesterActionModel.deleteMany({});
-        await this.taskModel.deleteMany({});
-        await this.rollupActionModel.deleteMany({});
-        await this.projectActionModel.deleteMany({});
-        await this.projectModel.deleteMany({});
-        await this.campaignActionModel.deleteMany({});
-        await this.campaignModel.deleteMany({});
-        await this.participationActionModel.deleteMany({});
-        await this.participationModel.deleteMany({});
-        await this.fundingActionModel.deleteMany({});
-        await this.fundingModel.deleteMany({});
-        await this.fundingResultModel.deleteMany({});
-        await this.treasuryActionModel.deleteMany({});
-    }
+    // @Post('reset-contract-collections')
+    // async resetContractCollections() {
+    //     await this.committeeActionModel.deleteMany({});
+    //     await this.committeeModel.deleteMany({});
+    //     await this.dkgActionModel.deleteMany({});
+    //     await this.dkgEventModel.deleteMany({});
+    //     await this.round1ActionModel.deleteMany({});
+    //     await this.round1EventModel.deleteMany({});
+    //     await this.round2ActionModel.deleteMany({});
+    //     await this.round2EventModel.deleteMany({});
+    //     await this.keyModel.deleteMany({});
+    //     await this.requestActionModel.deleteMany({});
+    //     await this.dkgRequestModel.deleteMany({});
+    //     await this.responseActionModel.deleteMany({});
+    //     await this.responseProcessedEventModel.deleteMany({});
+    //     await this.responseRespondedEventModel.deleteMany({});
+    //     await this.responseFinalizedEventModel.deleteMany({});
+    //     await this.requesterActionModel.deleteMany({});
+    //     await this.taskModel.deleteMany({});
+    //     await this.rollupActionModel.deleteMany({});
+    //     await this.projectActionModel.deleteMany({});
+    //     await this.projectModel.deleteMany({});
+    //     await this.campaignActionModel.deleteMany({});
+    //     await this.campaignModel.deleteMany({});
+    //     await this.participationActionModel.deleteMany({});
+    //     await this.participationModel.deleteMany({});
+    //     await this.fundingActionModel.deleteMany({});
+    //     await this.fundingModel.deleteMany({});
+    //     await this.fundingResultModel.deleteMany({});
+    //     await this.treasuryActionModel.deleteMany({});
+    // }
 }

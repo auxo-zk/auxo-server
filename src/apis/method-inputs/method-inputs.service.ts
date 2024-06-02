@@ -298,22 +298,18 @@ export class MethodInputsService {
                     Field(committeeId),
                     Field(memberId),
                 );
-            const publicKeyWitness = [];
-            for (let i = 0; i < committee.numberOfMembers; i++) {
-                publicKeyWitness.push(
-                    this.dkgContractService.round1.publicKeyStorage.getWitness(
-                        this.dkgContractService.round1.publicKeyStorage.calculateLevel1Index(
-                            {
-                                committeeId: Field(committeeId),
-                                keyId: Field(keyId),
-                            },
-                        ),
-                        this.dkgContractService.round1.publicKeyStorage.calculateLevel2Index(
-                            Field(i),
-                        ),
+            const publicKeyWitness =
+                this.dkgContractService.round1.publicKeyStorage.getWitness(
+                    this.dkgContractService.round1.publicKeyStorage.calculateLevel1Index(
+                        {
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        },
+                    ),
+                    this.dkgContractService.round1.publicKeyStorage.calculateLevel2Index(
+                        Field(memberId),
                     ),
                 );
-            }
 
             const encryptionWitness =
                 this.dkgContractService.round2.encryptionStorage.getWitness(
