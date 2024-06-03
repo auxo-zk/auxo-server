@@ -408,229 +408,154 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 status: RequestStatusEnum.INITIALIZED,
             });
             for (let i = 0; i < requests.length; i++) {
-                const request = requests[i];
-                const key = await this.keyModel.findOne({
-                    keyIndex: request.keyIndex,
-                });
-                const committee = await this.committeeModel.findOne({
-                    committeeId: key.committeeId,
-                });
-                // const notActiveActions = await this.responseActionModel.find({
-                //     'actionData.requestId': request.requestId,
-                //     active: false,
-                //     actionId: {
-                //         $lt: numRollupedActions,
-                //     },
-                // });
-
-                const notActiveActions =
-                    await this.responseActionModel.aggregate([
-                        {
-                            $match: {
-                                'actionData.requestId': request.requestId,
-                                active: false,
-                                actionId: { $lt: numRollupedActions },
-                            },
-                        },
-                        {
-                            $sort: { actionId: -1 },
-                        },
-                        {
-                            $group: {
-                                _id: '$actionData.memberId',
-                                latestAction: { $first: '$$ROOT' },
-                            },
-                        },
-                        {
-                            $replaceRoot: { newRoot: '$latestAction' },
-                        },
-                        {
-                            $sort: { 'actionData.memberId': 1 },
-                        },
-                    ]);
-                if (notActiveActions.length == committee.threshold) {
-                    const task = await this.taskModel.findOne({
-                        task: request.task,
+                try {
+                    const request = requests[i];
+                    const key = await this.keyModel.findOne({
+                        keyIndex: request.keyIndex,
                     });
-                    const state = await this.fetchDkgResponseState();
-                    const contributionStorage = _.cloneDeep(
-                        this._dkgResponse.contributionStorage,
-                    );
-                    const responseStorage = _.cloneDeep(
-                        this._dkgResponse.responseStorage,
-                    );
-                    const processStorage = _.cloneDeep(
-                        this._dkgResponse.processStorage,
-                    );
-                    const processStorageMapping = _.cloneDeep(
-                        this._dkgResponse.processStorageMapping,
-                    );
-                    const rollupStorage = _.cloneDeep(
-                        this.rollupContractService.rollupStorage,
-                    );
-                    const level1Index = Field(request.requestId);
-                    const indexList = Field.fromBits(
-                        notActiveActions
-                            .map((action) => Field(action.actionData.memberId))
-                            .map((e) => e.toBits(6))
-                            .flat(),
-                    );
+                    const committee = await this.committeeModel.findOne({
+                        committeeId: key.committeeId,
+                    });
+                    // const notActiveActions = await this.responseActionModel.find({
+                    //     'actionData.requestId': request.requestId,
+                    //     active: false,
+                    //     actionId: {
+                    //         $lt: numRollupedActions,
+                    //     },
+                    // });
 
-                    let proof = await Utils.prove(
-                        FinalizeResponse.name,
-                        'init',
-                        async () =>
-                            FinalizeResponse.init(
-                                FinalizeResponseInput.empty(),
-                                Field(committee.threshold),
-                                Field(committee.numberOfMembers),
-                                new UInt8(
-                                    Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
-                                ),
-                                level1Index,
-                                indexList,
-                                state.contributionRoot,
-                                state.processRoot,
-                                rollupStorage.root,
-                                contributionStorage.getLevel1Witness(
-                                    level1Index,
-                                ),
-                            ),
-                        undefined,
-                        { info: true, error: true },
-                    );
-
-                    const memberIds = [];
-                    const D: Group[][] = [];
-                    const groupVectorStorages: GroupVectorStorage[] = [];
-                    contributionStorage.updateInternal(
-                        level1Index,
-                        DKG_LEVEL_2_TREE(),
-                    );
-                    // responseStorage.
-                    for (let j = 0; j < notActiveActions.length; j++) {
-                        const notActiveAction = notActiveActions[j];
-                        const level2Index = Field(
-                            notActiveAction.actionData.memberId,
-                        );
-                        memberIds.push(notActiveAction.actionData.memberId);
-                        let respondedEvents =
-                            await this.responseRespondedEventModel.find(
-                                {
-                                    'data.requestId': request.requestId,
-                                    'data.memberId':
-                                        notActiveAction.actionData.memberId,
+                    let notActiveActions =
+                        await this.responseActionModel.aggregate([
+                            {
+                                $match: {
+                                    'actionData.requestId': request.requestId,
+                                    active: false,
+                                    actionId: { $lt: numRollupedActions },
                                 },
-                                {},
-                                { sort: { eventId: -1 } },
-                            );
-                        respondedEvents = respondedEvents.slice(
+                            },
+                            {
+                                $sort: { actionId: -1 },
+                            },
+                            {
+                                $group: {
+                                    _id: '$actionData.memberId',
+                                    latestAction: { $first: '$$ROOT' },
+                                },
+                            },
+                            {
+                                $replaceRoot: { newRoot: '$latestAction' },
+                            },
+                            {
+                                $sort: { 'actionData.memberId': 1 },
+                            },
+                        ]);
+                    if (notActiveActions.length > committee.threshold) {
+                        notActiveActions = notActiveActions.slice(
                             0,
-                            Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
+                            committee.threshold,
                         );
-                        respondedEvents = respondedEvents.sort(
-                            (a, b) =>
-                                a.data.dimensionIndex - b.data.dimensionIndex,
-                        );
-                        console.log(respondedEvents);
-                        D[j] = respondedEvents.map((event) =>
-                            Group.from(event.data.Di.x, event.data.Di.y),
-                        );
-                        const groupVectorStorage = new GroupVectorStorage();
-                        console.log(D[j].length);
-                        D[j].map((Di, index) => {
-                            groupVectorStorage.updateRawLeaf(
-                                { level1Index: Field(index) },
-                                Di,
-                            );
+                    }
+                    if (notActiveActions.length == committee.threshold) {
+                        const task = await this.taskModel.findOne({
+                            task: request.task,
                         });
+                        const state = await this.fetchDkgResponseState();
+                        const contributionStorage = _.cloneDeep(
+                            this._dkgResponse.contributionStorage,
+                        );
+                        const responseStorage = _.cloneDeep(
+                            this._dkgResponse.responseStorage,
+                        );
+                        const processStorage = _.cloneDeep(
+                            this._dkgResponse.processStorage,
+                        );
+                        const processStorageMapping = _.cloneDeep(
+                            this._dkgResponse.processStorageMapping,
+                        );
+                        const rollupStorage = _.cloneDeep(
+                            this.rollupContractService.rollupStorage,
+                        );
+                        const level1Index = Field(request.requestId);
+                        const indexList = Field.fromBits(
+                            notActiveActions
+                                .map((action) =>
+                                    Field(action.actionData.memberId),
+                                )
+                                .map((e) => e.toBits(6))
+                                .flat(),
+                        );
 
-                        groupVectorStorages.push(groupVectorStorage);
-                        const responseAction =
-                            ZkApp.Response.ResponseAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notActiveAction.actions,
-                                ),
-                            );
-
-                        proof = await Utils.prove(
+                        let proof = await Utils.prove(
                             FinalizeResponse.name,
-                            'contribute',
+                            'init',
                             async () =>
-                                FinalizeResponse.contribute(
-                                    {
-                                        previousActionState: Field(
-                                            notActiveAction.previousActionState,
-                                        ),
-                                        action: responseAction,
-                                        actionId: Field(
-                                            notActiveAction.actionId,
-                                        ),
-                                    },
-                                    proof,
-                                    contributionStorage.getWitness(
+                                FinalizeResponse.init(
+                                    FinalizeResponseInput.empty(),
+                                    Field(committee.threshold),
+                                    Field(committee.numberOfMembers),
+                                    new UInt8(
+                                        Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
+                                    ),
+                                    level1Index,
+                                    indexList,
+                                    state.contributionRoot,
+                                    state.processRoot,
+                                    rollupStorage.root,
+                                    contributionStorage.getLevel1Witness(
                                         level1Index,
-                                        level2Index,
-                                    ),
-                                    rollupStorage.getWitness(
-                                        rollupStorage.calculateLevel1Index({
-                                            zkAppIndex: Field(
-                                                ZkAppIndex.RESPONSE,
-                                            ),
-                                            actionId: Field(
-                                                notActiveAction.actionId,
-                                            ),
-                                        }),
-                                    ),
-                                    processStorage.getWitness(
-                                        Field(notActiveAction.actionId),
                                     ),
                                 ),
                             undefined,
                             { info: true, error: true },
                         );
 
-                        contributionStorage.updateRawLeaf(
-                            {
-                                level1Index: level1Index,
-                                level2Index: level2Index,
-                            },
-                            Field(notActiveAction.actionData.responseRootD),
+                        const memberIds = [];
+                        const D: Group[][] = [];
+                        const groupVectorStorages: GroupVectorStorage[] = [];
+                        contributionStorage.updateInternal(
+                            level1Index,
+                            DKG_LEVEL_2_TREE(),
                         );
-                        if (
-                            processStorageMapping[
-                                notActiveAction.currentActionState
-                            ] == undefined
-                        ) {
-                            processStorageMapping[
-                                notActiveAction.currentActionState
-                            ] = 0;
-                        } else {
-                            processStorageMapping[
-                                notActiveAction.currentActionState
-                            ] += 1;
-                        }
-                        processStorage.updateLeaf(
-                            {
-                                level1Index: Field(notActiveAction.actionId),
-                            },
-                            processStorage.calculateLeaf({
-                                actionState: Field(
-                                    notActiveAction.currentActionState,
-                                ),
-                                processCounter: new UInt8(
-                                    processStorageMapping[
-                                        notActiveAction.currentActionState
-                                    ],
-                                ),
-                            }),
-                        );
-                    }
-                    const sumD = accumulateResponses(memberIds, D);
-                    const groupVectorStorage = new GroupVectorStorage();
-                    for (let j = 0; j < task.totalR.length; j++) {
-                        for (let k = 0; k < notActiveActions.length; k++) {
-                            const notActiveAction = notActiveActions[k];
+                        // responseStorage.
+                        for (let j = 0; j < notActiveActions.length; j++) {
+                            const notActiveAction = notActiveActions[j];
+                            const level2Index = Field(
+                                notActiveAction.actionData.memberId,
+                            );
+                            memberIds.push(notActiveAction.actionData.memberId);
+                            let respondedEvents =
+                                await this.responseRespondedEventModel.find(
+                                    {
+                                        'data.requestId': request.requestId,
+                                        'data.memberId':
+                                            notActiveAction.actionData.memberId,
+                                    },
+                                    {},
+                                    { sort: { eventId: -1 } },
+                                );
+                            respondedEvents = respondedEvents.slice(
+                                0,
+                                Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
+                            );
+                            respondedEvents = respondedEvents.sort(
+                                (a, b) =>
+                                    a.data.dimensionIndex -
+                                    b.data.dimensionIndex,
+                            );
+                            console.log(respondedEvents);
+                            D[j] = respondedEvents.map((event) =>
+                                Group.from(event.data.Di.x, event.data.Di.y),
+                            );
+                            const groupVectorStorage = new GroupVectorStorage();
+                            console.log(D[j].length);
+                            D[j].map((Di, index) => {
+                                groupVectorStorage.updateRawLeaf(
+                                    { level1Index: Field(index) },
+                                    Di,
+                                );
+                            });
+
+                            groupVectorStorages.push(groupVectorStorage);
                             const responseAction =
                                 ZkApp.Response.ResponseAction.fromFields(
                                     Utilities.stringArrayToFields(
@@ -640,9 +565,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
                             proof = await Utils.prove(
                                 FinalizeResponse.name,
-                                'compute',
+                                'contribute',
                                 async () =>
-                                    FinalizeResponse.compute(
+                                    FinalizeResponse.contribute(
                                         {
                                             previousActionState: Field(
                                                 notActiveAction.previousActionState,
@@ -653,9 +578,19 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                             ),
                                         },
                                         proof,
-                                        D[k][j],
-                                        groupVectorStorages[k].getWitness(
-                                            Field(j),
+                                        contributionStorage.getWitness(
+                                            level1Index,
+                                            level2Index,
+                                        ),
+                                        rollupStorage.getWitness(
+                                            rollupStorage.calculateLevel1Index({
+                                                zkAppIndex: Field(
+                                                    ZkAppIndex.RESPONSE,
+                                                ),
+                                                actionId: Field(
+                                                    notActiveAction.actionId,
+                                                ),
+                                            }),
                                         ),
                                         processStorage.getWitness(
                                             Field(notActiveAction.actionId),
@@ -663,6 +598,14 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                     ),
                                 undefined,
                                 { info: true, error: true },
+                            );
+
+                            contributionStorage.updateRawLeaf(
+                                {
+                                    level1Index: level1Index,
+                                    level2Index: level2Index,
+                                },
+                                Field(notActiveAction.actionData.responseRootD),
                             );
                             if (
                                 processStorageMapping[
@@ -695,86 +638,158 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                 }),
                             );
                         }
+                        const sumD = accumulateResponses(memberIds, D);
+                        const groupVectorStorage = new GroupVectorStorage();
+                        for (let j = 0; j < task.totalR.length; j++) {
+                            for (let k = 0; k < notActiveActions.length; k++) {
+                                const notActiveAction = notActiveActions[k];
+                                const responseAction =
+                                    ZkApp.Response.ResponseAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notActiveAction.actions,
+                                        ),
+                                    );
 
-                        proof = await Utils.prove(
-                            FinalizeResponse.name,
+                                proof = await Utils.prove(
+                                    FinalizeResponse.name,
+                                    'compute',
+                                    async () =>
+                                        FinalizeResponse.compute(
+                                            {
+                                                previousActionState: Field(
+                                                    notActiveAction.previousActionState,
+                                                ),
+                                                action: responseAction,
+                                                actionId: Field(
+                                                    notActiveAction.actionId,
+                                                ),
+                                            },
+                                            proof,
+                                            D[k][j],
+                                            groupVectorStorages[k].getWitness(
+                                                Field(j),
+                                            ),
+                                            processStorage.getWitness(
+                                                Field(notActiveAction.actionId),
+                                            ),
+                                        ),
+                                    undefined,
+                                    { info: true, error: true },
+                                );
+                                if (
+                                    processStorageMapping[
+                                        notActiveAction.currentActionState
+                                    ] == undefined
+                                ) {
+                                    processStorageMapping[
+                                        notActiveAction.currentActionState
+                                    ] = 0;
+                                } else {
+                                    processStorageMapping[
+                                        notActiveAction.currentActionState
+                                    ] += 1;
+                                }
+                                processStorage.updateLeaf(
+                                    {
+                                        level1Index: Field(
+                                            notActiveAction.actionId,
+                                        ),
+                                    },
+                                    processStorage.calculateLeaf({
+                                        actionState: Field(
+                                            notActiveAction.currentActionState,
+                                        ),
+                                        processCounter: new UInt8(
+                                            processStorageMapping[
+                                                notActiveAction.currentActionState
+                                            ],
+                                        ),
+                                    }),
+                                );
+                            }
+
+                            proof = await Utils.prove(
+                                FinalizeResponse.name,
+                                'finalize',
+                                async () =>
+                                    FinalizeResponse.finalize(
+                                        FinalizeResponseInput.empty(),
+                                        proof,
+                                        groupVectorStorage.getWitness(Field(j)),
+                                    ),
+                                undefined,
+                                { info: true, error: true },
+                            );
+                            groupVectorStorage.updateRawLeaf(
+                                { level1Index: Field(j) },
+                                sumD[j],
+                            );
+                        }
+                        responseStorage.updateRawLeaf(
+                            { level1Index },
+                            groupVectorStorage.root,
+                        );
+                        const responseContract = new ResponseContract(
+                            PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                        );
+                        const feePayerPrivateKey = PrivateKey.fromBase58(
+                            process.env.FEE_PAYER_PRIVATE_KEY,
+                        );
+                        await Utils.proveAndSendTx(
+                            ResponseContract.name,
                             'finalize',
                             async () =>
-                                FinalizeResponse.finalize(
-                                    FinalizeResponseInput.empty(),
+                                responseContract.finalize(
                                     proof,
-                                    groupVectorStorage.getWitness(Field(j)),
-                                ),
-                            undefined,
-                            { info: true, error: true },
-                        );
-                        groupVectorStorage.updateRawLeaf(
-                            { level1Index: Field(j) },
-                            sumD[j],
-                        );
-                    }
-                    responseStorage.updateRawLeaf(
-                        { level1Index },
-                        groupVectorStorage.root,
-                    );
-                    const responseContract = new ResponseContract(
-                        PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-                    );
-                    const feePayerPrivateKey = PrivateKey.fromBase58(
-                        process.env.FEE_PAYER_PRIVATE_KEY,
-                    );
-                    await Utils.proveAndSendTx(
-                        ResponseContract.name,
-                        'finalize',
-                        async () =>
-                            responseContract.finalize(
-                                proof,
-                                this.committeeContractService.settingStorage.getLevel1Witness(
-                                    Field(committee.committeeId),
-                                ),
-                                this._dkgRequest.keyIndexStorage.getLevel1Witness(
-                                    level1Index,
-                                ),
-                                this._dkgResponse.responseStorage.getLevel1Witness(
-                                    level1Index,
-                                ),
-                                this._dkgResponse.zkAppStorage.getZkAppRef(
-                                    ZkAppIndex.COMMITTEE,
-                                    PublicKey.fromBase58(
-                                        process.env.COMMITTEE_ADDRESS,
+                                    this.committeeContractService.settingStorage.getLevel1Witness(
+                                        Field(committee.committeeId),
+                                    ),
+                                    this._dkgRequest.keyIndexStorage.getLevel1Witness(
+                                        level1Index,
+                                    ),
+                                    this._dkgResponse.responseStorage.getLevel1Witness(
+                                        level1Index,
+                                    ),
+                                    this._dkgResponse.zkAppStorage.getZkAppRef(
+                                        ZkAppIndex.COMMITTEE,
+                                        PublicKey.fromBase58(
+                                            process.env.COMMITTEE_ADDRESS,
+                                        ),
+                                    ),
+                                    this._dkgResponse.zkAppStorage.getZkAppRef(
+                                        ZkAppIndex.REQUEST,
+                                        PublicKey.fromBase58(
+                                            process.env.REQUEST_ADDRESS,
+                                        ),
+                                    ),
+                                    this._dkgResponse.zkAppStorage.getZkAppRef(
+                                        ZkAppIndex.ROLLUP,
+                                        PublicKey.fromBase58(
+                                            process.env.ROLLUP_ADDRESS,
+                                        ),
                                     ),
                                 ),
-                                this._dkgResponse.zkAppStorage.getZkAppRef(
-                                    ZkAppIndex.REQUEST,
-                                    PublicKey.fromBase58(
-                                        process.env.REQUEST_ADDRESS,
-                                    ),
+                            {
+                                sender: {
+                                    privateKey: feePayerPrivateKey,
+                                    publicKey: feePayerPrivateKey.toPublicKey(),
+                                },
+                                fee: process.env.FEE,
+                                memo: '',
+                                nonce: await this.queryService.fetchAccountNonce(
+                                    feePayerPrivateKey.toPublicKey().toBase58(),
                                 ),
-                                this._dkgResponse.zkAppStorage.getZkAppRef(
-                                    ZkAppIndex.ROLLUP,
-                                    PublicKey.fromBase58(
-                                        process.env.ROLLUP_ADDRESS,
-                                    ),
-                                ),
-                            ),
-                        {
-                            sender: {
-                                privateKey: feePayerPrivateKey,
-                                publicKey: feePayerPrivateKey.toPublicKey(),
                             },
-                            fee: process.env.FEE,
-                            memo: '',
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
-                        },
-                        undefined,
-                        undefined,
-                        { info: true, error: true, memoryUsage: false },
-                    );
-                    return true;
+                            undefined,
+                            undefined,
+                            { info: true, error: true, memoryUsage: false },
+                        );
+                        return true;
+                    }
+                    return false;
+                } catch (err) {
+                    console.log(err);
                 }
-                return false;
             }
         } catch (err) {
             console.log(err);
