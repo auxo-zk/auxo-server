@@ -1,6 +1,6 @@
 services:
     redis:
-        container_name: redis-queue
+        container_name: redis-queue-platform
         image: redis
         ports:
             - 6380:6379
