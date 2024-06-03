@@ -93,7 +93,7 @@ export class DkgContractServicesConsumer {
                     }
                     tmp = await this.dkgUsageContractsService.rollupRequest();
                     if (tmp == false) {
-                        await this.dkgUsageContractsService.computeResult();
+                        // await this.dkgUsageContractsService.computeResult();
                     }
                     await job.progress();
                     this.logger.log('All contract rolluped successfully');
@@ -131,10 +131,10 @@ export class DkgContractServicesConsumer {
                         await this.committeeContractService.rollup();
                         await this.rollupContractService.rollup();
                     }
-                    tmp = await this.dkgUsageContractsService.computeResult();
-                    if (tmp == false) {
-                        await this.dkgUsageContractsService.rollupRequest();
-                    }
+                    // tmp = await this.dkgUsageContractsService.computeResult();
+                    // if (tmp == false) {
+                    await this.dkgUsageContractsService.rollupRequest();
+                    // }
                     await job.progress();
                     this.logger.log('All contract rolluped successfully');
                     return {};
