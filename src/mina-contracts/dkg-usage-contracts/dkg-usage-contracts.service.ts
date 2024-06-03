@@ -197,9 +197,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             // Provable.log(this._dkgResponse.contributionStorage.root);
             // Provable.log(this._dkgResponse.responseStorage.root);
             // Provable.log(this._dkgResponse.processStorage.root);
-            // await this.compile();
-            // await this.rollupContractService.compile();
-            // await this.rollupResponse();
+            await this.compile();
+            await this.rollupContractService.compile();
+            await this.rollupResponse();
             // await this.computeResult();
         } catch (err) {
             console.log(err);
@@ -415,13 +415,39 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const committee = await this.committeeModel.findOne({
                     committeeId: key.committeeId,
                 });
-                const notActiveActions = await this.responseActionModel.find({
-                    'actionData.requestId': request.requestId,
-                    active: false,
-                    actionId: {
-                        $lt: numRollupedActions,
-                    },
-                });
+                // const notActiveActions = await this.responseActionModel.find({
+                //     'actionData.requestId': request.requestId,
+                //     active: false,
+                //     actionId: {
+                //         $lt: numRollupedActions,
+                //     },
+                // });
+
+                const notActiveActions =
+                    await this.responseActionModel.aggregate([
+                        {
+                            $match: {
+                                'actionData.requestId': request.requestId,
+                                active: false,
+                                actionId: { $lt: numRollupedActions },
+                            },
+                        },
+                        {
+                            $sort: { actionId: -1 },
+                        },
+                        {
+                            $group: {
+                                _id: '$actionData.memberId',
+                                latestAction: { $first: '$$ROOT' },
+                            },
+                        },
+                        {
+                            $replaceRoot: { newRoot: '$latestAction' },
+                        },
+                        {
+                            $sort: { 'actionData.memberId': 1 },
+                        },
+                    ]);
                 if (notActiveActions.length == committee.threshold) {
                     const task = await this.taskModel.findOne({
                         task: request.task,
@@ -450,6 +476,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             .flat(),
                     );
 
+                    console.log(Constants.ENCRYPTION_LIMITS.FULL_DIMENSION);
                     let proof = await Utils.prove(
                         FinalizeResponse.name,
                         'init',
