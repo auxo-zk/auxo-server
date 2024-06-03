@@ -620,17 +620,45 @@ export class DkgContractsService implements ContractServiceInterface {
                 const committee = await this.committeeModel.findOne({
                     committeeId: key.committeeId,
                 });
-                const notActiveActions = await this.round1ActionModel.find(
-                    {
-                        'actionData.keyId': key.keyId,
-                        'actionData.committeeId': key.committeeId,
-                        active: false,
-                        actionId: {
-                            $lt: numRollupedActions,
+                // const notActiveActions = await this.round1ActionModel.find(
+                //     {
+                //         'actionData.keyId': key.keyId,
+                //         'actionData.committeeId': key.committeeId,
+                //         active: false,
+                //         actionId: {
+                //             $lt: numRollupedActions,
+                //         },
+                //     },
+                //     {},
+                //     { sort: { 'actionData.memberId': 1 } },
+                // );
+
+                const notActiveActions = await this.round1ActionModel.aggregate(
+                    [
+                        {
+                            $match: {
+                                'actionData.keyId': key.keyId,
+                                'actionData.committeeId': key.committeeId,
+                                active: false,
+                                actionId: { $lt: numRollupedActions },
+                            },
                         },
-                    },
-                    {},
-                    { sort: { 'actionData.memberId': 1 } },
+                        {
+                            $sort: { actionId: -1 },
+                        },
+                        {
+                            $group: {
+                                _id: '$actionData.memberId',
+                                latestAction: { $first: '$$ROOT' },
+                            },
+                        },
+                        {
+                            $replaceRoot: { newRoot: '$latestAction' },
+                        },
+                        {
+                            $sort: { 'actionData.memberId': 1 },
+                        },
+                    ],
                 );
                 if (notActiveActions.length == committee.numberOfMembers) {
                     const state = await this.fetchRound1State();
