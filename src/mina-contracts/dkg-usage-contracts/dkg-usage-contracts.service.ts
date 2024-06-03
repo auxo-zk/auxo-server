@@ -462,7 +462,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         );
                     }
                     if (notActiveActions.length == committee.threshold) {
-                        console.log(notActiveActions);
+                        // console.log(notActiveActions);
                         const task = await this.taskModel.findOne({
                             task: request.task,
                         });
