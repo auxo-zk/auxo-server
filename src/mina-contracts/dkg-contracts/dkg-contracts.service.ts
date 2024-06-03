@@ -88,6 +88,9 @@ import { RollupContractService } from '../rollup-contract/rollup-contract.servic
 @Injectable()
 export class DkgContractsService implements ContractServiceInterface {
     private readonly logger = new Logger(DkgContractsService.name);
+    private _lastProcessedDkgEventId = -1;
+    private _lastProcessedRound1EventId = -1;
+    private _lastProcessedRound2EventId = -1;
     private _dkg: {
         zkAppStorage: Storage.AddressStorage.AddressStorage;
         keyCounterStorage: Storage.CommitteeStorage.KeyCounterStorage;
@@ -620,17 +623,45 @@ export class DkgContractsService implements ContractServiceInterface {
                 const committee = await this.committeeModel.findOne({
                     committeeId: key.committeeId,
                 });
-                const notActiveActions = await this.round1ActionModel.find(
-                    {
-                        'actionData.keyId': key.keyId,
-                        'actionData.committeeId': key.committeeId,
-                        active: false,
-                        actionId: {
-                            $lt: numRollupedActions,
+                // const notActiveActions = await this.round1ActionModel.find(
+                //     {
+                //         'actionData.keyId': key.keyId,
+                //         'actionData.committeeId': key.committeeId,
+                //         active: false,
+                //         actionId: {
+                //             $lt: numRollupedActions,
+                //         },
+                //     },
+                //     {},
+                //     { sort: { 'actionData.memberId': 1 } },
+                // );
+
+                const notActiveActions = await this.round1ActionModel.aggregate(
+                    [
+                        {
+                            $match: {
+                                'actionData.keyId': key.keyId,
+                                'actionData.committeeId': key.committeeId,
+                                active: false,
+                                actionId: { $lt: numRollupedActions },
+                            },
                         },
-                    },
-                    {},
-                    { sort: { 'actionData.memberId': 1 } },
+                        {
+                            $sort: { actionId: -1 },
+                        },
+                        {
+                            $group: {
+                                _id: '$actionData.memberId',
+                                latestAction: { $first: '$$ROOT' },
+                            },
+                        },
+                        {
+                            $replaceRoot: { newRoot: '$latestAction' },
+                        },
+                        {
+                            $sort: { 'actionData.memberId': 1 },
+                        },
+                    ],
                 );
                 if (notActiveActions.length == committee.numberOfMembers) {
                     const state = await this.fetchRound1State();
@@ -1725,7 +1756,11 @@ export class DkgContractsService implements ContractServiceInterface {
 
     private async updateProcessStorageForDkg() {
         const dkgEvents = await this.dkgEventModel.find(
-            {},
+            {
+                eventId: {
+                    $gt: this._lastProcessedDkgEventId,
+                },
+            },
             {},
             { sort: { eventId: 1 } },
         );
@@ -1739,6 +1774,7 @@ export class DkgContractsService implements ContractServiceInterface {
                     this._dkg.processStorageMapping[actionState] += 1;
                 }
             }
+            this._lastProcessedDkgEventId = dkgEvent.eventId;
         }
         const dkgActions = await this.dkgActionModel.find(
             { active: true },
@@ -1768,7 +1804,11 @@ export class DkgContractsService implements ContractServiceInterface {
 
     private async updateProcessStorageForRound1() {
         const round1Events = await this.round1EventModel.find(
-            {},
+            {
+                eventId: {
+                    $gt: this._lastProcessedRound1EventId,
+                },
+            },
             {},
             { sort: { eventId: 1 } },
         );
@@ -1782,6 +1822,7 @@ export class DkgContractsService implements ContractServiceInterface {
                     this._round1.processStorageMapping[actionState] += 1;
                 }
             }
+            this._lastProcessedRound1EventId = round1Event.eventId;
         }
 
         const round1Actions = await this.round1ActionModel.find(
@@ -1813,7 +1854,11 @@ export class DkgContractsService implements ContractServiceInterface {
 
     private async updateProcessStorageForRound2() {
         const round2Events = await this.round2EventModel.find(
-            {},
+            {
+                eventId: {
+                    $gt: this._lastProcessedRound2EventId,
+                },
+            },
             {},
             { sort: { eventId: 1 } },
         );
@@ -1827,6 +1872,7 @@ export class DkgContractsService implements ContractServiceInterface {
                     this._round2.processStorageMapping[actionState] += 1;
                 }
             }
+            this._lastProcessedRound2EventId = round2Event.eventId;
         }
 
         const round2Actions = await this.round2ActionModel.find(
