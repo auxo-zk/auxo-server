@@ -17,7 +17,7 @@ import { BoiContractServicesConsumer } from './consumers/boi-contract-services.c
             useFactory: () => ({
                 redis: {
                     host: 'localhost',
-                    port: 6379,
+                    port: 6380,
                 },
             }),
         }),
