@@ -1,9 +1,9 @@
 services:
-    redis:
-        container_name: redis-queue
+    redis-platform:
+        container_name: redis-queue-platform
         image: redis
         ports:
-            - 6379:6379
+            - 6380:6379
         volumes:
             - redis:/data
 volumes:
