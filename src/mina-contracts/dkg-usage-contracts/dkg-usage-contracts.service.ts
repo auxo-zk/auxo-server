@@ -197,9 +197,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             // Provable.log(this._dkgResponse.contributionStorage.root);
             // Provable.log(this._dkgResponse.responseStorage.root);
             // Provable.log(this._dkgResponse.processStorage.root);
-            // await this.compile();
-            // await this.rollupContractService.compile();
-            // await this.rollupResponse();
+            await this.compile();
+            await this.rollupContractService.compile();
+            await this.rollupResponse();
             // await this.computeResult();
         } catch (err) {
             console.log(err);
@@ -476,7 +476,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             .flat(),
                     );
 
-                    console.log(Constants.ENCRYPTION_LIMITS.FULL_DIMENSION);
                     let proof = await Utils.prove(
                         FinalizeResponse.name,
                         'init',
@@ -515,7 +514,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             notActiveAction.actionData.memberId,
                         );
                         memberIds.push(notActiveAction.actionData.memberId);
-                        const respondedEvents =
+                        let respondedEvents =
                             await this.responseRespondedEventModel.find(
                                 {
                                     'data.requestId': request.requestId,
@@ -523,12 +522,22 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                         notActiveAction.actionData.memberId,
                                 },
                                 {},
-                                { sort: { 'data.dimensionIndex': 1 } },
+                                { sort: { eventId: -1 } },
                             );
+                        respondedEvents = respondedEvents.slice(
+                            0,
+                            Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
+                        );
+                        respondedEvents = respondedEvents.sort(
+                            (a, b) =>
+                                a.data.dimensionIndex - b.data.dimensionIndex,
+                        );
+                        console.log(respondedEvents);
                         D[j] = respondedEvents.map((event) =>
                             Group.from(event.data.Di.x, event.data.Di.y),
                         );
                         const groupVectorStorage = new GroupVectorStorage();
+                        console.log(D[j].length);
                         D[j].map((Di, index) => {
                             groupVectorStorage.updateRawLeaf(
                                 { level1Index: Field(index) },
@@ -1316,15 +1325,22 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 responseAction.set('active', true);
 
                 const memberId = responseAction.actionData.memberId;
-                const respondedEvents =
+                let respondedEvents =
                     await this.responseRespondedEventModel.find(
                         {
                             'data.requestId': notProcessedEvent.data.requestId,
                             'data.memberId': memberId,
                         },
                         {},
-                        { sort: { 'data.dimensionIndex': 1 } },
+                        { sort: { eventId: -1 } },
                     );
+                respondedEvents = respondedEvents.slice(
+                    0,
+                    Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
+                );
+                respondedEvents = respondedEvents.sort(
+                    (a, b) => a.data.dimensionIndex - b.data.dimensionIndex,
+                );
                 const D: { x: string; y: string }[] = [];
                 respondedEvents.map((event) => {
                     D.push(event.data.Di);
