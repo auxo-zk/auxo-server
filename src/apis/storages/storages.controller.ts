@@ -368,7 +368,7 @@ export class StoragesController {
         return this.storagesService.getRequestExpirationStorageLevel1();
     }
 
-    @Get('request/accumulation/leafs')
+    @Get('request/expiration/leafs')
     @ApiTags('Storage Response')
     getRequestExpirationStorageLeafs(): { [key: string]: any } {
         return this.storagesService.getRequestExpirationStorageLeafs();
@@ -492,7 +492,7 @@ export class StoragesController {
         );
     }
 
-    @Get('requester/:requesterAddress/timestamp/level1')
+    @Get('requester/:requesterAddress/accumulation/level1')
     @ApiTags('Storage Requester')
     getRequesterAccumulationStorageLevel1(
         @Param('requesterAddress') requesterAddress: string,
@@ -502,7 +502,7 @@ export class StoragesController {
         );
     }
 
-    @Get('requester/:requesterAddress/timestamp/leafs')
+    @Get('requester/:requesterAddress/accumulation/leafs')
     @ApiTags('Storage Requester')
     getRequesterAccumulationStorageLeafs(
         @Param('requesterAddress') requesterAddress: string,
