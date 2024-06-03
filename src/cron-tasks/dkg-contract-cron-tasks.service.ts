@@ -34,13 +34,13 @@ export class DkgContractCronTasksService implements OnModuleInit {
     async handleRollupContractsFirstOrder() {
         const jobCount = await this.contractServices.count();
         if (jobCount == 0) {
+            await this.contractServices.add('rollupContractsFirstOrder', {
+                date: Date.now(),
+            });
             this.logger.log(
                 'Register rollupContracts for the first order task at ' +
                     process.pid,
             );
-            this.contractServices.add('rollupContractsFirstOrder', {
-                date: Date.now(),
-            });
         }
     }
 
@@ -48,13 +48,13 @@ export class DkgContractCronTasksService implements OnModuleInit {
     async handleRollupContractsSecondOrder() {
         const jobCount = await this.contractServices.count();
         if (jobCount == 0) {
+            await this.contractServices.add('rollupContractsSecondOrder', {
+                date: Date.now(),
+            });
             this.logger.log(
                 'Register rollupContracts for the second order task at ' +
                     process.pid,
             );
-            this.contractServices.add('rollupContractsSecondOrder', {
-                date: Date.now(),
-            });
         }
     }
 }
