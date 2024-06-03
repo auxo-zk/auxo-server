@@ -86,7 +86,7 @@ export class DkgContractServicesConsumer {
                     tmp = await this.rollupContractService.rollup();
                     result.push(tmp);
                     if (!result.includes(true)) {
-                        await this.dkgUsageContractsService.rollupResponse();
+                        // await this.dkgUsageContractsService.rollupResponse();
                         await this.dkgContractsService.rollupRound2();
                         await this.dkgContractsService.rollupRound1();
                         await this.dkgContractsService.rollupDkg();
@@ -118,8 +118,8 @@ export class DkgContractServicesConsumer {
                     await this.requesterContractsService.rollup();
                     const result = [];
                     let tmp: boolean;
-                    tmp = await this.dkgUsageContractsService.rollupResponse();
-                    result.push(tmp);
+                    // tmp = await this.dkgUsageContractsService.rollupResponse();
+                    // result.push(tmp);
                     tmp = await this.dkgContractsService.rollupRound2();
                     result.push(tmp);
                     tmp = await this.dkgContractsService.rollupRound1();
