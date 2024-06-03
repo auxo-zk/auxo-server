@@ -423,7 +423,13 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     //         $lt: numRollupedActions,
                     //     },
                     // });
-
+                    const finalizedEventExist =
+                        await this.responseFinalizedEventModel.exists({
+                            'data.requestId': request.requestId,
+                        });
+                    if (finalizedEventExist) {
+                        break;
+                    }
                     let notActiveActions =
                         await this.responseActionModel.aggregate([
                             {
