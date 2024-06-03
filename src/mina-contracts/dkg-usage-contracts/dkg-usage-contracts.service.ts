@@ -197,9 +197,9 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             // Provable.log(this._dkgResponse.contributionStorage.root);
             // Provable.log(this._dkgResponse.responseStorage.root);
             // Provable.log(this._dkgResponse.processStorage.root);
-            await this.compile();
-            await this.rollupContractService.compile();
-            await this.rollupResponse();
+            // await this.compile();
+            // await this.rollupContractService.compile();
+            // await this.rollupResponse();
             // await this.computeResult();
         } catch (err) {
             console.log(err);
