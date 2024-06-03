@@ -462,6 +462,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         );
                     }
                     if (notActiveActions.length == committee.threshold) {
+                        console.log(notActiveActions);
                         const task = await this.taskModel.findOne({
                             task: request.task,
                         });
@@ -548,12 +549,11 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                                     a.data.dimensionIndex -
                                     b.data.dimensionIndex,
                             );
-                            console.log(respondedEvents);
                             D[j] = respondedEvents.map((event) =>
                                 Group.from(event.data.Di.x, event.data.Di.y),
                             );
                             const groupVectorStorage = new GroupVectorStorage();
-                            console.log(D[j].length);
+                            // console.log(D[j].length);
                             D[j].map((Di, index) => {
                                 groupVectorStorage.updateRawLeaf(
                                     { level1Index: Field(index) },
