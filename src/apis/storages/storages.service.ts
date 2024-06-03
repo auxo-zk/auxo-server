@@ -980,6 +980,12 @@ export class StoragesService {
         return result;
     }
 
+    getCampaignIpfsHashStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.campaignContractService.ipfsHashStorage.leafs;
+    }
+
     getCampaignKeyIndexStorageLevel1(): MerkleLeaf[] {
         const leafCount =
             this.campaignContractService.keyIndexStorage.level1.leafCount;
