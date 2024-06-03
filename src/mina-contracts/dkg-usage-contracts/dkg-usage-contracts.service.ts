@@ -94,6 +94,7 @@ import { RequesterContractsService } from '../requester-contract/requester-contr
 @Injectable()
 export class DkgUsageContractsService implements ContractServiceInterface {
     private logger = new Logger(DkgUsageContractsService.name);
+    private _lastProcessedEventId = -1;
 
     private _dkgRequest: {
         zkAppStorage: Storage.AddressStorage.AddressStorage;
@@ -428,7 +429,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             'data.requestId': request.requestId,
                         });
                     if (finalizedEventExist) {
-                        break;
+                        continue;
                     }
                     let notActiveActions =
                         await this.responseActionModel.aggregate([
@@ -1450,12 +1451,18 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 }
             }
             await this.updateProcessStorageForResponse();
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     private async updateProcessStorageForResponse() {
         const responseEvents = await this.responseProcessedEventModel.find(
-            {},
+            {
+                eventId: {
+                    $gt: this._lastProcessedEventId,
+                },
+            },
             {},
             { sort: { eventId: 1 } },
         );
@@ -1471,6 +1478,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                         Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
                 }
             }
+            this._lastProcessedEventId = responseEvent.eventId;
         }
         const responseActions = await this.responseActionModel.find(
             { active: true },
