@@ -13,48 +13,35 @@ export class DkgContractCronTasksService implements OnModuleInit {
     ) {}
 
     async onModuleInit() {
-        this.logger.log('Register compileContracts task at ' + process.pid);
         await this.contractServices.client.flushdb();
-        this.contractServices.add('compileContracts', {
+        this.logger.log(
+            'Registered compiling contracts task at ' + process.pid,
+        );
+        await this.contractServices.add('handleContractServices', {
+            type: 0,
             date: Date.now(),
         });
     }
 
-    // 6 minutes
-    // @Interval(120000)
-    // async handleUpdateContracts() {
-    //     this.logger.log('Register updateContracts task at ' + process.pid);
-    //     console.log(await this.contractServices.getJobCounts());
-    //     this.contractServices.add('updateContracts', {
-    //         date: Date.now(),
-    //     });
-    // }
-
-    @Cron('*/6 * * * *')
+    @Cron('*/4 * * * *')
     async handleRollupContractsFirstOrder() {
-        const jobCount = await this.contractServices.getJobCounts();
-        if (jobCount.active == 0 && jobCount.waiting == 0) {
-            this.logger.log(
-                'Register rollupContracts for the first order task at ' +
-                    process.pid,
-            );
-            this.contractServices.add('rollupContractsFirstOrder', {
-                date: Date.now(),
-            });
-        }
+        this.logger.log(
+            'Registered rolluping contracts 1st task at ' + process.pid,
+        );
+        await this.contractServices.add('handleContractServices', {
+            type: 1,
+            date: Date.now(),
+        });
     }
 
-    @Cron('3,9,15,21,27,33,39,45,51,57 * * * *')
+    @Cron('2,6,12,20,28,36,44,52 * * * *')
     async handleRollupContractsSecondOrder() {
-        const jobCount = await this.contractServices.getJobCounts();
-        if (jobCount.active == 0 && jobCount.waiting == 0) {
-            this.logger.log(
-                'Register rollupContracts for the second order task at ' +
-                    process.pid,
-            );
-            this.contractServices.add('rollupContractsSecondOrder', {
-                date: Date.now(),
-            });
-        }
+        this.logger.log(
+            'Registered rolluping contracts 2nd task at ' + process.pid,
+        );
+        await this.contractServices.add('handleContractServices', {
+            type: 0,
+            date: Date.now(),
+        });
     }
 }
