@@ -43,6 +43,7 @@ import { RequestsController } from './requests/requests.controller';
 import { RequestsService } from './requests/requests.service';
 import { TasksService } from './tasks/tasks.service';
 import { TasksController } from './tasks/tasks.controller';
+import { Funding, FundingSchema } from 'src/schemas/funding.schema';
 
 @Module({
     imports: [
@@ -58,6 +59,7 @@ import { TasksController } from './tasks/tasks.controller';
             { name: Campaign.name, schema: CampaignSchema },
             { name: Participation.name, schema: ParticipationSchema },
             { name: FundingResult.name, schema: FundingResultSchema },
+            { name: Funding.name, schema: FundingSchema },
             { name: Task.name, schema: TaskSchema },
         ]),
         HttpModule,
