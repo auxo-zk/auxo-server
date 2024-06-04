@@ -28,138 +28,118 @@ export class DkgContractServicesConsumer {
         // private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
-    @Process('updateContractMerkleTrees')
-    async updateContractTrees(job: Job<unknown>) {
+    @Process({ name: 'handleContractServices', concurrency: 1 })
+    async handleContractServices(job: Job<{ type: number; date: Date }>) {
         try {
-            Promise.all([
-                this.rollupContractService.updateMerkleTrees(),
-                this.committeeContractService.updateMerkleTrees(),
-                this.dkgContractsService.updateMerkleTrees(),
-                this.dkgUsageContractsService.updateMerkleTrees(),
-                this.requesterContractsService.updateMerkleTrees(),
-            ]).then(async () => {
-                this.logger.log('All contract trees updated successfully');
-                await job.progress();
-                return {};
-            });
-        } catch (err) {
-            this.logger.error('Error during updating contract trees: ', err);
-            return undefined;
-        }
-    }
-
-    @Process('updateContracts')
-    async updateContracts(job: Job<unknown>) {
-        try {
-            await this.rollupContractService.update();
-            Promise.all([
-                this.committeeContractService.update(),
-                this.dkgContractsService.update(),
-                this.dkgUsageContractsService.update(),
-                this.requesterContractsService.update(),
-            ]).then(async () => {
-                this.logger.log('All contracts updated successfully');
-                await job.progress();
-                return {};
-            });
-        } catch (err) {
-            this.logger.error('Error during updating contracts: ', err);
-            return undefined;
-        }
-    }
-
-    @Process('rollupContractsFirstOrder')
-    async rollupContractsFirstOrder(job: Job<unknown>) {
-        try {
-            this.rollupContractService.update().then(() => {
-                Promise.all([
-                    this.committeeContractService.update(),
-                    this.dkgContractsService.update(),
-                    this.dkgUsageContractsService.update(),
-                    this.requesterContractsService.update(),
-                ]).then(async () => {
-                    await this.requesterContractsService.rollup();
-                    const result = [];
-                    let tmp: boolean;
-                    tmp = await this.committeeContractService.rollup();
-                    result.push(tmp);
-                    tmp = await this.rollupContractService.rollup();
-                    result.push(tmp);
-                    if (!result.includes(true)) {
-                        // await this.dkgUsageContractsService.rollupResponse();
-                        await this.dkgContractsService.rollupRound2();
-                        await this.dkgContractsService.rollupRound1();
-                        await this.dkgContractsService.rollupDkg();
+            switch (job.data.type) {
+                case 0:
+                    try {
+                        this.logger.log('Start compiling contract...');
+                        await this.rollupContractService.compile();
+                        await this.committeeContractService.compile();
+                        await this.dkgContractsService.compile();
+                        await this.dkgUsageContractsService.compile();
+                        await this.requesterContractsService.compile();
+                        this.logger.log('All contracts compiled successfully');
+                        await job.progress();
+                    } catch (err) {
+                        this.logger.error(
+                            'Error during compiling contracts: ',
+                            err,
+                        );
                     }
-                    tmp = await this.dkgUsageContractsService.rollupRequest();
-                    if (tmp == false) {
-                        // await this.dkgUsageContractsService.computeResult();
+                    break;
+                case 1:
+                    try {
+                        this.logger.log('Start rolluping 1st...');
+                        this.rollupContractService.update().then(() => {
+                            Promise.all([
+                                this.committeeContractService.update(),
+                                this.dkgContractsService.update(),
+                                this.dkgUsageContractsService.update(),
+                                this.requesterContractsService.update(),
+                            ]).then(async () => {
+                                await this.requesterContractsService.rollup();
+                                const result = [];
+                                let tmp: boolean;
+                                tmp =
+                                    await this.committeeContractService.rollup();
+                                result.push(tmp);
+                                tmp = await this.rollupContractService.rollup();
+                                result.push(tmp);
+                                if (!result.includes(true)) {
+                                    // await this.dkgUsageContractsService.rollupResponse();
+                                    await this.dkgContractsService.rollupRound2();
+                                    await this.dkgContractsService.rollupRound1();
+                                    await this.dkgContractsService.rollupDkg();
+                                }
+                                tmp =
+                                    await this.dkgUsageContractsService.rollupRequest();
+                                if (tmp == false) {
+                                    // await this.dkgUsageContractsService.computeResult();
+                                }
+                                await job.progress();
+                                this.logger.log(
+                                    'All contract rolluped successfully',
+                                );
+                            });
+                        });
+                    } catch (err) {
+                        this.logger.error(
+                            'Error during rolluping contracts: ',
+                            err,
+                        );
                     }
-                    await job.progress();
-                    this.logger.log('All contract rolluped successfully');
-                    return {};
-                });
-            });
-        } catch (err) {
-            this.logger.error('Error during rolluping contracts: ', err);
-            return undefined;
-        }
-    }
-    @Process('rollupContractsSecondOrder')
-    async rollupContractsSecondOrder(job: Job<unknown>) {
-        try {
-            this.rollupContractService.update().then(() => {
-                Promise.all([
-                    this.committeeContractService.update(),
-                    this.dkgContractsService.update(),
-                    this.dkgUsageContractsService.update(),
-                    this.requesterContractsService.update(),
-                ]).then(async () => {
-                    await this.requesterContractsService.rollup();
-                    const result = [];
-                    let tmp: boolean;
-                    // tmp = await this.dkgUsageContractsService.rollupResponse();
-                    // result.push(tmp);
-                    tmp = await this.dkgContractsService.rollupRound2();
-                    result.push(tmp);
-                    tmp = await this.dkgContractsService.rollupRound1();
-                    result.push(tmp);
-                    tmp = await this.dkgContractsService.rollupDkg();
-                    result.push(tmp);
+                    break;
+                case 2:
+                    try {
+                        this.logger.log('Start rolluping 2nd...');
+                        this.rollupContractService.update().then(() => {
+                            Promise.all([
+                                this.committeeContractService.update(),
+                                this.dkgContractsService.update(),
+                                this.dkgUsageContractsService.update(),
+                                this.requesterContractsService.update(),
+                            ]).then(async () => {
+                                await this.requesterContractsService.rollup();
+                                const result = [];
+                                let tmp: boolean;
+                                // tmp = await this.dkgUsageContractsService.rollupResponse();
+                                // result.push(tmp);
+                                tmp =
+                                    await this.dkgContractsService.rollupRound2();
+                                result.push(tmp);
+                                tmp =
+                                    await this.dkgContractsService.rollupRound1();
+                                result.push(tmp);
+                                tmp =
+                                    await this.dkgContractsService.rollupDkg();
+                                result.push(tmp);
 
-                    if (!result.includes(true)) {
-                        await this.committeeContractService.rollup();
-                        await this.rollupContractService.rollup();
+                                if (!result.includes(true)) {
+                                    await this.committeeContractService.rollup();
+                                    await this.rollupContractService.rollup();
+                                }
+                                // tmp = await this.dkgUsageContractsService.computeResult();
+                                // if (tmp == false) {
+                                await this.dkgUsageContractsService.rollupRequest();
+                                // }
+                                await job.progress();
+                                this.logger.log(
+                                    'All contract rolluped successfully',
+                                );
+                            });
+                        });
+                    } catch (err) {
+                        this.logger.error(
+                            'Error during rolluping contracts: ',
+                            err,
+                        );
                     }
-                    // tmp = await this.dkgUsageContractsService.computeResult();
-                    // if (tmp == false) {
-                    await this.dkgUsageContractsService.rollupRequest();
-                    // }
-                    await job.progress();
-                    this.logger.log('All contract rolluped successfully');
-                    return {};
-                });
-            });
+                    break;
+            }
         } catch (err) {
-            this.logger.error('Error during rolluping contracts: ', err);
-            return undefined;
-        }
-    }
-
-    @Process('compileContracts')
-    async compileContracts(job: Job<unknown>) {
-        try {
-            await this.rollupContractService.compile();
-            await this.committeeContractService.compile();
-            await this.dkgContractsService.compile();
-            await this.dkgUsageContractsService.compile();
-            await this.requesterContractsService.compile();
-            this.logger.log('All contracts compiled successfully');
-            await job.progress();
-            return {};
-        } catch (err) {
-            this.logger.error('Error during compiling contracts: ', err);
-            return undefined;
+            console.log(err);
         }
     }
 }

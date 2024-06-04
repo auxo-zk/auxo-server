@@ -14,49 +14,32 @@ export class DkgContractCronTasksService implements OnModuleInit {
 
     async onModuleInit() {
         await this.contractServices.client.flushdb();
-        await this.contractServices.add('compileContracts', {
+        this.logger.log('Register compiling contracts task at ' + process.pid);
+        await this.contractServices.add('handleContractServices', {
+            type: 0,
             date: Date.now(),
         });
-        this.logger.log('Register compileContracts task at ' + process.pid);
     }
 
-    // 6 minutes
-    // @Interval(120000)
-    // async handleUpdateContracts() {
-    //     this.logger.log('Register updateContracts task at ' + process.pid);
-    //     console.log(await this.contractServices.getJobCounts());
-    //     this.contractServices.add('updateContracts', {
-    //         date: Date.now(),
-    //     });
-    // }
-
-    @Cron('*/8 * * * *')
+    @Cron('*/4 * * * *')
     async handleRollupContractsFirstOrder() {
-        const activeJobCount = await this.contractServices.getActiveCount();
-        const waitingJobCount = await this.contractServices.getWaitingCount();
-        if (activeJobCount + waitingJobCount == 0) {
-            await this.contractServices.add('rollupContractsFirstOrder', {
-                date: Date.now(),
-            });
-            this.logger.log(
-                'Register rollupContracts for the first order task at ' +
-                    process.pid,
-            );
-        }
+        this.logger.log(
+            'Register rolluping contracts 1st task at ' + process.pid,
+        );
+        await this.contractServices.add('handleContractServices', {
+            type: 1,
+            date: Date.now(),
+        });
     }
 
-    @Cron('4,12,20,28,36,44,52 * * * *')
+    @Cron('2,6,12,20,28,36,44,52 * * * *')
     async handleRollupContractsSecondOrder() {
-        const activeJobCount = await this.contractServices.getActiveCount();
-        const waitingJobCount = await this.contractServices.getWaitingCount();
-        if (activeJobCount + waitingJobCount == 0) {
-            await this.contractServices.add('rollupContractsSecondOrder', {
-                date: Date.now(),
-            });
-            this.logger.log(
-                'Register rollupContracts for the second order task at ' +
-                    process.pid,
-            );
-        }
+        this.logger.log(
+            'Register rolluping contracts 2nd task at ' + process.pid,
+        );
+        await this.contractServices.add('handleContractServices', {
+            type: 0,
+            date: Date.now(),
+        });
     }
 }
