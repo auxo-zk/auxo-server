@@ -11,6 +11,14 @@ import { RequesterContractsService } from 'src/mina-contracts/requester-contract
 import { Committee } from 'src/schemas/committee.schema';
 import { Task } from 'src/schemas/task.schema';
 import { DkgRequest } from 'src/schemas/request.schema';
+import { ProjectContractService } from 'src/mina-contracts/project-contract/project-contract.service';
+import { CampaignContractService } from 'src/mina-contracts/campaign-contract/campaign-contract.service';
+import { Campaign } from 'src/schemas/campaign.schema';
+import { ParticipationContractService } from 'src/mina-contracts/participation-contract/participation-contract.service';
+import { Key } from 'src/schemas/key.schema';
+import { FundingContractService } from 'src/mina-contracts/funding-contract/funding-contract.service';
+import { Funding } from 'src/schemas/funding.schema';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 
 @Injectable()
 export class MethodInputsService {
@@ -19,12 +27,23 @@ export class MethodInputsService {
         private readonly dkgContractService: DkgContractsService,
         private readonly dkgUsageContractsService: DkgUsageContractsService,
         private readonly requesterContractService: RequesterContractsService,
+        private readonly projectContractService: ProjectContractService,
+        private readonly campaignContractService: CampaignContractService,
+        private readonly participationContractService: ParticipationContractService,
+        private readonly fundingContractService: FundingContractService,
+        private readonly treasuryManagerContractService: TreasuryManagerContractService,
         @InjectModel(DkgRequest.name)
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(Task.name)
         private readonly taskModel: Model<Task>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
+        @InjectModel(Campaign.name)
+        private readonly campaignModel: Model<Campaign>,
+        @InjectModel(Key.name)
+        private readonly keyModel: Model<Key>,
+        @InjectModel(Funding.name)
+        private readonly fundingModel: Model<Funding>,
     ) {}
 
     getDkgContractGenerateKey(committeeId: number, memberId: number) {
@@ -475,5 +494,235 @@ export class MethodInputsService {
         } catch (err) {
             throw new BadRequestException(err);
         }
+    }
+
+    getProjectContractUpdateProject(projectId: number) {
+        try {
+            const memberWitnessLevel1 =
+                this.projectContractService.memberStorage.getLevel1Witness(
+                    Field(projectId),
+                );
+            const memberWitnessLevel2 =
+                this.projectContractService.memberStorage.getLevel2Witness(
+                    Field(projectId),
+                    Field(0),
+                );
+            return {
+                memberWitnessLevel1,
+                memberWitnessLevel2,
+            };
+        } catch (err) {}
+    }
+
+    getCampaignContractCreateCampaign(committeeId: number, keyId: number) {
+        try {
+            const keyStatusWitness =
+                this.dkgContractService.dkg.keyStatusStorage.getLevel1Witness(
+                    this.dkgContractService.dkg.keyStatusStorage.calculateLevel1Index(
+                        {
+                            committeeId: Field(committeeId),
+                            keyId: Field(keyId),
+                        },
+                    ),
+                );
+            const campaignContractWitness = this.requesterContractService
+                .storage(process.env.FUNDING_REQUESTER_ADDRESS as string)
+                .zkAppStorage.getWitness(
+                    Field(ZkApp.Requester.RequesterAddressBook.TASK_MANAGER),
+                );
+            const dkgContractRef =
+                this.campaignContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.DKG,
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                );
+            const requesterContractRef =
+                this.campaignContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.FUNDING_REQUESTER,
+                    PublicKey.fromBase58(
+                        process.env.FUNDING_REQUESTER as string,
+                    ),
+                );
+            return {
+                keyStatusWitness,
+                campaignContractWitness,
+                dkgContractRef,
+                requesterContractRef,
+            };
+        } catch (err) {}
+    }
+
+    async getParticipationContractParticipateCampaign(
+        campaignId: number,
+        projectId: number,
+    ) {
+        try {
+            const campaign = await this.campaignModel.findOne({
+                campaignId: campaignId,
+            });
+            const memberWitnessLevel1 =
+                this.projectContractService.memberStorage.getLevel1Witness(
+                    Field(projectId),
+                );
+            const memberWitnessLevel2 =
+                this.projectContractService.memberStorage.getLevel2Witness(
+                    Field(projectId),
+                    Field(0),
+                );
+            const projectIndexWitness =
+                this.participationContractService.projectIndexStorage.getLevel1Witness(
+                    this.participationContractService.projectIndexStorage.calculateLevel1Index(
+                        {
+                            campaignId: Field(campaignId),
+                            projectId: Field(projectId),
+                        },
+                    ),
+                );
+            const projectCounter = campaign.projectCounter;
+            const projectCounterWitness =
+                this.participationContractService.projectCounterStorage.getLevel1Witness(
+                    this.participationContractService.projectCounterStorage.calculateLevel1Index(
+                        Field(campaignId),
+                    ),
+                );
+            const campaignContractRef =
+                this.participationContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.CAMPAIGN,
+                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+                );
+            const projectContractRef =
+                this.participationContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.PROJECT,
+                    PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+                );
+
+            return {
+                memberWitnessLevel1,
+                memberWitnessLevel2,
+                projectIndexWitness,
+                projectCounter,
+                projectCounterWitness,
+                campaignContractRef,
+                projectContractRef,
+            };
+        } catch (err) {}
+    }
+
+    async getFundingContractFund(campaignId: number) {
+        try {
+            const campaign = await this.campaignModel.findOne({
+                campaignId: campaignId,
+            });
+            const distributedKey = await this.keyModel.findOne({
+                committeeId: campaign.committeeId,
+                keyId: campaign.keyId,
+            });
+            const timeline = campaign.timeline;
+            const timelineWitness =
+                this.campaignContractService.timelineStorage.getLevel1Witness(
+                    Field(campaignId),
+                );
+            const projectCounter = campaign.projectCounter;
+            const projectCounterWitness =
+                this.participationContractService.projectCounterStorage.getLevel1Witness(
+                    this.participationContractService.projectCounterStorage.calculateLevel1Index(
+                        Field(campaignId),
+                    ),
+                );
+            const committeeId = campaign.committeeId;
+            const keyId = campaign.keyId;
+            const keyWitnessForRequester = this.requesterContractService
+                .storage(process.env.FUNDING_REQUESTER_ADDRESS as string)
+                .keyIndexStorage.getLevel1Witness(Field(campaignId));
+            const key = distributedKey.key;
+            const keyWitnessForDkg =
+                this.dkgContractService.dkg.keyStorage.getLevel1Witness(
+                    this.dkgContractService.dkg.keyStorage.calculateLevel1Index(
+                        {
+                            committeeId: Field(campaign.committeeId),
+                            keyId: Field(campaign.keyId),
+                        },
+                    ),
+                );
+            const fundingContractWitness = this.requesterContractService
+                .storage(process.env.FUNDING_REQUESTER_ADDRESS as string)
+                .zkAppStorage.getWitness(
+                    Field(ZkApp.Requester.RequesterAddressBook.SUBMISSION),
+                );
+            const campaignContractRef =
+                this.fundingContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.CAMPAIGN,
+                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+                );
+            const participationContractRef =
+                this.fundingContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.PARTICIPATION,
+                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+                );
+            const dkgContractRef =
+                this.fundingContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.DKG,
+                    PublicKey.fromBase58(process.env.DKG_ADDRESS),
+                );
+            const treasuryManagerContractRef =
+                this.fundingContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.TREASURY_MANAGER,
+                    PublicKey.fromBase58(process.env.TREASURY_MANAGER_ADDRESS),
+                );
+            const requesterContractRef =
+                this.fundingContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.FUNDING_REQUESTER,
+                    PublicKey.fromBase58(process.env.FUNDING_REQUESTER_ADDRESS),
+                );
+            return {
+                timeline,
+                timelineWitness,
+                projectCounter,
+                projectCounterWitness,
+                committeeId,
+                keyId,
+                keyWitnessForRequester,
+                key,
+                keyWitnessForDkg,
+                fundingContractWitness,
+                campaignContractRef,
+                participationContractRef,
+                dkgContractRef,
+                treasuryManagerContractRef,
+                requesterContractRef,
+            };
+        } catch (err) {}
+    }
+
+    async getFundingContractRefund(fundingId: number, campaignId: number) {
+        try {
+            const funding = await this.fundingModel.findOne({
+                fundingId: fundingId,
+            });
+            const amount = funding.amount;
+            const campaignStateWitness =
+                this.treasuryManagerContractService.campaignStateStorage.getLevel1Witness(
+                    Field(campaignId),
+                );
+            const fundingInformationWitness =
+                this.fundingContractService.fundingInformationStorage.getLevel1Witness(
+                    Field(fundingId),
+                );
+            const fundingContractWitness =
+                this.treasuryManagerContractService.zkAppStorage.getWitness(
+                    Field(ZkAppIndex.FUNDING),
+                );
+            const treasuryManagerContractRef =
+                this.fundingContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.TREASURY_MANAGER,
+                    PublicKey.fromBase58(process.env.TREASURY_MANAGER_ADDRESS),
+                );
+            return {
+                amount,
+                campaignStateWitness,
+                fundingInformationWitness,
+                fundingContractWitness,
+                treasuryManagerContractRef,
+            };
+        } catch (err) {}
     }
 }

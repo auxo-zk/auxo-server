@@ -117,4 +117,58 @@ export class MethodInputsController {
             taskId,
         );
     }
+
+    @Get('project-contract/update-project')
+    @ApiTags('Method Inputs')
+    async getProjectContractUpdateProject(
+        @Query('projectId', new ParseIntPipe()) projectId: number,
+    ) {
+        return this.methodInputsService.getProjectContractUpdateProject(
+            projectId,
+        );
+    }
+
+    @Get('campaign-contract/create-campaign')
+    @ApiTags('Method Inputs')
+    async getCampaignContractCreateCampaign(
+        @Query('committeeId', new ParseIntPipe()) committeeId: number,
+        @Query('keyId', new ParseIntPipe()) keyId: number,
+    ) {
+        return this.methodInputsService.getCampaignContractCreateCampaign(
+            committeeId,
+            keyId,
+        );
+    }
+
+    @Get('participation-contract/participate-campaign')
+    @ApiTags('Method Inputs')
+    async getParticipationContractParticipateCampaign(
+        @Query('campaignId', new ParseIntPipe()) campaignId: number,
+        @Query('projectId', new ParseIntPipe()) projectId: number,
+    ) {
+        return this.methodInputsService.getParticipationContractParticipateCampaign(
+            campaignId,
+            projectId,
+        );
+    }
+
+    @Get('funding-contract/fund')
+    @ApiTags('Method Inputs')
+    async getFundingContractFund(
+        @Query('campaignId', new ParseIntPipe()) campaignId: number,
+    ) {
+        return this.methodInputsService.getFundingContractFund(campaignId);
+    }
+
+    @Get('funding-contract/refund')
+    @ApiTags('Method Inputs')
+    async getFundingContractRefund(
+        @Query('fundingId', new ParseIntPipe()) fundingId: number,
+        @Query('campaignId', new ParseIntPipe()) campaignId: number,
+    ) {
+        return this.methodInputsService.getFundingContractRefund(
+            fundingId,
+            campaignId,
+        );
+    }
 }
