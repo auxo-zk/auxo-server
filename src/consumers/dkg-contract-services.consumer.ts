@@ -68,7 +68,7 @@ export class DkgContractServicesConsumer {
                                 tmp = await this.rollupContractService.rollup();
                                 result.push(tmp);
                                 if (!result.includes(true)) {
-                                    // await this.dkgUsageContractsService.rollupResponse();
+                                    await this.dkgUsageContractsService.rollupResponse();
                                     await this.dkgContractsService.rollupRound2();
                                     await this.dkgContractsService.rollupRound1();
                                     await this.dkgContractsService.rollupDkg();
@@ -76,7 +76,7 @@ export class DkgContractServicesConsumer {
                                 tmp =
                                     await this.dkgUsageContractsService.rollupRequest();
                                 if (tmp == false) {
-                                    // await this.dkgUsageContractsService.computeResult();
+                                    await this.dkgUsageContractsService.computeResult();
                                 }
                                 await job.progress();
                                 this.logger.log(
@@ -104,8 +104,9 @@ export class DkgContractServicesConsumer {
                                 await this.requesterContractsService.rollup();
                                 const result = [];
                                 let tmp: boolean;
-                                // tmp = await this.dkgUsageContractsService.rollupResponse();
-                                // result.push(tmp);
+                                tmp =
+                                    await this.dkgUsageContractsService.rollupResponse();
+                                result.push(tmp);
                                 tmp =
                                     await this.dkgContractsService.rollupRound2();
                                 result.push(tmp);
@@ -120,10 +121,11 @@ export class DkgContractServicesConsumer {
                                     await this.committeeContractService.rollup();
                                     await this.rollupContractService.rollup();
                                 }
-                                // tmp = await this.dkgUsageContractsService.computeResult();
-                                // if (tmp == false) {
-                                await this.dkgUsageContractsService.rollupRequest();
-                                // }
+                                tmp =
+                                    await this.dkgUsageContractsService.computeResult();
+                                if (tmp == false) {
+                                    await this.dkgUsageContractsService.rollupRequest();
+                                }
                                 await job.progress();
                                 this.logger.log(
                                     'All contract rolluped successfully',
