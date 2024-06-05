@@ -23,7 +23,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
         });
     }
 
-    @Cron('*/4 * * * *')
+    @Cron('*/8 * * * *')
     async handleRollupContractsFirstOrder() {
         this.logger.log(
             'Registered rolluping contracts 1st task at ' + process.pid,
@@ -34,7 +34,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
         });
     }
 
-    @Cron('2,6,12,20,28,36,44,52 * * * *')
+    @Cron('4,12,20,28,36,44,52 * * * *')
     async handleRollupContractsSecondOrder() {
         this.logger.log(
             'Registered rolluping contracts 2nd task at ' + process.pid,
