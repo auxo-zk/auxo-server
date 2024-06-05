@@ -40,7 +40,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
             'Registered rolluping contracts 2nd task at ' + process.pid,
         );
         await this.contractServices.add('handleContractServices', {
-            type: 0,
+            type: 2,
             date: Date.now(),
         });
     }
