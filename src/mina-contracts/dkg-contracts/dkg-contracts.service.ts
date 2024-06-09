@@ -84,6 +84,7 @@ import {
     Round2Event,
 } from 'src/schemas/actions/round-2-event.schema';
 import { RollupContractService } from '../rollup-contract/rollup-contract.service';
+import { RequesterContractsService } from '../requester-contract/requester-contract.service';
 
 @Injectable()
 export class DkgContractsService implements ContractServiceInterface {
@@ -148,6 +149,7 @@ export class DkgContractsService implements ContractServiceInterface {
         private readonly queryService: QueryService,
         private readonly committeeContractService: CommitteeContractService,
         private readonly rollupContractService: RollupContractService,
+        private readonly requesterContractService: RequesterContractsService,
         @InjectModel(DkgAction.name)
         private readonly dkgActionModel: Model<DkgAction>,
         @InjectModel(DkgEvent.name)

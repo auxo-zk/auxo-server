@@ -31,6 +31,7 @@ import { FundingResult } from 'src/schemas/funding-result.schema';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { FundingState } from 'src/interfaces/zkapp-state.interface';
 import _ from 'lodash';
+import { ParticipationContractService } from '../participation-contract/participation-contract.service';
 
 @Injectable()
 export class FundingContractService implements ContractServiceInterface {
@@ -54,6 +55,7 @@ export class FundingContractService implements ContractServiceInterface {
 
     constructor(
         private readonly queryService: QueryService,
+        private readonly participationContractService: ParticipationContractService,
         @InjectModel(FundingAction.name)
         private readonly fundingActionModel: Model<FundingAction>,
         @InjectModel(Funding.name)

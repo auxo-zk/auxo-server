@@ -18,6 +18,8 @@ import { Utilities } from '../utilities';
 import { ParticipationState } from 'src/interfaces/zkapp-state.interface';
 import * as _ from 'lodash';
 import { Campaign } from 'src/schemas/campaign.schema';
+import { CampaignContractService } from '../campaign-contract/campaign-contract.service';
+import { ProjectContractService } from '../project-contract/project-contract.service';
 
 @Injectable()
 export class ParticipationContractService implements ContractServiceInterface {
@@ -44,6 +46,8 @@ export class ParticipationContractService implements ContractServiceInterface {
     constructor(
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,
+        private readonly projectContractService: ProjectContractService,
+        private readonly campaignContractService: CampaignContractService,
         @InjectModel(ParticipationAction.name)
         private readonly participationActionModel: Model<ParticipationAction>,
         @InjectModel(Participation.name)

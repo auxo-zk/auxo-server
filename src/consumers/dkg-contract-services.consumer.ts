@@ -53,10 +53,10 @@ export class DkgContractServicesConsumer {
                         this.logger.log('Start rolluping 1st...');
                         this.rollupContractService.update().then(() => {
                             Promise.all([
+                                this.requesterContractsService.update(),
                                 this.committeeContractService.update(),
                                 this.dkgContractsService.update(),
                                 this.dkgUsageContractsService.update(),
-                                this.requesterContractsService.update(),
                             ]).then(async () => {
                                 await this.requesterContractsService.rollup();
                                 const result = [];
@@ -94,10 +94,10 @@ export class DkgContractServicesConsumer {
                         this.logger.log('Start rolluping 2nd...');
                         this.rollupContractService.update().then(() => {
                             Promise.all([
+                                this.requesterContractsService.update(),
                                 this.committeeContractService.update(),
                                 this.dkgContractsService.update(),
                                 this.dkgUsageContractsService.update(),
-                                this.requesterContractsService.update(),
                             ]).then(async () => {
                                 await this.requesterContractsService.rollup();
                                 const result = [];
@@ -137,9 +137,11 @@ export class DkgContractServicesConsumer {
                     }
                     break;
             }
-            await job.progress();
         } catch (err) {
             console.log(err);
+            await job.moveToFailed({ message: 'Error while rollup' });
+        } finally {
+            await job.progress();
         }
     }
 }
