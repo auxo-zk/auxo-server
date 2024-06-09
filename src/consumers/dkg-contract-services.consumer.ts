@@ -41,6 +41,7 @@ export class DkgContractServicesConsumer {
                         await this.dkgUsageContractsService.compile();
                         await this.requesterContractsService.compile();
                         this.logger.log('All contracts compiled successfully');
+                        await job.progress();
                     } catch (err) {
                         this.logger.error(
                             'Error during compiling contracts: ',
@@ -52,10 +53,10 @@ export class DkgContractServicesConsumer {
                     try {
                         this.logger.log('Start rolluping 1st...');
                         await this.rollupContractService.update();
-                        await this.requesterContractsService.update();
                         await this.committeeContractService.update();
                         await this.dkgContractsService.update();
                         await this.dkgUsageContractsService.update();
+                        await this.requesterContractsService.update();
 
                         await this.requesterContractsService.rollup();
                         const result = [];
@@ -75,6 +76,7 @@ export class DkgContractServicesConsumer {
                         if (tmp == false) {
                             await this.dkgUsageContractsService.computeResult();
                         }
+                        await job.progress();
                         this.logger.log('All contract rolluped successfully');
                     } catch (err) {
                         this.logger.error(
@@ -87,11 +89,10 @@ export class DkgContractServicesConsumer {
                     try {
                         this.logger.log('Start rolluping 2nd...');
                         await this.rollupContractService.update();
-                        await this.requesterContractsService.update();
                         await this.committeeContractService.update();
                         await this.dkgContractsService.update();
                         await this.dkgUsageContractsService.update();
-
+                        await this.requesterContractsService.update();
                         await this.requesterContractsService.rollup();
                         const result = [];
                         let tmp: boolean;
@@ -110,10 +111,11 @@ export class DkgContractServicesConsumer {
                             await this.rollupContractService.rollup();
                         }
                         tmp =
-                            await this.dkgUsageContractsService.computeResult();
-                        if (tmp == false) {
                             await this.dkgUsageContractsService.rollupRequest();
+                        if (tmp == false) {
+                            await this.dkgUsageContractsService.computeResult();
                         }
+                        await job.progress();
                         this.logger.log('All contract rolluped successfully');
                     } catch (err) {
                         this.logger.error(
@@ -125,9 +127,6 @@ export class DkgContractServicesConsumer {
             }
         } catch (err) {
             console.log(err);
-            await job.moveToFailed({ message: 'Error while rollup' });
-        } finally {
-            // await job.progress();
         }
     }
 }
