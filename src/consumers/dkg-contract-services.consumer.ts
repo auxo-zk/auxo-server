@@ -31,6 +31,7 @@ export class DkgContractServicesConsumer {
     @Process({ name: 'handleContractServices', concurrency: 1 })
     async handleContractServices(job: Job<{ type: number; date: Date }>) {
         try {
+            await job.takeLock();
             switch (job.data.type) {
                 case 0:
                     try {
@@ -142,6 +143,7 @@ export class DkgContractServicesConsumer {
             await job.moveToFailed({ message: 'Error while rollup' });
         } finally {
             await job.progress();
+            await job.releaseLock();
         }
     }
 }
