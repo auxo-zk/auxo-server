@@ -1,8 +1,14 @@
-import { Constants, ZkApp } from '@auxo-dev/dkg';
+import {
+    Constants,
+    ResultStorage,
+    ResultVector,
+    ScalarVectorStorage,
+    ZkApp,
+} from '@auxo-dev/dkg';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Field, PublicKey } from 'o1js';
+import { Field, PublicKey, Scalar, UInt8 } from 'o1js';
 import { ZkAppIndex } from 'src/constants';
 import { CommitteeContractService } from 'src/mina-contracts/committee-contract/committee-contract.service';
 import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contracts.service';
@@ -19,6 +25,9 @@ import { Key } from 'src/schemas/key.schema';
 import { FundingContractService } from 'src/mina-contracts/funding-contract/funding-contract.service';
 import { Funding } from 'src/schemas/funding.schema';
 import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
+import { Participation } from 'src/schemas/participation.schema';
+import { Project } from 'src/schemas/project.schema';
+import { CustomScalar } from '@auxo-dev/auxo-libs';
 
 @Injectable()
 export class MethodInputsService {
@@ -32,16 +41,20 @@ export class MethodInputsService {
         private readonly participationContractService: ParticipationContractService,
         private readonly fundingContractService: FundingContractService,
         private readonly treasuryManagerContractService: TreasuryManagerContractService,
+        @InjectModel(Key.name)
+        private readonly keyModel: Model<Key>,
         @InjectModel(DkgRequest.name)
         private readonly dkgRequestModel: Model<DkgRequest>,
         @InjectModel(Task.name)
         private readonly taskModel: Model<Task>,
         @InjectModel(Committee.name)
         private readonly committeeModel: Model<Committee>,
+        @InjectModel(Project.name)
+        private readonly projectModel: Model<Project>,
         @InjectModel(Campaign.name)
         private readonly campaignModel: Model<Campaign>,
-        @InjectModel(Key.name)
-        private readonly keyModel: Model<Key>,
+        @InjectModel(Participation.name)
+        private readonly participationModel: Model<Participation>,
         @InjectModel(Funding.name)
         private readonly fundingModel: Model<Funding>,
     ) {}
@@ -75,7 +88,7 @@ export class MethodInputsService {
                 selfRef,
             };
         } catch (err) {
-            throw new BadRequestException();
+            throw new BadRequestException(err);
         }
     }
 
@@ -539,7 +552,7 @@ export class MethodInputsService {
                 this.campaignContractService.zkAppStorage.getZkAppRef(
                     ZkAppIndex.FUNDING_REQUESTER,
                     PublicKey.fromBase58(
-                        process.env.FUNDING_REQUESTER as string,
+                        process.env.FUNDING_REQUESTER_ADDRESS as string,
                     ),
                 );
             return {
@@ -548,7 +561,10 @@ export class MethodInputsService {
                 dkgContractRef,
                 requesterContractRef,
             };
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+            throw new BadRequestException(err);
+        }
     }
 
     async getParticipationContractParticipateCampaign(
@@ -604,7 +620,10 @@ export class MethodInputsService {
                 campaignContractRef,
                 projectContractRef,
             };
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+            throw new BadRequestException(err);
+        }
     }
 
     async getFundingContractFund(campaignId: number) {
@@ -690,7 +709,9 @@ export class MethodInputsService {
                 treasuryManagerContractRef,
                 requesterContractRef,
             };
-        } catch (err) {}
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
     }
 
     async getFundingContractRefund(fundingId: number, campaignId: number) {
@@ -723,6 +744,251 @@ export class MethodInputsService {
                 fundingContractWitness,
                 treasuryManagerContractRef,
             };
-        } catch (err) {}
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    async getTreasuryManagerContractCompleteCampaign(campaignId: number) {
+        try {
+            const campaign = await this.campaignModel.findOne({
+                campaignId: campaignId,
+            });
+            const task = await this.taskModel.findOne({
+                requester: process.env.FUNDING_REQUESTER_ADDRESS as string,
+                taskId: campaignId,
+            });
+            const request = await this.dkgRequestModel.findOne({
+                task: task.task,
+            });
+            const requestId = request.requestId;
+            const timeline = campaign.timeline;
+            const timelineWitness =
+                this.campaignContractService.timelineStorage.getLevel1Witness(
+                    Field(campaignId),
+                );
+            const campaignStateWitness =
+                this.treasuryManagerContractService.campaignStateStorage.getLevel1Witness(
+                    Field(campaignId),
+                );
+            const taskWitness =
+                this.dkgUsageContractsService.dkgRequest.taskStorage.getLevel1Witness(
+                    Field(requestId),
+                );
+            const expirationTimestamp = request.expirationTimestamp;
+            const expirationWitness =
+                this.dkgUsageContractsService.dkgRequest.expirationStorage.getLevel1Witness(
+                    Field(requestId),
+                );
+            const resultWitness =
+                this.dkgUsageContractsService.dkgRequest.resultStorage.getLevel1Witness(
+                    Field(requestId),
+                );
+            const campaignContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.CAMPAIGN,
+                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+                );
+            const requesterContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.FUNDING_REQUESTER,
+                    PublicKey.fromBase58(process.env.FUNDING_REQUESTER_ADDRESS),
+                );
+            const requestContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.REQUEST,
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                );
+            return {
+                requestId,
+                timeline,
+                timelineWitness,
+                campaignStateWitness,
+                taskWitness,
+                expirationTimestamp,
+                expirationWitness,
+                resultWitness,
+                campaignContractRef,
+                requesterContractRef,
+                requestContractRef,
+            };
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    async getTreasuryManagerContractAbortCampaign(campaignId: number) {
+        try {
+            const campaign = await this.campaignModel.findOne({
+                campaignId: campaignId,
+            });
+            const task = await this.taskModel.findOne({
+                requester: process.env.FUNDING_REQUESTER_ADDRESS as string,
+                taskId: campaignId,
+            });
+            const request = await this.dkgRequestModel.findOne({
+                task: task.task,
+            });
+            const requestId = request.requestId;
+            const timeline = campaign.timeline;
+            const timelineWitness =
+                this.campaignContractService.timelineStorage.getLevel1Witness(
+                    Field(campaignId),
+                );
+            const campaignStateWitness =
+                this.treasuryManagerContractService.campaignStateStorage.getLevel1Witness(
+                    Field(campaignId),
+                );
+            const taskWitness =
+                this.dkgUsageContractsService.dkgRequest.taskStorage.getLevel1Witness(
+                    Field(requestId),
+                );
+            const expirationTimestamp = request.expirationTimestamp;
+            const expirationWitness =
+                this.dkgUsageContractsService.dkgRequest.expirationStorage.getLevel1Witness(
+                    Field(requestId),
+                );
+            const resultWitness =
+                this.dkgUsageContractsService.dkgRequest.resultStorage.getLevel1Witness(
+                    Field(requestId),
+                );
+            const campaignContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.CAMPAIGN,
+                    PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+                );
+            const requesterContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.FUNDING_REQUESTER,
+                    PublicKey.fromBase58(process.env.FUNDING_REQUESTER_ADDRESS),
+                );
+            const requestContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.REQUEST,
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                );
+            return {
+                requestId,
+                timeline,
+                timelineWitness,
+                campaignStateWitness,
+                taskWitness,
+                expirationTimestamp,
+                expirationWitness,
+                resultWitness,
+                campaignContractRef,
+                requesterContractRef,
+                requestContractRef,
+            };
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
+    }
+
+    async getTreasuryManagerContractClaimFund(
+        campaignId: number,
+        projectId: number,
+    ) {
+        try {
+            // const campaign = await this.campaignModel.findOne({
+            //     campaignId: campaignId,
+            // });
+            const task = await this.taskModel.findOne({
+                requester: process.env.FUNDING_REQUESTER_ADDRESS as string,
+                taskId: campaignId,
+            });
+            const participation = await this.participationModel.findOne({
+                campaignId: campaignId,
+                projectId: projectId,
+            });
+            const project = await this.projectModel.findOne({
+                projectId: projectId,
+            });
+            const request = await this.dkgRequestModel.findOne({
+                task: task.task,
+            });
+            const projectIndex = participation.projectIndex;
+            const projectIndexWitness =
+                this.participationContractService.projectIndexStorage.getLevel1Witness(
+                    this.participationContractService.projectIndexStorage.calculateLevel1Index(
+                        {
+                            campaignId: Field(campaignId),
+                            projectId: Field(projectId),
+                        },
+                    ),
+                );
+            const requestId = request.requestId;
+            const taskWitness =
+                this.dkgUsageContractsService.dkgRequest.taskStorage.getLevel1Witness(
+                    Field(requestId),
+                );
+            const resultVectorStorage = new ScalarVectorStorage();
+            request.result.map((r, index) =>
+                resultVectorStorage.updateRawLeaf(
+                    { level1Index: Field(index) },
+                    Scalar.from(r),
+                ),
+            );
+            const resultVectorWitness =
+                this.dkgUsageContractsService.dkgRequest.resultStorage.getLevel1Witness(
+                    Field(requestId),
+                );
+            const resultValueWitness = resultVectorStorage.getLevel1Witness(
+                Field(projectIndex - 1),
+            );
+            const treasuryAddress = project.treasuryAddress;
+            const treasuryAddressWitness =
+                this.projectContractService.treasuryAddressStorage.getLevel1Witness(
+                    Field(projectId),
+                );
+            const claimedAmountWitness =
+                this.treasuryManagerContractService.claimedAmountStorage.getLevel1Witness(
+                    this.treasuryManagerContractService.claimedAmountStorage.calculateLevel1Index(
+                        {
+                            campaignId: Field(campaignId),
+                            dimensionIndex: new UInt8(projectIndex - 1),
+                        },
+                    ),
+                );
+            const amount = request.result[projectIndex - 1];
+            const participationContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.PARTICIPATION,
+                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+                );
+            const requestContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.REQUEST,
+                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                );
+            const requesterContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.FUNDING_REQUESTER,
+                    PublicKey.fromBase58(process.env.FUNDING_REQUESTER_ADDRESS),
+                );
+            const projectContractRef =
+                this.treasuryManagerContractService.zkAppStorage.getZkAppRef(
+                    ZkAppIndex.PROJECT,
+                    PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+                );
+            return {
+                projectIndex,
+                projectIndexWitness,
+                requestId,
+                taskWitness,
+                resultVectorWitness,
+                resultValueWitness,
+                treasuryAddress,
+                treasuryAddressWitness,
+                claimedAmountWitness,
+                amount,
+                participationContractRef,
+                requestContractRef,
+                requesterContractRef,
+                projectContractRef,
+            };
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
     }
 }

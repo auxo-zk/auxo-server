@@ -171,4 +171,36 @@ export class MethodInputsController {
             campaignId,
         );
     }
+
+    @Get('treasury-manager-contract/complete-campaign')
+    @ApiTags('Method Inputs')
+    async getTreasuryManagerContractCompleteCampaign(
+        @Query('campaignId', new ParseIntPipe()) campaignId: number,
+    ) {
+        return this.methodInputsService.getTreasuryManagerContractCompleteCampaign(
+            campaignId,
+        );
+    }
+
+    @Get('treasury-manager-contract/abort-campaign')
+    @ApiTags('Method Inputs')
+    async getTreasuryManagerContractAbortCampaign(
+        @Query('campaignId', new ParseIntPipe()) campaignId: number,
+    ) {
+        return this.methodInputsService.getTreasuryManagerContractAbortCampaign(
+            campaignId,
+        );
+    }
+
+    @Get('treasury-manager-contract/claim-fund')
+    @ApiTags('Method Inputs')
+    async getTreasuryManagerContractClaimFund(
+        @Query('campaignId', new ParseIntPipe()) campaignId: number,
+        @Query('projectId', new ParseIntPipe()) projectId: number,
+    ) {
+        return this.methodInputsService.getTreasuryManagerContractClaimFund(
+            campaignId,
+            projectId,
+        );
+    }
 }

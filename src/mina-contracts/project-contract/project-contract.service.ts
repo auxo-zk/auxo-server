@@ -317,7 +317,17 @@ export class ProjectContractService implements ContractServiceInterface {
         const currentAction = await this.projectActionModel.findOne({
             currentActionState: this._actionState,
         });
+        const lastProject = await this.projectModel.findOne(
+            {},
+            {},
+            {
+                sort: {
+                    projectId: -1,
+                },
+            },
+        );
         if (currentAction != undefined) {
+            let nextProjectId = lastProject ? lastProject.projectId + 1 : 0;
             const notActiveActions = await this.projectActionModel.find(
                 {
                     actionId: { $lte: currentAction.actionId },
@@ -341,10 +351,10 @@ export class ProjectContractService implements ContractServiceInterface {
                     promises.push(
                         this.projectModel.findOneAndUpdate(
                             {
-                                projectId: this._nextProjectId,
+                                projectId: nextProjectId,
                             },
                             {
-                                projectId: this._nextProjectId,
+                                projectId: nextProjectId,
                                 members: notActiveAction.actionData.members,
                                 ipfsHash: notActiveAction.actionData.ipfsHash,
                                 ipfsData: ipfsData,
@@ -354,7 +364,7 @@ export class ProjectContractService implements ContractServiceInterface {
                             { new: true, upsert: true },
                         ),
                     );
-                    this._nextProjectId += 1;
+                    nextProjectId += 1;
                 } else {
                     const ipfsData = await this.ipfs.getData(
                         notActiveAction.actionData.ipfsHash,
@@ -410,11 +420,11 @@ export class ProjectContractService implements ContractServiceInterface {
                     level1Index,
                     Storage.ProjectStorage.EMPTY_LEVEL_2_PROJECT_MEMBER_TREE(),
                 );
-                for (let i = 0; i < project.members.length; i++) {
+                for (let j = 0; j < project.members.length; j++) {
                     const level2IndexMember =
-                        this._memberStorage.calculateLevel2Index(Field(i));
+                        this._memberStorage.calculateLevel2Index(Field(j));
                     const memberLeaf = this._memberStorage.calculateLeaf(
-                        PublicKey.fromBase58(project.members[i]),
+                        PublicKey.fromBase58(project.members[j]),
                     );
                     this._memberStorage.updateLeaf(
                         {

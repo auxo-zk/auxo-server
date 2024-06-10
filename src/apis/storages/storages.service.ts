@@ -548,7 +548,7 @@ export class StoragesService {
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.dkgContractService.round1.processStorage
+                this.dkgUsageContractService.dkgRequest.keyIndexStorage
                     .getWitness(Field(i))
                     .toJSON(),
             );
@@ -569,7 +569,7 @@ export class StoragesService {
         const result: MerkleLeaf[] = [];
         for (let i = 0; i < leafCount; i++) {
             result.push(
-                this.dkgContractService.round1.processStorage
+                this.dkgUsageContractService.dkgRequest.taskStorage
                     .getWitness(Field(i))
                     .toJSON(),
             );
