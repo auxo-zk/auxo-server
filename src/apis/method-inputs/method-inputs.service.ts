@@ -575,6 +575,11 @@ export class MethodInputsService {
             const campaign = await this.campaignModel.findOne({
                 campaignId: campaignId,
             });
+            const timeline = campaign.timeline;
+            const timelineWitness =
+                this.campaignContractService.timelineStorage.getLevel1Witness(
+                    Field(campaignId),
+                );
             const memberWitnessLevel1 =
                 this.projectContractService.memberStorage.getLevel1Witness(
                     Field(projectId),
@@ -612,6 +617,8 @@ export class MethodInputsService {
                 );
 
             return {
+                timeline,
+                timelineWitness,
                 memberWitnessLevel1,
                 memberWitnessLevel2,
                 projectIndexWitness,
