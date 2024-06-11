@@ -20,6 +20,10 @@ class ProjectMember {
     @IsString()
     @IsOptional()
     link?: string;
+
+    @IsString()
+    @IsOptional()
+    publicKey?: string;
 }
 
 export class UpdateProjectDraftDto {

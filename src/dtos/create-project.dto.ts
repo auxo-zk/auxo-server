@@ -11,6 +11,9 @@ class ProjectMember {
 
     @IsString()
     link: string;
+
+    @IsString()
+    publicKey: string;
 }
 
 export class CreateProjectDto {
