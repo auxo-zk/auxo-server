@@ -229,8 +229,28 @@ export class Utilities {
     static getZkAppStorageForPlatform(): PlatformStorage.SharedStorage.ZkAppStorage {
         const zkAppStorage = new PlatformStorage.SharedStorage.ZkAppStorage();
         zkAppStorage.updateAddress(
+            Field(ZkAppIndex.ROLLUP),
+            PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.COMMITTEE),
+            PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
             Field(ZkAppIndex.DKG),
             PublicKey.fromBase58(process.env.DKG_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.ROUND1),
+            PublicKey.fromBase58(process.env.ROUND_1_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.ROUND2),
+            PublicKey.fromBase58(process.env.ROUND_2_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.RESPONSE),
+            PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
         );
         zkAppStorage.updateAddress(
             Field(ZkAppIndex.REQUEST),
@@ -259,6 +279,10 @@ export class Utilities {
         zkAppStorage.updateAddress(
             Field(ZkAppIndex.FUNDING_REQUESTER),
             PublicKey.fromBase58(process.env.FUNDING_REQUESTER_ADDRESS),
+        );
+        zkAppStorage.updateAddress(
+            Field(ZkAppIndex.COMMITMENT),
+            PublicKey.fromBase58(process.env.COMMITMENT_ADDRESS),
         );
 
         return zkAppStorage;

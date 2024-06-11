@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 @Schema({ versionKey: false })
 export class Organizer {
@@ -15,8 +16,8 @@ export class Organizer {
     @Prop()
     description: string;
 
-    @Prop()
-    img: string;
+    @Prop({ type: FileInformation })
+    img: FileInformation;
 }
 
 export type OrganizerDocument = HydratedDocument<Organizer>;

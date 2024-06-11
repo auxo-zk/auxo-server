@@ -122,7 +122,6 @@ export enum ZkAppIndex {
     FUNDING,
     TREASURY_MANAGER,
     FUNDING_REQUESTER,
-    VESTING,
     COMMITMENT,
     __LENGTH,
 }

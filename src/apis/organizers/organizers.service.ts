@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AuthRoleEnum } from 'src/constants';
 import { UpdateOrganizerDto } from 'src/dtos/update-organizer.dto';
+import { FileInformation } from 'src/entities/file-information.entity';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { ObjectStorageService } from 'src/object-storage/object-storage.service';
 import { Campaign } from 'src/schemas/campaign.schema';
@@ -41,20 +42,19 @@ export class OrganizersService {
     async updateAvatar(
         avatar: Express.Multer.File,
         jwtPayload: JwtPayload,
-    ): Promise<string> {
+    ): Promise<FileInformation> {
         if (jwtPayload.role != AuthRoleEnum.ORGANIZER) {
             throw new UnauthorizedException();
         } else {
-            const avatarUrl =
-                await this.objectStorageService.uploadFile(avatar);
+            const fileInfo = await this.objectStorageService.uploadFile(avatar);
             await this.organizerModel.findOneAndUpdate(
                 { address: jwtPayload.sub },
                 {
-                    img: avatarUrl,
+                    img: fileInfo,
                 },
                 { new: true, upsert: true },
             );
-            return avatarUrl;
+            return fileInfo;
         }
     }
 

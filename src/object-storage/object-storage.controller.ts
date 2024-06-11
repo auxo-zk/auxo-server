@@ -9,6 +9,7 @@ import {
 import { ObjectStorageService } from './object-storage.service';
 import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 @Controller('object-storage')
 export class ObjectStorageController {
@@ -29,7 +30,7 @@ export class ObjectStorageController {
     )
     async uploadFile(
         @UploadedFile() file: Express.Multer.File,
-    ): Promise<string> {
+    ): Promise<FileInformation> {
         return await this.objectStorageService.uploadFile(file);
     }
 }

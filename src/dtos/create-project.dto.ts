@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsArray, IsString, IsUrl, ValidateNested } from 'class-validator';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 class ProjectMember {
     @IsString()
@@ -34,6 +35,7 @@ export class CreateProjectDto {
     members: ProjectMember[];
 
     @IsArray()
-    @IsUrl({}, { each: true })
-    documents: string[];
+    @ValidateNested({ each: true })
+    @Type(() => FileInformation)
+    documents: FileInformation[];
 }
