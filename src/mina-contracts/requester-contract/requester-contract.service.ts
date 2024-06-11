@@ -176,6 +176,28 @@ export class RequesterContractsService implements ContractServiceInterface {
         await RequesterContract.compile({ cache });
     }
 
+    async getNextJobIds(): Promise<Array<string> | undefined> {
+        try {
+            const jobIds: string[] = [];
+            for (
+                let index = 0;
+                index < this.requesterAddresses.length;
+                index++
+            ) {
+                const requesterAddress = this.requesterAddresses[index];
+                const notActiveActions = await this.requesterActionModel.find(
+                    { active: false, requester: requesterAddress },
+                    {},
+                    { sort: { actionId: 1 } },
+                );
+                jobIds.push(notActiveActions[0].previousActionState);
+            }
+            return jobIds;
+            return [];
+        } catch (err) {
+            console.log(err);
+        }
+    }
     async rollup() {
         try {
             for (
