@@ -66,15 +66,15 @@ export class TreasuryManagerContractService
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 
     async update() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 

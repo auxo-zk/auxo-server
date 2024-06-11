@@ -71,8 +71,8 @@ export class CampaignContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // Provable.log(await this.fetchCampaignState());
             // Provable.log(this._timelineStorage.root);
             // Provable.log(this._ipfsHashStorage.root);
