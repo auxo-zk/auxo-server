@@ -12,7 +12,7 @@ import { Project } from 'src/schemas/project.schema';
 import { MaxRetries, ProjectActionEnum, ZkAppCache } from 'src/constants';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Storage, ZkApp } from '@auxo-dev/platform';
-import { IpfsHash } from '@auxo-dev/auxo-libs';
+import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { Utilities } from '../utilities';
 import { ProjectState } from 'src/interfaces/zkapp-state.interface';
@@ -58,9 +58,13 @@ export class ProjectContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
-        } catch (err) {}
+            await this.fetch();
+            await this.updateMerkleTrees();
+            // await this.compile();
+            // await this.rollup();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     async update() {
@@ -84,6 +88,8 @@ export class ProjectContractService implements ContractServiceInterface {
 
     async compile() {
         const cache = ZkAppCache;
+        await ZkApp.Project.RollupProject.compile({ cache });
+        await ZkApp.Project.ProjectContract.compile({ cache });
     }
 
     async fetchProjectState(): Promise<ProjectState> {
@@ -127,15 +133,23 @@ export class ProjectContractService implements ContractServiceInterface {
             if (notReducedActions.length > 0) {
                 const state = await this.fetchProjectState();
                 let nextProjectId = state.nextProjectId;
-                let proof = await ZkApp.Project.RollupProject.firstStep(
-                    state.nextProjectId,
-                    state.memberRoot,
-                    state.ipfsHashRoot,
-                    state.treasuryAddressRoot,
-                    lastReducedAction
-                        ? Field(lastReducedAction.currentActionState)
-                        : Reducer.initialActionState,
+                let proof = await Utils.prove(
+                    ZkApp.Project.RollupProject.name,
+                    'firstStep',
+                    async () =>
+                        ZkApp.Project.RollupProject.firstStep(
+                            state.nextProjectId,
+                            state.memberRoot,
+                            state.ipfsHashRoot,
+                            state.treasuryAddressRoot,
+                            lastReducedAction
+                                ? Field(lastReducedAction.currentActionState)
+                                : Reducer.initialActionState,
+                        ),
+                    undefined,
+                    { info: true, error: true },
                 );
+
                 const memberStorage = _.cloneDeep(this._memberStorage);
                 const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
                 const treasuryAddressStorage = _.cloneDeep(
@@ -147,20 +161,31 @@ export class ProjectContractService implements ContractServiceInterface {
                         notReducedAction.actionData.actionType ==
                         Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT
                     ) {
-                        proof =
-                            await ZkApp.Project.RollupProject.createProjectStep(
-                                proof,
-                                ZkApp.Project.ProjectAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notReducedAction.actions,
+                        proof = await Utils.prove(
+                            ZkApp.Project.RollupProject.name,
+                            'createProjectStep',
+                            async () =>
+                                ZkApp.Project.RollupProject.createProjectStep(
+                                    proof,
+                                    ZkApp.Project.ProjectAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notReducedAction.actions,
+                                        ),
+                                    ),
+                                    memberStorage.getLevel1Witness(
+                                        nextProjectId,
+                                    ),
+                                    ipfsHashStorage.getLevel1Witness(
+                                        nextProjectId,
+                                    ),
+                                    treasuryAddressStorage.getLevel1Witness(
+                                        nextProjectId,
                                     ),
                                 ),
-                                memberStorage.getLevel1Witness(nextProjectId),
-                                ipfsHashStorage.getLevel1Witness(nextProjectId),
-                                treasuryAddressStorage.getLevel1Witness(
-                                    nextProjectId,
-                                ),
-                            );
+                            undefined,
+                            { info: true, error: true },
+                        );
+
                         memberStorage.updateInternal(
                             nextProjectId,
                             Storage.ProjectStorage.EMPTY_LEVEL_2_PROJECT_MEMBER_TREE(),
@@ -203,23 +228,30 @@ export class ProjectContractService implements ContractServiceInterface {
                         );
                         nextProjectId = nextProjectId.add(1);
                     } else {
-                        proof =
-                            await ZkApp.Project.RollupProject.updateProjectStep(
-                                proof,
-                                ZkApp.Project.ProjectAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notReducedAction.actions,
+                        proof = await Utils.prove(
+                            ZkApp.Project.RollupProject.name,
+                            'updateProjectStep',
+                            async () =>
+                                ZkApp.Project.RollupProject.updateProjectStep(
+                                    proof,
+                                    ZkApp.Project.ProjectAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notReducedAction.actions,
+                                        ),
+                                    ),
+                                    IpfsHash.fromString(
+                                        notReducedAction.actionData.ipfsHash,
+                                    ),
+                                    ipfsHashStorage.getLevel1Witness(
+                                        Field(
+                                            notReducedAction.actionData
+                                                .projectId,
+                                        ),
                                     ),
                                 ),
-                                IpfsHash.fromString(
-                                    notReducedAction.actionData.ipfsHash,
-                                ),
-                                ipfsHashStorage.getLevel1Witness(
-                                    Field(
-                                        notReducedAction.actionData.projectId,
-                                    ),
-                                ),
-                            );
+                            undefined,
+                            { info: true, error: true },
+                        );
 
                         ipfsHashStorage.updateLeaf(
                             {
@@ -242,25 +274,28 @@ export class ProjectContractService implements ContractServiceInterface {
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
+                await Utils.proveAndSendTx(
+                    ZkApp.Project.ProjectContract.name,
+                    'rollup',
+                    async () => projectContract.rollup(proof),
                     {
-                        sender: feePayerPrivateKey.toPublicKey(),
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
                         fee: process.env.FEE,
+                        memo: '',
                         nonce: await this.queryService.fetchAccountNonce(
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    async () => {
-                        await projectContract.rollup(proof);
-                    },
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
-                );
+                return true;
             }
+            return false;
         } catch (err) {
             this.logger.error(err);
         } finally {
@@ -317,7 +352,17 @@ export class ProjectContractService implements ContractServiceInterface {
         const currentAction = await this.projectActionModel.findOne({
             currentActionState: this._actionState,
         });
+        const lastProject = await this.projectModel.findOne(
+            {},
+            {},
+            {
+                sort: {
+                    projectId: -1,
+                },
+            },
+        );
         if (currentAction != undefined) {
+            let nextProjectId = lastProject ? lastProject.projectId + 1 : 0;
             const notActiveActions = await this.projectActionModel.find(
                 {
                     actionId: { $lte: currentAction.actionId },
@@ -341,10 +386,10 @@ export class ProjectContractService implements ContractServiceInterface {
                     promises.push(
                         this.projectModel.findOneAndUpdate(
                             {
-                                projectId: this._nextProjectId,
+                                projectId: nextProjectId,
                             },
                             {
-                                projectId: this._nextProjectId,
+                                projectId: nextProjectId,
                                 members: notActiveAction.actionData.members,
                                 ipfsHash: notActiveAction.actionData.ipfsHash,
                                 ipfsData: ipfsData,
@@ -354,7 +399,7 @@ export class ProjectContractService implements ContractServiceInterface {
                             { new: true, upsert: true },
                         ),
                     );
-                    this._nextProjectId += 1;
+                    nextProjectId += 1;
                 } else {
                     const ipfsData = await this.ipfs.getData(
                         notActiveAction.actionData.ipfsHash,
@@ -410,11 +455,11 @@ export class ProjectContractService implements ContractServiceInterface {
                     level1Index,
                     Storage.ProjectStorage.EMPTY_LEVEL_2_PROJECT_MEMBER_TREE(),
                 );
-                for (let i = 0; i < project.members.length; i++) {
+                for (let j = 0; j < project.members.length; j++) {
                     const level2IndexMember =
-                        this._memberStorage.calculateLevel2Index(Field(i));
+                        this._memberStorage.calculateLevel2Index(Field(j));
                     const memberLeaf = this._memberStorage.calculateLeaf(
-                        PublicKey.fromBase58(project.members[i]),
+                        PublicKey.fromBase58(project.members[j]),
                     );
                     this._memberStorage.updateLeaf(
                         {

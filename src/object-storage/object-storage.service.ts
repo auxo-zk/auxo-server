@@ -5,6 +5,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { SHA256 } from 'crypto-js';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 @Injectable()
 export class ObjectStorageService {
@@ -22,7 +23,10 @@ export class ObjectStorageService {
         this.bucketName = process.env.OBJECT_STORAGE_BUCKET_NAME;
     }
 
-    async uploadFile(file: Express.Multer.File): Promise<string> {
+    async uploadFile(file: Express.Multer.File): Promise<FileInformation> {
+        const fileInformation = new FileInformation();
+        fileInformation.fileName = file.originalname;
+        fileInformation.fileSize = file.size;
         const key =
             SHA256(Date.now().toString() + '-' + file.originalname).toString() +
             '.' +
@@ -34,12 +38,12 @@ export class ObjectStorageService {
         });
         const result = await this.objectStorageClient.send(command);
         if (result.$metadata.httpStatusCode == 200) {
-            return (
+            fileInformation.URL =
                 process.env.OBJECT_STORAGE_ENDPOINT +
                 this.bucketName +
                 '/' +
-                key
-            );
+                key;
+            return fileInformation;
         } else {
             throw new BadRequestException();
         }

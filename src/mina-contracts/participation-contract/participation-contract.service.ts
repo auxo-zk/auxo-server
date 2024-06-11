@@ -11,13 +11,15 @@ import { Field, Mina, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
 import { Participation } from 'src/schemas/participation.schema';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
-import { IpfsHash } from '@auxo-dev/auxo-libs';
+import { IpfsHash, Utils } from '@auxo-dev/auxo-libs';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { MaxRetries, ZkAppCache } from 'src/constants';
 import { Utilities } from '../utilities';
 import { ParticipationState } from 'src/interfaces/zkapp-state.interface';
 import * as _ from 'lodash';
 import { Campaign } from 'src/schemas/campaign.schema';
+import { CampaignContractService } from '../campaign-contract/campaign-contract.service';
+import { ProjectContractService } from '../project-contract/project-contract.service';
 
 @Injectable()
 export class ParticipationContractService implements ContractServiceInterface {
@@ -44,6 +46,8 @@ export class ParticipationContractService implements ContractServiceInterface {
     constructor(
         private readonly queryService: QueryService,
         private readonly ipfs: Ipfs,
+        private readonly projectContractService: ProjectContractService,
+        private readonly campaignContractService: CampaignContractService,
         @InjectModel(ParticipationAction.name)
         private readonly participationActionModel: Model<ParticipationAction>,
         @InjectModel(Participation.name)
@@ -63,8 +67,16 @@ export class ParticipationContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
+            await this.fetch();
+            await this.updateMerkleTrees();
+            // Provable.log(await this.fetchParticipationState());
+            // Provable.log(this._projectIndexStorage.root);
+            // Provable.log(this._projectCounterStorage.root);
+            // Provable.log(this._ipfsHashStorage.root);
+            // Provable.log(this._zkAppStorage.root);
+            // await this.projectContractService.compile();
+            // await this.campaignContractService.compile();
+            // await this.compile();
         } catch (err) {}
     }
 
@@ -81,6 +93,7 @@ export class ParticipationContractService implements ContractServiceInterface {
                 await this.fetchParticipationActions();
                 await this.updateParticipations();
             } catch (err) {
+                console.log(err);
                 this.logger.error(err);
             }
         }
@@ -88,6 +101,8 @@ export class ParticipationContractService implements ContractServiceInterface {
 
     async compile() {
         const cache = ZkAppCache;
+        await ZkApp.Participation.RollupParticipation.compile({ cache });
+        await ZkApp.Participation.ParticipationContract.compile({ cache });
     }
 
     async fetchParticipationState(): Promise<ParticipationState> {
@@ -130,15 +145,22 @@ export class ParticipationContractService implements ContractServiceInterface {
             );
             if (notReducedActions.length > 0) {
                 const state = await this.fetchParticipationState();
-                let proof =
-                    await ZkApp.Participation.RollupParticipation.firstStep(
-                        state.projectIndexRoot,
-                        state.projectCounterRoot,
-                        state.ipfsHashRoot,
-                        lastReducedAction
-                            ? Field(lastReducedAction.currentActionState)
-                            : Reducer.initialActionState,
-                    );
+                let proof = await Utils.prove(
+                    ZkApp.Participation.RollupParticipation.name,
+                    'firstStep',
+                    async () =>
+                        ZkApp.Participation.RollupParticipation.firstStep(
+                            state.projectIndexRoot,
+                            state.projectCounterRoot,
+                            state.ipfsHashRoot,
+                            lastReducedAction
+                                ? Field(lastReducedAction.currentActionState)
+                                : Reducer.initialActionState,
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
+
                 const projectIndexStorage = _.cloneDeep(
                     this._projectIndexStorage,
                 );
@@ -166,21 +188,30 @@ export class ParticipationContractService implements ContractServiceInterface {
                                 notReducedAction.actionData.projectId,
                             ),
                         });
-                    proof =
-                        await ZkApp.Participation.RollupParticipation.participateCampaignStep(
-                            proof,
-                            ZkApp.Participation.ParticipationAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
+                    proof = await Utils.prove(
+                        ZkApp.Participation.RollupParticipation.name,
+                        'participateCampaignStep',
+                        async () =>
+                            ZkApp.Participation.RollupParticipation.participateCampaignStep(
+                                proof,
+                                ZkApp.Participation.ParticipationAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notReducedAction.actions,
+                                    ),
                                 ),
+                                Field(projectCounterMapping[campaignId]),
+                                projectIndexStorage.getLevel1Witness(
+                                    level1Index,
+                                ),
+                                projectCounterStorage.getLevel1Witness(
+                                    Field(campaignId),
+                                ),
+                                ipfsHashStorage.getLevel1Witness(level1Index),
                             ),
-                            Field(projectCounterMapping[campaignId]),
-                            projectIndexStorage.getLevel1Witness(level1Index),
-                            projectCounterStorage.getLevel1Witness(
-                                Field(campaignId),
-                            ),
-                            ipfsHashStorage.getLevel1Witness(level1Index),
-                        );
+                        undefined,
+                        { info: true, error: true },
+                    );
+
                     projectCounterMapping[campaignId] += 1;
                     projectIndexStorage.updateLeaf(
                         level1Index,
@@ -207,26 +238,28 @@ export class ParticipationContractService implements ContractServiceInterface {
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
+                await Utils.proveAndSendTx(
+                    ZkApp.Participation.ParticipationContract.name,
+                    'rollup',
+                    async () => participationContract.rollup(proof),
                     {
-                        sender: feePayerPrivateKey.toPublicKey(),
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
                         fee: process.env.FEE,
+                        memo: '',
                         nonce: await this.queryService.fetchAccountNonce(
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    async () => {
-                        await participationContract.rollup(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 return true;
             }
+            return false;
         } catch (err) {
             this.logger.error(err);
         } finally {

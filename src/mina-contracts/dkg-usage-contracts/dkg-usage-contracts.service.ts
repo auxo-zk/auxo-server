@@ -194,13 +194,15 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // Provable.log(await this.fetchDkgResponseState());
+            // Provable.log(await this.fetchDkgRequestState());
+            // Provable.log(this._dkgRequest.resultStorage.root);
             // Provable.log(this._dkgResponse.contributionStorage.root);
             // Provable.log(this._dkgResponse.responseStorage.root);
             // Provable.log(this._dkgResponse.processStorage.root);
             // await this.compile();
             // await this.rollupContractService.compile();
             // await this.rollupResponse();
+            // await this.rollupRequest();
             // await this.computeResult();
         } catch (err) {
             console.log(err);
@@ -840,6 +842,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     const rawResultStorage = new ScalarVectorStorage();
                     const rawResult = bruteForceResultVector(
                         getResultVector(totalD, totalM),
+                        1,
                     );
                     const groupVectorStorage = new GroupVectorStorage();
                     totalD.map((Di, index) => {
@@ -858,7 +861,6 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                             rawResult[j],
                         );
                     }
-
                     let proof = await Utils.prove(
                         ComputeResult.name,
                         'init',
@@ -912,7 +914,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                     );
                     await Utils.proveAndSendTx(
                         RequestContract.name,
-                        'update',
+                        'resolve',
                         async () =>
                             requestContract.resolve(
                                 proof,

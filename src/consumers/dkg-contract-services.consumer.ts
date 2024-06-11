@@ -111,9 +111,9 @@ export class DkgContractServicesConsumer {
                             await this.rollupContractService.rollup();
                         }
                         tmp =
-                            await this.dkgUsageContractsService.computeResult();
-                        if (tmp == false) {
                             await this.dkgUsageContractsService.rollupRequest();
+                        if (tmp == false) {
+                            await this.dkgUsageContractsService.computeResult();
                         }
                         await job.progress();
                         this.logger.log('All contract rolluped successfully');

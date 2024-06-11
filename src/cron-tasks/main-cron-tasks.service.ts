@@ -16,9 +16,9 @@ export class MainCronTasksService {
     @Interval(120000)
     async handleUpdateContracts() {
         this.logger.log('Register updateContracts task at ' + process.pid);
-        this.contractServices.add('updateContractMerkleTrees', {
-            date: Date.now(),
-        });
+        // this.contractServices.add('updateContractMerkleTrees', {
+        //     date: Date.now(),
+        // });
         this.contractServices.add('updateContracts', {
             date: Date.now(),
         });

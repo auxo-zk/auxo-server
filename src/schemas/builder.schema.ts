@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { IsNumber, IsString } from 'class-validator';
 import { HydratedDocument } from 'mongoose';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 @Schema({ versionKey: false })
 export class Builder {
@@ -19,8 +20,8 @@ export class Builder {
     @Prop()
     description: string;
 
-    @Prop()
-    img: string;
+    @Prop({ type: FileInformation })
+    img: FileInformation;
 }
 
 export type BuilderDocument = HydratedDocument<Builder>;

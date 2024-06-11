@@ -27,11 +27,11 @@ export class Timeline {
         );
     }
 
-    toAction() {
+    static toAction(timeline: Timeline) {
         return new Storage.CampaignStorage.Timeline({
-            startParticipation: new UInt64(this.startParticipation),
-            startFunding: new UInt64(this.startFunding),
-            startRequesting: new UInt64(this.startRequesting),
+            startParticipation: new UInt64(timeline.startParticipation),
+            startFunding: new UInt64(timeline.startFunding),
+            startRequesting: new UInt64(timeline.startRequesting),
         });
     }
 }
