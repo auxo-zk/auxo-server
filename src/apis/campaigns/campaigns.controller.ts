@@ -38,19 +38,14 @@ export class CampaignsController {
 
     @Get('all')
     @ApiTags('Campaign')
-    async getAllCampaigns(
-        @Query('active', new ParseBoolPipe()) active: boolean,
-    ): Promise<Campaign[]> {
-        return this.campaignsService.getCampaigns(undefined, active);
+    async getAllCampaigns(): Promise<Campaign[]> {
+        return this.campaignsService.getCampaigns(undefined);
     }
 
     @Get()
     @ApiTags('Campaign')
-    async getCampaigns(
-        @Query('owner') owner: string,
-        @Query('active', new ParseBoolPipe()) active: boolean,
-    ): Promise<Campaign[]> {
-        return this.campaignsService.getCampaigns(owner, active);
+    async getCampaigns(@Query('owner') owner: string): Promise<Campaign[]> {
+        return this.campaignsService.getCampaigns(owner);
     }
 
     @Get(':campaignId/projects')

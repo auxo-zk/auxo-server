@@ -43,10 +43,9 @@ export class CampaignsService {
         }
     }
 
-    async getCampaigns(owner: string, active: boolean): Promise<Campaign[]> {
+    async getCampaigns(owner: string): Promise<Campaign[]> {
         if (owner == undefined) {
             return await this.campaignModel.aggregate([
-                { $match: { active: active } },
                 {
                     $lookup: {
                         from: 'organizers',
@@ -69,7 +68,7 @@ export class CampaignsService {
             ]);
         } else {
             return await this.campaignModel.aggregate([
-                { $match: { owner: owner, active: active } },
+                { $match: { owner: owner } },
                 {
                     $lookup: {
                         from: 'organizers',
