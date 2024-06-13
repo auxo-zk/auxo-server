@@ -61,10 +61,10 @@ export class MainContractServicesConsumer {
                     this.dkgContractsService.update(),
                     this.dkgUsageContractsService.update(),
                     this.requesterContractsService.update(),
-                    this.projectContractService.update(),
-                    this.campaignContractService.update(),
-                    this.participationContractService.update(),
-                    this.fundingContractService.update(),
+                    // this.projectContractService.update(),
+                    // this.campaignContractService.update(),
+                    // this.participationContractService.update(),
+                    // this.fundingContractService.update(),
                 ]).then(async () => {
                     this.logger.log('All contracts updated successfully');
                     await job.progress();
