@@ -60,7 +60,7 @@ export class OrganizersController {
         )
         avatar: Express.Multer.File,
         @Request() req: any,
-    ): Promise<FileInformation> {
+    ): Promise<string> {
         return await this.organizersService.updateAvatar(avatar, req.user);
     }
 

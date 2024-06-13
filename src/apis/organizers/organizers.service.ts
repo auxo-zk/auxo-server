@@ -42,7 +42,7 @@ export class OrganizersService {
     async updateAvatar(
         avatar: Express.Multer.File,
         jwtPayload: JwtPayload,
-    ): Promise<FileInformation> {
+    ): Promise<string> {
         if (jwtPayload.role != AuthRoleEnum.ORGANIZER) {
             throw new UnauthorizedException();
         } else {
@@ -50,11 +50,11 @@ export class OrganizersService {
             await this.organizerModel.findOneAndUpdate(
                 { address: jwtPayload.sub },
                 {
-                    img: fileInfo,
+                    img: fileInfo.URL,
                 },
                 { new: true, upsert: true },
             );
-            return fileInfo;
+            return fileInfo.URL;
         }
     }
 

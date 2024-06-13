@@ -20,8 +20,8 @@ export class Builder {
     @Prop()
     description: string;
 
-    @Prop({ type: FileInformation })
-    img: FileInformation;
+    @Prop()
+    img: string;
 }
 
 export type BuilderDocument = HydratedDocument<Builder>;
