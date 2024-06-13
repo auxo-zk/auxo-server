@@ -13,40 +13,35 @@ export class BoiContractCronTasksService implements OnModuleInit {
     ) {}
 
     async onModuleInit() {
-        this.logger.log('Register compileContracts task at ' + process.pid);
-        this.contractServices.add('compileContracts', {
+        await this.contractServices.client.flushdb();
+        this.logger.log(
+            'Registered compiling contracts task at ' + process.pid,
+        );
+        await this.contractServices.add('handleContractServices', {
+            type: 0,
             date: Date.now(),
         });
     }
 
-    // 6 minutes
-    // @Interval(360000)
-    // async handleUpdateContracts() {
-    //     this.logger.log('Register updateContracts task at ' + process.pid);
-    //     this.contractServices.add('updateContracts', {
-    //         date: Date.now(),
-    //     });
-    // }
-
-    @Cron(CronExpression.EVERY_10_MINUTES)
+    @Cron('*/8 * * * *')
     async handleRollupContractsFirstOrder() {
         this.logger.log(
-            'Register rollupContracts for the first order task at ' +
-                process.pid,
+            'Registered rolluping contracts 1st task at ' + process.pid,
         );
-        this.contractServices.add('rollupContractsFirstOrder', {
+        await this.contractServices.add('handleContractServices', {
+            type: 1,
             date: Date.now(),
         });
     }
 
-    // @Cron('7,21,35,49 * * * *')
-    // async handleRollupContractsSecondOrder() {
-    //     this.logger.log(
-    //         'Register rollupContracts for the second order task at ' +
-    //             process.pid,
-    //     );
-    //     this.contractServices.add('rollupContractsSecondOrder', {
-    //         date: Date.now(),
-    //     });
-    // }
+    @Cron('4,12,20,28,36,44,52 * * * *')
+    async handleRollupContractsSecondOrder() {
+        this.logger.log(
+            'Registered rolluping contracts 2nd task at ' + process.pid,
+        );
+        await this.contractServices.add('handleContractServices', {
+            type: 2,
+            date: Date.now(),
+        });
+    }
 }

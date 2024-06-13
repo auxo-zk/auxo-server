@@ -9,6 +9,7 @@ import { ParticipationContractService } from '../mina-contracts/participation-co
 import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
 import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
+import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
 
 @Processor('boi-contract-services')
 export class BoiContractServicesConsumer {
@@ -17,6 +18,7 @@ export class BoiContractServicesConsumer {
         private readonly committeeContractService: CommitteeContractService,
         private readonly dkgContractsService: DkgContractsService,
         private readonly dkgUsageContractsService: DkgUsageContractsService,
+        private readonly requesterContractsService: RequesterContractsService,
         private readonly campaignContractService: CampaignContractService,
         private readonly participationContractService: ParticipationContractService,
         private readonly projectContractService: ProjectContractService,
@@ -24,108 +26,90 @@ export class BoiContractServicesConsumer {
         private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
-    @Process('updateContractMerkleTrees')
-    async updateContractTrees(job: Job<unknown>) {
+    @Process({ name: 'handleContractServices', concurrency: 1 })
+    async handleContractServices(job: Job<{ type: number; date: Date }>) {
         try {
-            Promise.all([
-                this.committeeContractService.updateMerkleTrees(),
-                this.dkgContractsService.updateMerkleTrees(),
-                this.dkgUsageContractsService.updateMerkleTrees(),
-                this.campaignContractService.updateMerkleTrees(),
-                this.participationContractService.updateMerkleTrees(),
-                this.projectContractService.updateMerkleTrees(),
-                this.fundingContractService.updateMerkleTrees(),
-                this.treasuryManagerContractService.updateMerkleTrees(),
-            ]).then(async () => {
-                this.logger.log('All contract trees updated successfully');
-                await job.progress();
-                return {};
-            });
-        } catch (err) {
-            this.logger.error('Error during updating contract trees: ', err);
-            return undefined;
-        }
-    }
+            switch (job.data.type) {
+                case 0:
+                    try {
+                        this.logger.log('Start compiling contract...');
+                        await this.committeeContractService.compile();
+                        await this.dkgContractsService.compile();
+                        await this.dkgUsageContractsService.compile();
+                        await this.requesterContractsService.compile();
+                        await this.projectContractService.compile();
+                        await this.campaignContractService.compile();
+                        await this.participationContractService.compile();
+                        await this.fundingContractService.compile();
+                        await this.treasuryManagerContractService.compile();
+                        this.logger.log('All contracts compiled successfully');
+                        await job.progress();
+                    } catch (err) {
+                        this.logger.error(
+                            'Error during compiling contracts: ',
+                            err,
+                        );
+                    }
+                    break;
+                case 1:
+                    try {
+                        this.logger.log('Start rolluping 1st...');
+                        await this.committeeContractService.update();
+                        await this.dkgContractsService.update();
+                        await this.dkgUsageContractsService.update();
+                        await this.requesterContractsService.update();
+                        await this.projectContractService.update();
+                        await this.campaignContractService.update();
+                        await this.participationContractService.update();
+                        await this.fundingContractService.update();
+                        await this.treasuryManagerContractService.update();
 
-    @Process('updateContracts')
-    async updateContracts(job: Job<unknown>) {
-        try {
-            Promise.all([
-                this.committeeContractService.update(),
-                this.dkgContractsService.update(),
-                this.dkgUsageContractsService.update(),
-                this.campaignContractService.update(),
-                this.participationContractService.update(),
-                this.projectContractService.update(),
-                this.fundingContractService.update(),
-                this.treasuryManagerContractService.update(),
-            ]).then(async () => {
-                this.logger.log('All contracts updated successfully');
-                await job.progress();
-                return {};
-            });
-        } catch (err) {
-            this.logger.error('Error during updating contracts: ', err);
-            return undefined;
-        }
-    }
+                        await this.projectContractService.rollup();
+                        await this.campaignContractService.rollup();
+                        await this.fundingContractService.rollup();
+                        await this.participationContractService.rollup();
+                        await this.treasuryManagerContractService.rollup();
 
-    @Process('rollupContractsFirstOrder')
-    async rollupContractsFirstOrder(job: Job<unknown>) {
-        try {
-            Promise.all([
-                this.campaignContractService.update(),
-                this.participationContractService.update(),
-                this.projectContractService.update(),
-                this.fundingContractService.update(),
-                this.treasuryManagerContractService.update(),
-            ]).then(async () => {
-                await job.progress();
-                this.logger.log('All contract rolluped successfully');
-                return {};
-            });
-        } catch (err) {
-            this.logger.error('Error during rolluping contracts: ', err);
-            return undefined;
-        }
-    }
-    @Process('rollupContractsSecondOrder')
-    async rollupContractsSecondOrder(job: Job<unknown>) {
-        try {
-            Promise.all([
-                this.campaignContractService.update(),
-                this.participationContractService.update(),
-                this.projectContractService.update(),
-                this.fundingContractService.update(),
-                this.treasuryManagerContractService.update(),
-            ]).then(async () => {
-                await job.progress();
-                this.logger.log('All contract rolluped successfully');
-                return {};
-            });
-        } catch (err) {
-            this.logger.error('Error during rolluping contracts: ', err);
-            return undefined;
-        }
-    }
+                        this.logger.log('All contract rolluped successfully');
+                    } catch (err) {
+                        this.logger.error(
+                            'Error during rolluping contracts: ',
+                            err,
+                        );
+                    }
+                    break;
+                case 2:
+                    try {
+                        this.logger.log('Start rolluping 2nd...');
+                        await this.committeeContractService.update();
+                        await this.dkgContractsService.update();
+                        await this.dkgUsageContractsService.update();
+                        await this.requesterContractsService.update();
+                        await this.projectContractService.update();
+                        await this.campaignContractService.update();
+                        await this.participationContractService.update();
+                        await this.fundingContractService.update();
+                        await this.treasuryManagerContractService.update();
 
-    @Process('compileContracts')
-    async compileContracts(job: Job<unknown>) {
-        try {
-            Promise.all([
-                this.campaignContractService.compile(),
-                this.participationContractService.compile(),
-                this.projectContractService.compile(),
-                this.treasuryManagerContractService.compile(),
-                this.fundingContractService.compile(),
-            ]).then(async () => {
-                this.logger.log('All contracts compiled successfully');
-                await job.progress();
-                return {};
-            });
+                        await this.projectContractService.rollup();
+                        await this.campaignContractService.rollup();
+                        await this.fundingContractService.rollup();
+                        await this.participationContractService.rollup();
+                        await this.treasuryManagerContractService.rollup();
+
+                        this.logger.log('All contract rolluped successfully');
+                    } catch (err) {
+                        this.logger.error(
+                            'Error during rolluping contracts: ',
+                            err,
+                        );
+                    }
+                    break;
+            }
         } catch (err) {
-            this.logger.error('Error during compiling contracts: ', err);
-            return undefined;
+            console.log(err);
+        } finally {
+            await job.progress();
         }
     }
 }
