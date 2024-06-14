@@ -18,7 +18,6 @@ import {
     ReducerJobEnum,
     ReducerPriorities,
 } from 'src/constants';
-import { Reducer } from 'o1js';
 
 @Injectable()
 export class DkgContractCronTasksService implements OnModuleInit {
@@ -49,34 +48,10 @@ export class DkgContractCronTasksService implements OnModuleInit {
             },
             { priority: ReducerPriorities.get(ReducerJobEnum.COMPILE) },
         );
-        this.logger.log(
-            'Registered compiling contracts task at ' + process.pid,
-        );
+        this.logger.log('Queued Compile job at ' + process.pid);
     }
 
-    // @Cron('*/8 * * * *')
-    // async handleRollupContractsFirstOrder() {
-    //     this.logger.log(
-    //         'Registered rolluping contracts 1st task at ' + process.pid,
-    //     );
-    //     await this.contractServices.add('handleContractServices', {
-    //         type: 1,
-    //         date: Date.now(),
-    //     });
-    // }
-
-    // @Cron('4,12,20,28,36,44,52 * * * *')
-    // async handleRollupContractsSecondOrder() {
-    //     this.logger.log(
-    //         'Registered rolluping contracts 2nd task at ' + process.pid,
-    //     );
-    //     await this.contractServices.add('handleContractServices', {
-    //         type: 2,
-    //         date: Date.now(),
-    //     });
-    // }
-
-    @Cron('*/4 * * * *')
+    @Cron('*/2 * * * *')
     async queueReducerJobs() {
         this.logger.log('Querying next reducer jobs...');
         const [
@@ -84,13 +59,21 @@ export class DkgContractCronTasksService implements OnModuleInit {
             updateCommitteeJobId,
             updateKeyJobId,
             finalizeRound1JobIds,
-            FinalizeRound2JobIds,
+            finalizeRound2JobIds,
+            updateTaskJobIds,
+            updateRequestJobId,
+            finalizeResponseJobIds,
+            resolveJobIds,
         ] = await Promise.all([
             this.rollupContractService.getNextRollupJob(),
             this.committeeContractService.getNextUpdateCommitteeJob(),
             this.dkgContractsService.getNextUpdateKeyJob(),
             this.dkgContractsService.getNextFinalizeRound1Jobs(),
             this.dkgContractsService.getNextFinalizeRound2Jobs(),
+            this.requesterContractsService.getNextUpdateTaskJobs(),
+            this.dkgUsageContractsService.getNextUpdateRequestJob(),
+            this.dkgUsageContractsService.getNextFinalizeResponseJobs(),
+            this.dkgUsageContractsService.getNextResolveJobs(),
         ]);
         const queuedJobs = await this.contractServices.getJobs([
             'active',
@@ -99,7 +82,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
             'paused',
             'delayed',
         ]);
-        let jobCounters: Map<ReducerJobEnum, number>;
+        const jobCounters: Map<ReducerJobEnum, number> = new Map([]);
         for (const job of queuedJobs) {
             const jobId = job.id as string;
             const type = jobId.includes('-') ? Number(jobId.split('-')[0]) : -1;
@@ -112,33 +95,26 @@ export class DkgContractCronTasksService implements OnModuleInit {
             }
         }
         this.logger.log('Querying done!');
+        const jobCounts = await this.contractServices.getJobCounts();
+        this.logger.log(
+            'Queue status:' +
+                Object.entries(jobCounts)
+                    .map(([key, value]) => `\n- ${key}: ${value}`)
+                    .join(),
+        );
 
         let newJobCounter = 0;
-
         // Add next Rollup job
-        if (jobCounters[ReducerJobEnum.ROLLUP] == 0 && rollupJobId) {
-            let isBlocked = false;
-            if (ReducerDependencies.get(ReducerJobEnum.ROLLUP)) {
-                for (const dependency of ReducerDependencies.get(
-                    ReducerJobEnum.ROLLUP,
-                )) {
-                    if (jobCounters[dependency] > 0) {
-                        isBlocked = true;
-                        break;
-                    }
-                }
-            }
+        if (rollupJobId) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.ROLLUP,
+                jobCounters,
+            );
             if (!isBlocked) {
-                const rollupJob: ReducerJob = {
-                    options: {
-                        jobId: rollupJobId,
-                        priority: ReducerPriorities.get(ReducerJobEnum.ROLLUP),
-                    },
-                    data: {
-                        type: ReducerJobEnum.ROLLUP,
-                        date: Date.now(),
-                    },
-                };
+                const rollupJob = this.getReducerJob(
+                    ReducerJobEnum.ROLLUP,
+                    rollupJobId,
+                );
                 await this.contractServices.add(
                     'handleContractServices',
                     rollupJob.data,
@@ -148,36 +124,17 @@ export class DkgContractCronTasksService implements OnModuleInit {
                 this.logger.log('Queued Rollup job: ' + rollupJobId);
             }
         }
-
         // Add next Update Committee job
-        if (
-            jobCounters[ReducerJobEnum.UPDATE_COMMITTEE] == 0 &&
-            updateCommitteeJobId
-        ) {
-            let isBlocked = false;
-            if (ReducerDependencies.get(ReducerJobEnum.UPDATE_COMMITTEE)) {
-                for (const dependency of ReducerDependencies.get(
-                    ReducerJobEnum.UPDATE_COMMITTEE,
-                )) {
-                    if (jobCounters[dependency] > 0) {
-                        isBlocked = true;
-                        break;
-                    }
-                }
-            }
+        if (updateCommitteeJobId) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.UPDATE_COMMITTEE,
+                jobCounters,
+            );
             if (!isBlocked) {
-                const updateCommitteeJob: ReducerJob = {
-                    options: {
-                        jobId: updateCommitteeJobId,
-                        priority: ReducerPriorities.get(
-                            ReducerJobEnum.UPDATE_COMMITTEE,
-                        ),
-                    },
-                    data: {
-                        type: ReducerJobEnum.UPDATE_COMMITTEE,
-                        date: Date.now(),
-                    },
-                };
+                const updateCommitteeJob = this.getReducerJob(
+                    ReducerJobEnum.UPDATE_COMMITTEE,
+                    updateCommitteeJobId,
+                );
                 await this.contractServices.add(
                     'handleContractServices',
                     updateCommitteeJob.data,
@@ -189,33 +146,17 @@ export class DkgContractCronTasksService implements OnModuleInit {
                 );
             }
         }
-
         // Add next Update Key job
-        if (jobCounters[ReducerJobEnum.UPDATE_KEY] == 0 && updateKeyJobId) {
-            let isBlocked = false;
-            if (ReducerDependencies.get(ReducerJobEnum.UPDATE_KEY)) {
-                for (const dependency of ReducerDependencies.get(
-                    ReducerJobEnum.UPDATE_KEY,
-                )) {
-                    if (jobCounters[dependency] > 0) {
-                        isBlocked = true;
-                        break;
-                    }
-                }
-            }
+        if (updateKeyJobId) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.UPDATE_KEY,
+                jobCounters,
+            );
             if (!isBlocked) {
-                const updateKeyJob: ReducerJob = {
-                    options: {
-                        jobId: updateKeyJobId,
-                        priority: ReducerPriorities.get(
-                            ReducerJobEnum.UPDATE_KEY,
-                        ),
-                    },
-                    data: {
-                        type: ReducerJobEnum.UPDATE_KEY,
-                        date: Date.now(),
-                    },
-                };
+                const updateKeyJob = this.getReducerJob(
+                    ReducerJobEnum.UPDATE_KEY,
+                    updateKeyJobId,
+                );
                 await this.contractServices.add(
                     'handleContractServices',
                     updateKeyJob.data,
@@ -225,40 +166,21 @@ export class DkgContractCronTasksService implements OnModuleInit {
                 this.logger.log('Queued Update Key job: ' + updateKeyJobId);
             }
         }
-
         // Add next Finalize Round 1 job
-        if (
-            jobCounters[ReducerJobEnum.FINALIZE_ROUND_1] == 0 &&
-            finalizeRound1JobIds.length > 0
-        ) {
-            let isBlocked = false;
-            if (ReducerDependencies.get(ReducerJobEnum.FINALIZE_ROUND_1)) {
-                for (const dependency of ReducerDependencies.get(
-                    ReducerJobEnum.FINALIZE_ROUND_1,
-                )) {
-                    if (jobCounters[dependency] > 0) {
-                        isBlocked = true;
-                        break;
-                    }
-                }
-            }
+        if (finalizeRound1JobIds.length > 0) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.FINALIZE_ROUND_1,
+                jobCounters,
+            );
             if (!isBlocked) {
                 const jobId =
                     finalizeRound1JobIds[
                         Math.floor(Math.random() * finalizeRound1JobIds.length)
                     ];
-                const finalizeRound1Job: ReducerJob = {
-                    options: {
-                        jobId: jobId,
-                        priority: ReducerPriorities.get(
-                            ReducerJobEnum.FINALIZE_ROUND_1,
-                        ),
-                    },
-                    data: {
-                        type: ReducerJobEnum.FINALIZE_ROUND_1,
-                        date: Date.now(),
-                    },
-                };
+                const finalizeRound1Job = this.getReducerJob(
+                    ReducerJobEnum.FINALIZE_ROUND_1,
+                    jobId,
+                );
                 await this.contractServices.add(
                     'handleContractServices',
                     finalizeRound1Job.data,
@@ -271,40 +193,21 @@ export class DkgContractCronTasksService implements OnModuleInit {
                 );
             }
         }
-
         // Add next Finalize Round 2 job
-        if (
-            jobCounters[ReducerJobEnum.FINALIZE_ROUND_2] == 0 &&
-            FinalizeRound2JobIds.length > 0
-        ) {
-            let isBlocked = false;
-            if (ReducerDependencies.get(ReducerJobEnum.FINALIZE_ROUND_2)) {
-                for (const dependency of ReducerDependencies.get(
-                    ReducerJobEnum.FINALIZE_ROUND_2,
-                )) {
-                    if (jobCounters[dependency] > 0) {
-                        isBlocked = true;
-                        break;
-                    }
-                }
-            }
+        if (finalizeRound2JobIds.length > 0) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.FINALIZE_ROUND_2,
+                jobCounters,
+            );
             if (!isBlocked) {
                 const jobId =
-                    FinalizeRound2JobIds[
-                        Math.floor(Math.random() * FinalizeRound2JobIds.length)
+                    finalizeRound2JobIds[
+                        Math.floor(Math.random() * finalizeRound2JobIds.length)
                     ];
-                const finalizeRound2Job: ReducerJob = {
-                    options: {
-                        jobId: jobId,
-                        priority: ReducerPriorities.get(
-                            ReducerJobEnum.FINALIZE_ROUND_2,
-                        ),
-                    },
-                    data: {
-                        type: ReducerJobEnum.FINALIZE_ROUND_2,
-                        date: Date.now(),
-                    },
-                };
+                const finalizeRound2Job = this.getReducerJob(
+                    ReducerJobEnum.FINALIZE_ROUND_2,
+                    jobId,
+                );
                 await this.contractServices.add(
                     'handleContractServices',
                     finalizeRound2Job.data,
@@ -317,7 +220,144 @@ export class DkgContractCronTasksService implements OnModuleInit {
                 );
             }
         }
-
+        // Add next Update Task jobs
+        if (updateTaskJobIds.length > 0) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.UPDATE_TASK,
+                jobCounters,
+            );
+            if (!isBlocked) {
+                for (const jobId of updateTaskJobIds) {
+                    const updateTaskJob = this.getReducerJob(
+                        ReducerJobEnum.UPDATE_TASK,
+                        jobId,
+                    );
+                    await this.contractServices.add(
+                        'handleContractServices',
+                        updateTaskJob.data,
+                        updateTaskJob.options,
+                    );
+                    newJobCounter++;
+                    this.logger.log(
+                        'Queued Update Task job: ' +
+                            updateTaskJob.options.jobId,
+                    );
+                }
+            }
+        }
+        // Add next Update Request job
+        if (updateRequestJobId) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.UPDATE_REQUEST,
+                jobCounters,
+            );
+            if (!isBlocked) {
+                const updateRequestJob = this.getReducerJob(
+                    ReducerJobEnum.UPDATE_REQUEST,
+                    updateRequestJobId,
+                );
+                await this.contractServices.add(
+                    'handleContractServices',
+                    updateRequestJob.data,
+                    updateRequestJob.options,
+                );
+                newJobCounter++;
+                this.logger.log(
+                    'Queued Update Request job: ' +
+                        updateRequestJob.options.jobId,
+                );
+            }
+        }
+        // Add next Finalize Response jobs
+        if (finalizeResponseJobIds.length > 0) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.FINALIZE_RESPONSE,
+                jobCounters,
+            );
+            if (!isBlocked) {
+                const jobId =
+                    finalizeResponseJobIds[
+                        Math.floor(
+                            Math.random() * finalizeResponseJobIds.length,
+                        )
+                    ];
+                const finalizeResponseJob = this.getReducerJob(
+                    ReducerJobEnum.FINALIZE_RESPONSE,
+                    jobId,
+                );
+                await this.contractServices.add(
+                    'handleContractServices',
+                    finalizeResponseJob.data,
+                    finalizeResponseJob.options,
+                );
+                newJobCounter++;
+                this.logger.log(
+                    'Queued Finalize Response job: ' +
+                        finalizeResponseJob.options.jobId,
+                );
+            }
+        }
+        // Add next Resolve jobs
+        if (resolveJobIds.length > 0) {
+            const isBlocked = this.isJobBlocked(
+                ReducerJobEnum.RESOLVE,
+                jobCounters,
+            );
+            if (!isBlocked) {
+                const jobId =
+                    resolveJobIds[
+                        Math.floor(Math.random() * resolveJobIds.length)
+                    ];
+                const resolveJob = this.getReducerJob(
+                    ReducerJobEnum.RESOLVE,
+                    jobId,
+                );
+                await this.contractServices.add(
+                    'handleContractServices',
+                    resolveJob.data,
+                    resolveJob.options,
+                );
+                newJobCounter++;
+                this.logger.log(
+                    'Queued Resolve job: ' + resolveJob.options.jobId,
+                );
+            }
+        }
         this.logger.log('Queued ' + newJobCounter + ' new jobs!');
+    }
+
+    isJobBlocked(
+        jobType: ReducerJobEnum,
+        jobCounters: Map<ReducerJobEnum, number>,
+    ) {
+        if (ReducerDependencies.get(jobType)) {
+            for (const dependency of ReducerDependencies.get(jobType)) {
+                if (
+                    jobCounters.has(dependency) &&
+                    jobCounters[dependency] > 0
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    getReducerJob(
+        jobType: ReducerJobEnum,
+        uniqueId: string,
+        customPriority?: number,
+    ): ReducerJob {
+        return {
+            options: {
+                jobId: `${jobType}-${uniqueId}`,
+                priority: customPriority || ReducerPriorities.get(jobType),
+                removeOnFail: true,
+            },
+            data: {
+                type: jobType,
+                date: Date.now(),
+            },
+        };
     }
 }

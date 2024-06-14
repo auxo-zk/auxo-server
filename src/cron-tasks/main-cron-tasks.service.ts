@@ -12,7 +12,7 @@ export class MainCronTasksService {
         private readonly contractServices: Queue,
     ) {}
 
-    // 6 minutes
+    // 2 minutes
     @Interval(120000)
     async handleUpdateContracts() {
         this.logger.log('Register updateContracts task at ' + process.pid);

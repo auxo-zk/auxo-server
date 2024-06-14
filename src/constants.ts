@@ -181,12 +181,20 @@ export const ReducerDependencies: Map<
     ReducerJobEnum,
     Array<ReducerJobEnum>
 > = new Map([
+    [ReducerJobEnum.COMPILE, [ReducerJobEnum.COMPILE]],
+    [ReducerJobEnum.ROLLUP, [ReducerJobEnum.ROLLUP]],
+    [ReducerJobEnum.UPDATE_COMMITTEE, [ReducerJobEnum.UPDATE_COMMITTEE]],
+    [
+        ReducerJobEnum.UPDATE_KEY,
+        [ReducerJobEnum.ROLLUP, ReducerJobEnum.UPDATE_KEY], // TODO: Remove Rollup dependency in the next version
+    ],
     [
         ReducerJobEnum.FINALIZE_ROUND_1,
         [
             ReducerJobEnum.ROLLUP,
             ReducerJobEnum.UPDATE_COMMITTEE,
             ReducerJobEnum.UPDATE_KEY,
+            ReducerJobEnum.FINALIZE_ROUND_1,
         ],
     ],
     [
@@ -195,16 +203,27 @@ export const ReducerDependencies: Map<
             ReducerJobEnum.ROLLUP,
             ReducerJobEnum.UPDATE_COMMITTEE,
             ReducerJobEnum.UPDATE_KEY,
+            ReducerJobEnum.FINALIZE_ROUND_2,
         ],
     ],
     [
         ReducerJobEnum.FINALIZE_RESPONSE,
-        [ReducerJobEnum.ROLLUP, ReducerJobEnum.UPDATE_REQUEST],
+        [
+            ReducerJobEnum.ROLLUP,
+            ReducerJobEnum.UPDATE_REQUEST,
+            ReducerJobEnum.FINALIZE_RESPONSE,
+        ],
     ],
     [
         ReducerJobEnum.RESOLVE,
-        [ReducerJobEnum.FINALIZE_RESPONSE, ReducerJobEnum.UPDATE_REQUEST],
+        [
+            ReducerJobEnum.FINALIZE_RESPONSE,
+            ReducerJobEnum.UPDATE_REQUEST,
+            ReducerJobEnum.RESOLVE,
+        ],
     ],
+    [ReducerJobEnum.UPDATE_REQUEST, [ReducerJobEnum.UPDATE_REQUEST]],
+    [ReducerJobEnum.UPDATE_TASK, []],
 ]);
 
 export const ReducerPriorities: Map<ReducerJobEnum, number> = new Map([
@@ -224,6 +243,7 @@ export type ReducerJob = {
     options: {
         jobId: string;
         priority: number;
+        removeOnFail: boolean;
     };
     data: ReducerJobData;
 };

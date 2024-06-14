@@ -131,7 +131,7 @@ export class CommitteeContractService implements ContractServiceInterface {
         }
     }
 
-    async processUpdateCommitteeJob(jobId: string) {
+    async processUpdateCommitteeJob(previousActionState: string) {
         try {
             const notActiveActions = await this.committeeActionModel.find(
                 { active: false },
@@ -140,11 +140,11 @@ export class CommitteeContractService implements ContractServiceInterface {
             );
             if (
                 notActiveActions.length == 0 ||
-                notActiveActions[0].previousActionState != jobId
+                notActiveActions[0].previousActionState != previousActionState
             )
-                throw new Error('Invalid action id');
-            const state = await this.fetchCommitteeState();
+                throw new Error('Incorrect previous action state!');
 
+            const state = await this.fetchCommitteeState();
             let proof = await Utils.prove(
                 UpdateCommittee.name,
                 'init',
@@ -240,123 +240,6 @@ export class CommitteeContractService implements ContractServiceInterface {
                 { info: true, error: true, memoryUsage: false },
             );
             return true;
-        } catch (err) {
-            console.log(err);
-            return false;
-        }
-    }
-
-    async rollup() {
-        try {
-            const notActiveActions = await this.committeeActionModel.find(
-                { active: false },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            if (notActiveActions.length > 0) {
-                const state = await this.fetchCommitteeState();
-
-                let proof = await Utils.prove(
-                    UpdateCommittee.name,
-                    'init',
-                    async () =>
-                        UpdateCommittee.init(
-                            state.actionState,
-                            state.memberRoot,
-                            state.settingRoot,
-                            state.nextCommitteeId,
-                        ),
-                    undefined,
-                    { info: true, error: true },
-                );
-                const memberStorage = _.cloneDeep(this._memberStorage);
-                const settingStorage = _.cloneDeep(this._settingStorage);
-                let nextCommitteeId = state.nextCommitteeId;
-                for (let i = 0; i < notActiveActions.length; i++) {
-                    const notActiveAction = notActiveActions[i];
-
-                    proof = await Utils.prove(
-                        UpdateCommittee.name,
-                        'update',
-                        async () =>
-                            UpdateCommittee.update(
-                                proof,
-                                ZkApp.Committee.CommitteeAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notActiveAction.actions,
-                                    ),
-                                ),
-                                memberStorage.getLevel1Witness(nextCommitteeId),
-                                settingStorage.getLevel1Witness(
-                                    nextCommitteeId,
-                                ),
-                            ),
-                        undefined,
-                        { info: true, error: true },
-                    );
-                    memberStorage.updateInternal(
-                        nextCommitteeId,
-                        Storage.CommitteeStorage.COMMITTEE_LEVEL_2_TREE(),
-                    );
-                    settingStorage.updateRawLeaf(
-                        {
-                            level1Index: nextCommitteeId,
-                        },
-                        {
-                            T: Field(notActiveAction.actionData.threshold),
-                            N: Field(
-                                notActiveAction.actionData.addresses.length,
-                            ),
-                        },
-                    );
-                    for (
-                        let j = 0;
-                        j < notActiveAction.actionData.addresses.length;
-                        j++
-                    ) {
-                        const level2Index = memberStorage.calculateLevel2Index(
-                            Field(j),
-                        );
-                        memberStorage.updateRawLeaf(
-                            {
-                                level1Index: nextCommitteeId,
-                                level2Index: level2Index,
-                            },
-                            PublicKey.fromBase58(
-                                notActiveAction.actionData.addresses[j],
-                            ),
-                        );
-                    }
-                    nextCommitteeId = nextCommitteeId.add(1);
-                }
-                const committeeContract = new CommitteeContract(
-                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                await Utils.proveAndSendTx(
-                    CommitteeContract.name,
-                    'update',
-                    async () => committeeContract.update(proof),
-                    {
-                        sender: {
-                            privateKey: feePayerPrivateKey,
-                            publicKey: feePayerPrivateKey.toPublicKey(),
-                        },
-                        fee: process.env.FEE,
-                        memo: '',
-                        nonce: await this.queryService.fetchAccountNonce(
-                            feePayerPrivateKey.toPublicKey().toBase58(),
-                        ),
-                    },
-                    undefined,
-                    undefined,
-                    { info: true, error: true, memoryUsage: false },
-                );
-                return true;
-            }
-            return false;
         } catch (err) {
             console.log(err);
             return false;

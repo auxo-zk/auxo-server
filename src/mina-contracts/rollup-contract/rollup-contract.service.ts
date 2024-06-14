@@ -106,9 +106,7 @@ export class RollupContractService implements ContractServiceInterface {
     async getNextRollupJob(): Promise<string | undefined> {
         try {
             const notActiveActions = await this.rollupActionModel.find(
-                {
-                    active: false,
-                },
+                { active: false },
                 {},
                 { sort: { actionId: 1 } },
             );
@@ -120,75 +118,101 @@ export class RollupContractService implements ContractServiceInterface {
         }
     }
 
-    async processRollupJob(jobId: string) {
+    async processRollupJob(previousActionState: string) {
         try {
             const notActiveActions = await this.rollupActionModel.find(
-                {
-                    active: false,
-                },
+                { active: false },
                 {},
                 { sort: { actionId: 1 } },
             );
             if (
                 notActiveActions.length == 0 ||
-                notActiveActions[0].previousActionState != jobId
+                notActiveActions[0].previousActionState != previousActionState
             )
-                throw new Error('Invalid action id');
+                throw new Error('Incorrect previous action state!');
 
             const state = await this.fetchRollupState();
-            let proof = await Rollup.init(
-                ZkApp.Rollup.RollupAction.empty(),
-                state.counterRoot,
-                state.rollupRoot,
-                state.actionState,
+            let proof = await Utils.prove(
+                Rollup.name,
+                'init',
+                async () =>
+                    Rollup.init(
+                        ZkApp.Rollup.RollupAction.empty(),
+                        state.counterRoot,
+                        state.rollupRoot,
+                        state.actionState,
+                    ),
+                undefined,
+                { info: true, error: true, memoryUsage: false },
             );
             const counterStorage = _.cloneDeep(this._counterStorage);
             const rollupStorage = _.cloneDeep(this._rollupStorage);
             const actionCounter = {};
-            const dkgActionCounter = await this.rollupActionModel.count({
-                active: true,
-                'actionData.zkAppIndex': ZkAppIndex.DKG,
-            });
+            const [
+                dkgActionCounter,
+                round1ActionCounter,
+                round2ActionCounter,
+                responseActionCounter,
+            ] = await Promise.all([
+                this.rollupActionModel.count({
+                    active: true,
+                    'actionData.zkAppIndex': ZkAppIndex.DKG,
+                }),
+                this.rollupActionModel.count({
+                    active: true,
+                    'actionData.zkAppIndex': ZkAppIndex.ROUND1,
+                }),
+                this.rollupActionModel.count({
+                    active: true,
+                    'actionData.zkAppIndex': ZkAppIndex.ROUND2,
+                }),
+                this.rollupActionModel.count({
+                    active: true,
+                    'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
+                }),
+            ]);
             actionCounter[ZkAppIndex.DKG] = dkgActionCounter;
-            const round1ActionCounter = await this.rollupActionModel.count({
-                active: true,
-                'actionData.zkAppIndex': ZkAppIndex.ROUND1,
-            });
             actionCounter[ZkAppIndex.ROUND1] = round1ActionCounter;
-            const round2ActionCounter = await this.rollupActionModel.count({
-                active: true,
-                'actionData.zkAppIndex': ZkAppIndex.ROUND2,
-            });
             actionCounter[ZkAppIndex.ROUND2] = round2ActionCounter;
-            const responseActionCounter = await this.rollupActionModel.count({
-                active: true,
-                'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
-            });
             actionCounter[ZkAppIndex.RESPONSE] = responseActionCounter;
 
             for (let i = 0; i < notActiveActions.length; i++) {
                 const notActiveAction = notActiveActions[i];
-                proof = await Rollup.rollup(
-                    ZkApp.Rollup.RollupAction.fromFields(
-                        Utilities.stringArrayToFields(notActiveAction.actions),
-                    ),
-                    proof,
-                    Field(actionCounter[notActiveAction.actionData.zkAppIndex]),
-                    counterStorage.getWitness(
-                        Field(notActiveAction.actionData.zkAppIndex),
-                    ),
-                    rollupStorage.getWitness(
-                        rollupStorage.calculateLevel1Index({
-                            zkAppIndex: Field(
-                                notActiveAction.actionData.zkAppIndex,
+                proof = await Utils.prove(
+                    Rollup.name,
+                    'rollup',
+                    async () =>
+                        Rollup.rollup(
+                            ZkApp.Rollup.RollupAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
+                                ),
                             ),
-                            actionId: Field(
+                            proof,
+                            Field(
                                 actionCounter[
                                     notActiveAction.actionData.zkAppIndex
                                 ],
                             ),
-                        }),
-                    ),
+                            counterStorage.getWitness(
+                                Field(notActiveAction.actionData.zkAppIndex),
+                            ),
+                            rollupStorage.getWitness(
+                                rollupStorage.calculateLevel1Index({
+                                    zkAppIndex: Field(
+                                        notActiveAction.actionData.zkAppIndex,
+                                    ),
+                                    actionId: Field(
+                                        actionCounter[
+                                            notActiveAction.actionData
+                                                .zkAppIndex
+                                        ],
+                                    ),
+                                }),
+                            ),
+                        ),
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 rollupStorage.updateRawLeaf(
                     {
@@ -205,68 +229,15 @@ export class RollupContractService implements ContractServiceInterface {
                     },
                     Field(notActiveAction.actionData.actionHash),
                 );
-                switch (notActiveAction.actionData.zkAppIndex) {
-                    case ZkAppIndex.DKG:
-                        actionCounter[ZkAppIndex.DKG] += 1;
-                        counterStorage.updateRawLeaf(
-                            {
-                                level1Index:
-                                    counterStorage.calculateLevel1Index(
-                                        Field(
-                                            notActiveAction.actionData
-                                                .zkAppIndex,
-                                        ),
-                                    ),
-                            },
-                            Field(actionCounter[ZkAppIndex.DKG]),
-                        );
-                        break;
-                    case ZkAppIndex.ROUND1:
-                        actionCounter[ZkAppIndex.ROUND1] += 1;
-                        counterStorage.updateRawLeaf(
-                            {
-                                level1Index:
-                                    counterStorage.calculateLevel1Index(
-                                        Field(
-                                            notActiveAction.actionData
-                                                .zkAppIndex,
-                                        ),
-                                    ),
-                            },
-                            Field(actionCounter[ZkAppIndex.ROUND1]),
-                        );
-                        break;
-                    case ZkAppIndex.ROUND2:
-                        actionCounter[ZkAppIndex.ROUND2] += 1;
-                        counterStorage.updateRawLeaf(
-                            {
-                                level1Index:
-                                    counterStorage.calculateLevel1Index(
-                                        Field(
-                                            notActiveAction.actionData
-                                                .zkAppIndex,
-                                        ),
-                                    ),
-                            },
-                            Field(actionCounter[ZkAppIndex.ROUND2]),
-                        );
-                        break;
-                    case ZkAppIndex.RESPONSE:
-                        actionCounter[ZkAppIndex.RESPONSE] += 1;
-                        counterStorage.updateRawLeaf(
-                            {
-                                level1Index:
-                                    counterStorage.calculateLevel1Index(
-                                        Field(
-                                            notActiveAction.actionData
-                                                .zkAppIndex,
-                                        ),
-                                    ),
-                            },
-                            Field(actionCounter[ZkAppIndex.RESPONSE]),
-                        );
-                        break;
-                }
+                actionCounter[notActiveAction.actionData.zkAppIndex] += 1;
+                counterStorage.updateRawLeaf(
+                    {
+                        level1Index: counterStorage.calculateLevel1Index(
+                            Field(notActiveAction.actionData.zkAppIndex),
+                        ),
+                    },
+                    Field(actionCounter[notActiveAction.actionData.zkAppIndex]),
+                );
             }
             const rollupContract = new RollupContract(
                 PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
@@ -284,7 +255,6 @@ export class RollupContractService implements ContractServiceInterface {
                         publicKey: feePayerPrivateKey.toPublicKey(),
                     },
                     fee: process.env.FEE,
-                    memo: '',
                     nonce: await this.queryService.fetchAccountNonce(
                         feePayerPrivateKey.toPublicKey().toBase58(),
                     ),
@@ -294,190 +264,6 @@ export class RollupContractService implements ContractServiceInterface {
                 { info: true, error: true, memoryUsage: false },
             );
             return true;
-        } catch (err) {
-            console.log(err);
-            return false;
-        }
-    }
-
-    async rollup() {
-        try {
-            const notActiveActions = await this.rollupActionModel.find(
-                {
-                    active: false,
-                },
-                {},
-                { sort: { actionId: 1 } },
-            );
-            if (notActiveActions.length > 0) {
-                const state = await this.fetchRollupState();
-                let proof = await Rollup.init(
-                    ZkApp.Rollup.RollupAction.empty(),
-                    state.counterRoot,
-                    state.rollupRoot,
-                    state.actionState,
-                );
-                const counterStorage = _.cloneDeep(this._counterStorage);
-                const rollupStorage = _.cloneDeep(this._rollupStorage);
-                const actionCounter = {};
-                const dkgActionCounter = await this.rollupActionModel.count({
-                    active: true,
-                    'actionData.zkAppIndex': ZkAppIndex.DKG,
-                });
-                actionCounter[ZkAppIndex.DKG] = dkgActionCounter;
-                const round1ActionCounter = await this.rollupActionModel.count({
-                    active: true,
-                    'actionData.zkAppIndex': ZkAppIndex.ROUND1,
-                });
-                actionCounter[ZkAppIndex.ROUND1] = round1ActionCounter;
-                const round2ActionCounter = await this.rollupActionModel.count({
-                    active: true,
-                    'actionData.zkAppIndex': ZkAppIndex.ROUND2,
-                });
-                actionCounter[ZkAppIndex.ROUND2] = round2ActionCounter;
-                const responseActionCounter =
-                    await this.rollupActionModel.count({
-                        active: true,
-                        'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
-                    });
-                actionCounter[ZkAppIndex.RESPONSE] = responseActionCounter;
-
-                for (let i = 0; i < notActiveActions.length; i++) {
-                    const notActiveAction = notActiveActions[i];
-                    proof = await Rollup.rollup(
-                        ZkApp.Rollup.RollupAction.fromFields(
-                            Utilities.stringArrayToFields(
-                                notActiveAction.actions,
-                            ),
-                        ),
-                        proof,
-                        Field(
-                            actionCounter[
-                                notActiveAction.actionData.zkAppIndex
-                            ],
-                        ),
-                        counterStorage.getWitness(
-                            Field(notActiveAction.actionData.zkAppIndex),
-                        ),
-                        rollupStorage.getWitness(
-                            rollupStorage.calculateLevel1Index({
-                                zkAppIndex: Field(
-                                    notActiveAction.actionData.zkAppIndex,
-                                ),
-                                actionId: Field(
-                                    actionCounter[
-                                        notActiveAction.actionData.zkAppIndex
-                                    ],
-                                ),
-                            }),
-                        ),
-                    );
-                    rollupStorage.updateRawLeaf(
-                        {
-                            level1Index: rollupStorage.calculateLevel1Index({
-                                zkAppIndex: Field(
-                                    notActiveAction.actionData.zkAppIndex,
-                                ),
-                                actionId: Field(
-                                    actionCounter[
-                                        notActiveAction.actionData.zkAppIndex
-                                    ],
-                                ),
-                            }),
-                        },
-                        Field(notActiveAction.actionData.actionHash),
-                    );
-                    switch (notActiveAction.actionData.zkAppIndex) {
-                        case ZkAppIndex.DKG:
-                            actionCounter[ZkAppIndex.DKG] += 1;
-                            counterStorage.updateRawLeaf(
-                                {
-                                    level1Index:
-                                        counterStorage.calculateLevel1Index(
-                                            Field(
-                                                notActiveAction.actionData
-                                                    .zkAppIndex,
-                                            ),
-                                        ),
-                                },
-                                Field(actionCounter[ZkAppIndex.DKG]),
-                            );
-                            break;
-                        case ZkAppIndex.ROUND1:
-                            actionCounter[ZkAppIndex.ROUND1] += 1;
-                            counterStorage.updateRawLeaf(
-                                {
-                                    level1Index:
-                                        counterStorage.calculateLevel1Index(
-                                            Field(
-                                                notActiveAction.actionData
-                                                    .zkAppIndex,
-                                            ),
-                                        ),
-                                },
-                                Field(actionCounter[ZkAppIndex.ROUND1]),
-                            );
-                            break;
-                        case ZkAppIndex.ROUND2:
-                            actionCounter[ZkAppIndex.ROUND2] += 1;
-                            counterStorage.updateRawLeaf(
-                                {
-                                    level1Index:
-                                        counterStorage.calculateLevel1Index(
-                                            Field(
-                                                notActiveAction.actionData
-                                                    .zkAppIndex,
-                                            ),
-                                        ),
-                                },
-                                Field(actionCounter[ZkAppIndex.ROUND2]),
-                            );
-                            break;
-                        case ZkAppIndex.RESPONSE:
-                            actionCounter[ZkAppIndex.RESPONSE] += 1;
-                            counterStorage.updateRawLeaf(
-                                {
-                                    level1Index:
-                                        counterStorage.calculateLevel1Index(
-                                            Field(
-                                                notActiveAction.actionData
-                                                    .zkAppIndex,
-                                            ),
-                                        ),
-                                },
-                                Field(actionCounter[ZkAppIndex.RESPONSE]),
-                            );
-                            break;
-                    }
-                }
-                const rollupContract = new RollupContract(
-                    PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                await Utils.proveAndSendTx(
-                    RollupContract.name,
-                    'rollup',
-                    async () => rollupContract.rollup(proof),
-                    {
-                        sender: {
-                            privateKey: feePayerPrivateKey,
-                            publicKey: feePayerPrivateKey.toPublicKey(),
-                        },
-                        fee: process.env.FEE,
-                        memo: '',
-                        nonce: await this.queryService.fetchAccountNonce(
-                            feePayerPrivateKey.toPublicKey().toBase58(),
-                        ),
-                    },
-                    undefined,
-                    undefined,
-                    { info: true, error: true, memoryUsage: false },
-                );
-                return true;
-            }
-            return false;
         } catch (err) {
             console.log(err);
             return false;

@@ -29,190 +29,80 @@ export class DkgContractServicesConsumer {
         // private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
-    // @Process({ name: 'handleContractServices', concurrency: 1 })
-    // async handleContractServices(job: Job<{ type: number; date: Date }>) {
-    //     try {
-    //         switch (job.data.type) {
-    //             case 0:
-    //                 try {
-    //                     this.logger.log('Start compiling contract...');
-    //                     await this.rollupContractService.compile();
-    //                     await this.committeeContractService.compile();
-    //                     await this.dkgContractsService.compile();
-    //                     await this.dkgUsageContractsService.compile();
-    //                     await this.requesterContractsService.compile();
-    //                     this.logger.log('All contracts compiled successfully');
-    //                     await job.progress();
-    //                 } catch (err) {
-    //                     this.logger.error(
-    //                         'Error during compiling contracts: ',
-    //                         err,
-    //                     );
-    //                 }
-    //                 break;
-    //             case 1:
-    //                 try {
-    //                     this.logger.log('Start rolluping 1st...');
-    //                     await this.rollupContractService.update();
-    //                     await this.committeeContractService.update();
-    //                     await this.dkgContractsService.update();
-    //                     await this.dkgUsageContractsService.update();
-    //                     await this.requesterContractsService.update();
-
-    //                     await this.requesterContractsService.rollup();
-    //                     const result = [];
-    //                     let tmp: boolean;
-    //                     tmp = await this.committeeContractService.rollup();
-    //                     result.push(tmp);
-    //                     tmp = await this.rollupContractService.rollup();
-    //                     result.push(tmp);
-    //                     if (!result.includes(true)) {
-    //                         await this.dkgUsageContractsService.rollupResponse();
-    //                         await this.dkgContractsService.rollupRound2();
-    //                         await this.dkgContractsService.rollupRound1();
-    //                         await this.dkgContractsService.rollupDkg();
-    //                     }
-    //                     tmp =
-    //                         await this.dkgUsageContractsService.rollupRequest();
-    //                     if (tmp == false) {
-    //                         await this.dkgUsageContractsService.computeResult();
-    //                     }
-    //                     await job.progress();
-    //                     this.logger.log('All contract rolluped successfully');
-    //                 } catch (err) {
-    //                     this.logger.error(
-    //                         'Error during rolluping contracts: ',
-    //                         err,
-    //                     );
-    //                 }
-    //                 break;
-    //             case 2:
-    //                 try {
-    //                     this.logger.log('Start rolluping 2nd...');
-    //                     await this.rollupContractService.update();
-    //                     await this.committeeContractService.update();
-    //                     await this.dkgContractsService.update();
-    //                     await this.dkgUsageContractsService.update();
-    //                     await this.requesterContractsService.update();
-    //                     await this.requesterContractsService.rollup();
-    //                     const result = [];
-    //                     let tmp: boolean;
-    //                     tmp =
-    //                         await this.dkgUsageContractsService.rollupResponse();
-    //                     result.push(tmp);
-    //                     tmp = await this.dkgContractsService.rollupRound2();
-    //                     result.push(tmp);
-    //                     tmp = await this.dkgContractsService.rollupRound1();
-    //                     result.push(tmp);
-    //                     tmp = await this.dkgContractsService.rollupDkg();
-    //                     result.push(tmp);
-
-    //                     if (!result.includes(true)) {
-    //                         await this.committeeContractService.rollup();
-    //                         await this.rollupContractService.rollup();
-    //                     }
-    //                     tmp =
-    //                         await this.dkgUsageContractsService.computeResult();
-    //                     if (tmp == false) {
-    //                         await this.dkgUsageContractsService.rollupRequest();
-    //                     }
-    //                     await job.progress();
-    //                     this.logger.log('All contract rolluped successfully');
-    //                 } catch (err) {
-    //                     this.logger.error(
-    //                         'Error during rolluping contracts: ',
-    //                         err,
-    //                     );
-    //                 }
-    //                 break;
-    //         }
-    //     } catch (err) {
-    //         console.log(err);
-    //     }
-    // }
-
     @Process({ name: 'handleContractServices', concurrency: 1 })
     async handleContractServices(job: Job<ReducerJobData>) {
         try {
             const jobId = job.id as string;
+            console.log('Job ID:', jobId);
             switch (job.data.type) {
                 case ReducerJobEnum.COMPILE:
-                    try {
-                        this.logger.log('Start compile job...');
-                        await this.rollupContractService.compile();
-                        await this.committeeContractService.compile();
-                        await this.dkgContractsService.compile();
-                        await this.dkgUsageContractsService.compile();
-                        await this.requesterContractsService.compile();
-                        this.logger.log('Compile job succeeded');
-                        await job.progress();
-                    } catch (err) {
-                        this.logger.error('Failed to compile:', err);
-                    }
+                    this.logger.log('Start compile job...');
+                    await this.rollupContractService.compile();
+                    await this.committeeContractService.compile();
+                    await this.dkgContractsService.compile();
+                    await this.dkgUsageContractsService.compile();
+                    await this.requesterContractsService.compile();
                     break;
                 case ReducerJobEnum.ROLLUP:
-                    try {
-                        this.logger.log('Start rollup job...');
-                        await this.rollupContractService.processRollupJob(
-                            jobId,
-                        );
-                        await job.progress();
-                        this.logger.log('Rollup job succeeded');
-                    } catch (err) {
-                        this.logger.error('Failed to rollup:', err);
-                    }
+                    this.logger.log('Start rollup job...');
+                    await this.rollupContractService.processRollupJob(
+                        jobId.slice(2),
+                    );
                     break;
                 case ReducerJobEnum.UPDATE_COMMITTEE:
-                    try {
-                        this.logger.log('Start update committee job...');
-                        await this.committeeContractService.processUpdateCommitteeJob(
-                            jobId,
-                        );
-                        await job.progress();
-                        this.logger.log('Update committee succeeded');
-                    } catch (err) {
-                        this.logger.error('Failed to update committee:', err);
-                    }
+                    this.logger.log('Start update committee job...');
+                    await this.committeeContractService.processUpdateCommitteeJob(
+                        jobId.slice(2),
+                    );
                     break;
                 case ReducerJobEnum.UPDATE_KEY:
-                    try {
-                        this.logger.log('Start update key job...');
-                        await this.dkgContractsService.processUpdateKeyJob(
-                            jobId,
-                        );
-                        await job.progress();
-                        this.logger.log('Update key succeeded');
-                    } catch (err) {
-                        this.logger.error('Failed to update key:', err);
-                    }
+                    this.logger.log('Start update key job...');
+                    await this.dkgContractsService.processUpdateKeyJob(
+                        jobId.slice(2),
+                    );
                     break;
                 case ReducerJobEnum.FINALIZE_ROUND_1:
-                    try {
-                        this.logger.log('Start finalize round 1 job...');
-                        await this.dkgContractsService.processFinalizeRound1Job(
-                            jobId,
-                        );
-                        await job.progress();
-                        this.logger.log('Finalize round 1 succeeded');
-                    } catch (err) {
-                        this.logger.error('Failed to finalize round 1:', err);
-                    }
+                    this.logger.log('Start finalize round 1 job...');
+                    await this.dkgContractsService.processFinalizeRound1Job(
+                        jobId.slice(2),
+                    );
                     break;
                 case ReducerJobEnum.FINALIZE_ROUND_2:
-                    try {
-                        this.logger.log('Start finalize round 2 job...');
-                        await this.dkgContractsService.processFinalizeRound2Job(
-                            jobId,
-                        );
-                        await job.progress();
-                        this.logger.log('Finalize round 2 succeeded');
-                    } catch (err) {
-                        this.logger.error('Failed to finalize round 2:', err);
-                    }
+                    this.logger.log('Start finalize round 2 job...');
+                    await this.dkgContractsService.processFinalizeRound2Job(
+                        jobId.slice(2),
+                    );
+                    break;
+                case ReducerJobEnum.UPDATE_TASK:
+                    this.logger.log('Start update task job...');
+                    await this.requesterContractsService.processUpdateTaskJob(
+                        jobId.slice(2),
+                    );
+                    break;
+                case ReducerJobEnum.UPDATE_REQUEST:
+                    this.logger.log('Start update request job...');
+                    await this.dkgUsageContractsService.processUpdateRequestJob(
+                        jobId.slice(2),
+                    );
+                    break;
+                case ReducerJobEnum.FINALIZE_RESPONSE:
+                    this.logger.log('Start finalize response job...');
+                    await this.dkgUsageContractsService.processFinalizeResponseJob(
+                        jobId.slice(2),
+                    );
+                    break;
+                case ReducerJobEnum.RESOLVE:
+                    this.logger.log('Start resolve job...');
+                    await this.dkgUsageContractsService.processResolveJob(
+                        jobId.slice(2),
+                    );
                     break;
             }
-        } catch (err) {
-            console.log(err);
+            await job.progress();
+            this.logger.log(`Job ${jobId} processed!`);
+        } catch (error) {
+            this.logger.error(`Failed to process job ${job.id}`, error);
+            throw error;
         }
     }
 }
