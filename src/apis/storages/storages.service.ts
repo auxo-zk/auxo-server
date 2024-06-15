@@ -11,6 +11,7 @@ import { CommitteeContractService } from 'src/mina-contracts/committee-contract/
 import { DkgContractsService } from 'src/mina-contracts/dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from 'src/mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
 import { FundingContractService } from 'src/mina-contracts/funding-contract/funding-contract.service';
+import { NullifierContractService } from 'src/mina-contracts/nullifier-contract/nullifier-contract.service';
 import { ParticipationContractService } from 'src/mina-contracts/participation-contract/participation-contract.service';
 import { ProjectContractService } from 'src/mina-contracts/project-contract/project-contract.service';
 import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
@@ -32,6 +33,7 @@ export class StoragesService {
         private readonly participationContractService: ParticipationContractService,
         private readonly fundingContractService: FundingContractService,
         private readonly treasuryManagerContractService: TreasuryManagerContractService,
+        private readonly nullifierContractService: NullifierContractService,
     ) {}
 
     getRollupZkAppStorage(): MerkleLeaf[] {
@@ -1210,5 +1212,27 @@ export class StoragesService {
         [key: string]: any;
     } {
         return this.treasuryManagerContractService.zkAppStorage.addresses;
+    }
+
+    getNullifierStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.nullifierContractService.nullifierStorage.leafs;
+    }
+
+    getNullifierIndexes(): string[] {
+        return this.nullifierContractService.nullifierIndexes;
+    }
+
+    getNullifierWitness(nullifierIndex: string) {
+        try {
+            const witness =
+                this.nullifierContractService.nullifierStorage.getLevel1Witness(
+                    Field(nullifierIndex),
+                );
+            return witness;
+        } catch (err) {
+            throw new BadRequestException(err);
+        }
     }
 }

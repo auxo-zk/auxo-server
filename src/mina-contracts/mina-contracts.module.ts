@@ -195,6 +195,7 @@ import {
         FundingContractService,
         TreasuryManagerContractService,
         RequesterContractsService,
+        NullifierContractService,
     ],
     controllers: [],
 })

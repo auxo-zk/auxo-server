@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { StoragesService } from './storages.service';
 import { ApiTags } from '@nestjs/swagger';
 import { MerkleLeaf } from 'src/entities/merkle-leaf.entity';
@@ -754,5 +754,25 @@ export class StoragesController {
         [key: string]: any;
     } {
         return this.storagesService.getTreasuryManagerZkAppStorageLeafs();
+    }
+
+    @Get('nullifier/leafs')
+    @ApiTags('Storage Nullifier')
+    getNullifierStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getNullifierStorageLeafs();
+    }
+
+    @Get('nullifier/indexes')
+    @ApiTags('Storage Nullifier')
+    getNullifierIndexes(): string[] {
+        return this.storagesService.getNullifierIndexes();
+    }
+
+    @Get('nullifier/witness/:level1Index')
+    @ApiTags('Storage Nullifier')
+    getNullifierWitness(@Param('nullifierIndex') nullifierIndex: string) {
+        return this.storagesService.getNullifierWitness(nullifierIndex);
     }
 }

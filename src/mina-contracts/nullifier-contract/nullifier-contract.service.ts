@@ -20,7 +20,17 @@ import { Utilities } from '../utilities';
 export class NullifierContractService implements ContractServiceInterface {
     private readonly logger = new Logger(NullifierContractService.name);
     private readonly _nullifierStorage: Storage.NullifierStorage.NullifierStorage;
+    private _nullifierIndexes: string[];
     private _actionState: string;
+
+    public get nullifierStorage(): Storage.NullifierStorage.NullifierStorage {
+        return this._nullifierStorage;
+    }
+
+    public get nullifierIndexes(): string[] {
+        return this._nullifierIndexes;
+    }
+
     constructor(
         private readonly queryService: QueryService,
         @InjectModel(NullifierAction.name)
@@ -28,6 +38,7 @@ export class NullifierContractService implements ContractServiceInterface {
     ) {
         this._nullifierStorage =
             new Storage.NullifierStorage.NullifierStorage();
+        this._nullifierIndexes = [];
         this._actionState = '';
     }
 
@@ -50,12 +61,14 @@ export class NullifierContractService implements ContractServiceInterface {
                 {},
                 { sort: { actionId: 1 } },
             );
+            this._nullifierIndexes = [];
             for (let i = 0; i < activeActions.length; i++) {
                 const activeAction = activeActions[i];
                 this._nullifierStorage.updateRawLeaf(
                     Field(activeAction.actionData.nullifier),
                     Bool(true),
                 );
+                this._nullifierIndexes.push(activeAction.actionData.nullifier);
             }
         } catch (err) {
             console.log(err);
