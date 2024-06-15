@@ -77,6 +77,7 @@ export class ParticipationContractService implements ContractServiceInterface {
             // await this.projectContractService.compile();
             // await this.campaignContractService.compile();
             // await this.compile();
+            // await this.rollup();
         } catch (err) {}
     }
 

@@ -105,3 +105,8 @@ export interface TreasuryManagerState {
     zkApp: Field;
     actionState: Field;
 }
+
+export interface NullifierState {
+    nullifierRoot: Field;
+    actionState: Field;
+}

@@ -372,10 +372,8 @@ export class ProjectContractService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             for (let i = 0; i < notActiveActions.length; i++) {
-                const promises = [];
                 const notActiveAction = notActiveActions[i];
                 notActiveAction.set('active', true);
-                promises.push(notActiveAction.save());
                 if (
                     notActiveAction.actionData.actionType ==
                     Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT
@@ -383,42 +381,38 @@ export class ProjectContractService implements ContractServiceInterface {
                     const ipfsData = await this.ipfs.getData(
                         notActiveAction.actionData.ipfsHash,
                     );
-                    promises.push(
-                        this.projectModel.findOneAndUpdate(
-                            {
-                                projectId: nextProjectId,
-                            },
-                            {
-                                projectId: nextProjectId,
-                                members: notActiveAction.actionData.members,
-                                ipfsHash: notActiveAction.actionData.ipfsHash,
-                                ipfsData: ipfsData,
-                                treasuryAddress:
-                                    notActiveAction.actionData.treasuryAddress,
-                            },
-                            { new: true, upsert: true },
-                        ),
+                    await this.projectModel.findOneAndUpdate(
+                        {
+                            projectId: nextProjectId,
+                        },
+                        {
+                            projectId: nextProjectId,
+                            members: notActiveAction.actionData.members,
+                            ipfsHash: notActiveAction.actionData.ipfsHash,
+                            ipfsData: ipfsData,
+                            treasuryAddress:
+                                notActiveAction.actionData.treasuryAddress,
+                        },
+                        { new: true, upsert: true },
                     );
                     nextProjectId += 1;
                 } else {
                     const ipfsData = await this.ipfs.getData(
                         notActiveAction.actionData.ipfsHash,
                     );
-                    promises.push(
-                        this.projectModel.findOneAndUpdate(
-                            {
-                                projectId: notActiveAction.actionData.projectId,
-                            },
-                            {
-                                ipfsHash: notActiveAction.actionData.ipfsHash,
-                                ipfsData: ipfsData,
-                            },
-                            { new: true, upsert: true },
-                        ),
+
+                    await this.projectModel.findOneAndUpdate(
+                        {
+                            projectId: notActiveAction.actionData.projectId,
+                        },
+                        {
+                            ipfsHash: notActiveAction.actionData.ipfsHash,
+                            ipfsData: ipfsData,
+                        },
+                        { new: true, upsert: true },
                     );
                 }
-
-                await Promise.all(promises);
+                await notActiveAction.save();
             }
         }
     }

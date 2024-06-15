@@ -109,27 +109,30 @@ import {
     RequestEvent,
     RequestEventSchema,
 } from 'src/schemas/actions/request-event.schema';
+import { NullifierContractService } from './nullifier-contract/nullifier-contract.service';
+import {
+    NullifierAction,
+    NullifierActionSchema,
+} from 'src/schemas/actions/commitment-action.schema';
 
 @Module({
     imports: [
         ScheduleModule.forRoot(),
         MongooseModule.forFeature([
-            { name: CampaignAction.name, schema: CampaignActionSchema },
+            { name: RollupAction.name, schema: RollupActionSchema },
             { name: CommitteeAction.name, schema: CommitteeActionSchema },
             { name: DkgAction.name, schema: DkgActionSchema },
             { name: DkgEvent.name, schema: DkgEventSchema },
-            { name: FundingAction.name, schema: FundingActionSchema },
+            { name: Round1Action.name, schema: Round1ActionSchema },
+            { name: Round1Event.name, schema: Round1EventSchema },
+            { name: Round2Action.name, schema: Round2ActionSchema },
+            { name: Round2Event.name, schema: Round2EventSchema },
+            { name: RequestAction.name, schema: RequestActionSchema },
+            { name: RequestEvent.name, schema: RequestEventSchema },
             {
                 name: RequesterAction.name,
                 schema: RequesterActionSchema,
             },
-            {
-                name: ParticipationAction.name,
-                schema: ParticipationActionSchema,
-            },
-            { name: ProjectAction.name, schema: ProjectActionSchema },
-            { name: RequestAction.name, schema: RequestActionSchema },
-            { name: RequestEvent.name, schema: RequestEventSchema },
             { name: ResponseAction.name, schema: ResponseActionSchema },
             {
                 name: ResponseProcessedEvent.name,
@@ -143,28 +146,32 @@ import {
                 name: ResponseRespondedEvent.name,
                 schema: ResponseRespondedEventSchema,
             },
-            { name: RollupAction.name, schema: RollupActionSchema },
-            { name: Round1Action.name, schema: Round1ActionSchema },
-            { name: Round1Event.name, schema: Round1EventSchema },
-            { name: Round2Action.name, schema: Round2ActionSchema },
-            { name: Round2Event.name, schema: Round2EventSchema },
+            { name: Committee.name, schema: CommitteeSchema },
+            { name: Key.name, schema: KeySchema },
+            { name: DkgRequest.name, schema: DkgRequestSchema },
+            { name: Task.name, schema: TaskSchema },
+            { name: ProjectAction.name, schema: ProjectActionSchema },
+            { name: CampaignAction.name, schema: CampaignActionSchema },
+            {
+                name: ParticipationAction.name,
+                schema: ParticipationActionSchema,
+            },
+            { name: FundingAction.name, schema: FundingActionSchema },
             {
                 name: TreasuryManagerAction.name,
                 schema: TreasuryManagerActionSchema,
             },
-            { name: CampaignResult.name, schema: CampaignResultSchema },
+            {
+                name: NullifierAction.name,
+                schema: NullifierActionSchema,
+            },
+            { name: Project.name, schema: ProjectSchema },
             { name: Campaign.name, schema: CampaignSchema },
-            { name: Committee.name, schema: CommitteeSchema },
-            { name: FundingResult.name, schema: FundingResultSchema },
-            { name: Task.name, schema: TaskSchema },
-            { name: Funding.name, schema: FundingSchema },
-            { name: Key.name, schema: KeySchema },
             {
                 name: Participation.name,
                 schema: ParticipationSchema,
             },
-            { name: Project.name, schema: ProjectSchema },
-            { name: DkgRequest.name, schema: DkgRequestSchema },
+            { name: Funding.name, schema: FundingSchema },
         ]),
         HttpModule,
     ],
@@ -183,6 +190,7 @@ import {
         FundingContractService,
         TreasuryManagerContractService,
         RequesterContractsService,
+        NullifierContractService,
     ],
     exports: [
         CommitteeContractService,
