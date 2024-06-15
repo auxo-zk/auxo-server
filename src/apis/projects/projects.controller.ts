@@ -95,10 +95,4 @@ export class ProjectsController {
             campaignId,
         );
     }
-
-    @Get(':projectId/fund-raising')
-    @ApiTags('Project')
-    async getFundRaising(@Param('projectId', ParseIntPipe) projectId: number) {
-        return this.projectsService.getFundRaising(projectId);
-    }
 }

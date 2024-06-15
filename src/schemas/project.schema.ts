@@ -15,6 +15,12 @@ export class Project {
     @Prop({ type: Object })
     ipfsData?: object;
 
+    @Prop({ default: 0, required: true })
+    totalClaimedAmount: number;
+
+    @Prop({ default: 0, required: true })
+    totalFundedAmount: number;
+
     @Prop()
     treasuryAddress: string;
 }

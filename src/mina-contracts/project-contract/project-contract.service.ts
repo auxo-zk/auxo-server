@@ -60,6 +60,8 @@ export class ProjectContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            // Provable.log(await this.fetchProjectState());
+            // Provable.log(this._treasuryAddressStorage.root);
             // await this.compile();
             // await this.rollup();
         } catch (err) {

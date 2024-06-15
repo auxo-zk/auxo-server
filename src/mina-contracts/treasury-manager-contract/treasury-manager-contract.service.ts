@@ -30,6 +30,9 @@ import { CampaignContractService } from '../campaign-contract/campaign-contract.
 import { ParticipationContractService } from '../participation-contract/participation-contract.service';
 import { FundingContractService } from '../funding-contract/funding-contract.service';
 import { Utils } from '@auxo-dev/auxo-libs';
+import { Project } from 'src/schemas/project.schema';
+import { Task } from 'src/schemas/task.schema';
+import { DkgRequest } from 'src/schemas/request.schema';
 
 @Injectable()
 export class TreasuryManagerContractService
@@ -62,8 +65,14 @@ export class TreasuryManagerContractService
         private readonly treasuryManagerActionModel: Model<TreasuryManagerAction>,
         @InjectModel(Campaign.name)
         private readonly campaignModel: Model<Campaign>,
+        @InjectModel(Project.name)
+        private readonly projectModel: Model<Project>,
         @InjectModel(Participation.name)
         private readonly participationModel: Model<Participation>,
+        @InjectModel(Task.name)
+        private readonly taskModel: Model<Task>,
+        @InjectModel(DkgRequest.name)
+        private readonly dkgRequestModel: Model<DkgRequest>,
     ) {
         this._actionState = '';
         this._campaignStateStorage =
@@ -376,6 +385,28 @@ export class TreasuryManagerContractService
                     Storage.TreasuryManagerStorage.TreasuryManagerActionEnum
                         .COMPLETE_CAMPAIGN
                 ) {
+                    const task = await this.taskModel.findOne({
+                        taskId: notActiveAction.actionData.campaignId,
+                        requester: process.env
+                            .FUNDING_REQUESTER_ADDRESS as string,
+                    });
+                    const request = await this.dkgRequestModel.findOne({
+                        task: task.task,
+                    });
+                    const participations = await this.participationModel.find({
+                        campaignId: notActiveAction.actionData.campaignId,
+                    });
+                    for (let j = 0; j < participations.length; j++) {
+                        const participation = participations[j];
+                        const project = await this.projectModel.findOne({
+                            projectId: participation.projectId,
+                        });
+                        const totalFundedAmount =
+                            project.totalFundedAmount +
+                            request.result[participation.projectIndex - 1];
+                        project.set('totalFundedAmount', totalFundedAmount);
+                        promises.push(project.save());
+                    }
                     promises.push(
                         this.campaignModel.findOneAndUpdate(
                             {
@@ -415,11 +446,19 @@ export class TreasuryManagerContractService
                                 notActiveAction.actionData.projectIndex,
                         },
                     );
+                    const project = await this.projectModel.findOne({
+                        projectId: participation.projectId,
+                    });
                     participation.set(
                         'claimedAmount',
                         notActiveAction.actionData.amount,
                     );
+                    const totalClaimedAmount =
+                        project.totalClaimedAmount +
+                        notActiveAction.actionData.amount;
+                    project.set('totalClaimedAmount', totalClaimedAmount);
                     promises.push(participation.save());
+                    promises.push(project.save());
                 }
                 await Promise.all(promises);
             }

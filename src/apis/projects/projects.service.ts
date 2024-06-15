@@ -69,9 +69,11 @@ export class ProjectsService {
             {
                 projectId: projectId,
             },
+            {},
             {
-                projectId: 0,
-                _id: 0,
+                sort: {
+                    campaignId: 1,
+                },
             },
         );
     }
@@ -89,29 +91,6 @@ export class ProjectsService {
         } else {
             throw new NotFoundException();
         }
-    }
-
-    async getFundRaising(projectId: number): Promise<Participation[]> {
-        return await this.participationModel.aggregate([
-            { $match: { projectId: projectId, active: true } },
-            {
-                $lookup: {
-                    from: 'campaigns',
-                    as: 'campaign',
-                    foreignField: 'campaignId',
-                    localField: 'campaignId',
-                    pipeline: [
-                        {
-                            $match: {
-                                active: true,
-                            },
-                        },
-                    ],
-                },
-            },
-            { $unwind: '$campaign' },
-            { $project: { campaignId: 0 } },
-        ]);
     }
 
     async createParticipation(
