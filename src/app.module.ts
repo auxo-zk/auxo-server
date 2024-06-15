@@ -65,10 +65,6 @@ import {
 } from 'src/schemas/actions/funding-action.schema';
 import { Funding, FundingSchema } from 'src/schemas/funding.schema';
 import {
-    FundingResult,
-    FundingResultSchema,
-} from 'src/schemas/funding-result.schema';
-import {
     TreasuryManagerAction,
     TreasuryManagerActionSchema,
 } from 'src/schemas/actions/treasury-manager-action.schema';
@@ -90,10 +86,6 @@ import {
     RollupAction,
     RollupActionSchema,
 } from './schemas/actions/rollup-action.schema';
-import {
-    CampaignResult,
-    CampaignResultSchema,
-} from './schemas/campaign-result.schema';
 import { Task, TaskSchema } from './schemas/task.schema';
 import {
     ResponseFinalizedEvent,
@@ -151,9 +143,7 @@ import {
             { name: Project.name, schema: ProjectSchema },
             { name: CampaignAction.name, schema: CampaignActionSchema },
             { name: Campaign.name, schema: CampaignSchema },
-            { name: CampaignResult.name, schema: CampaignResultSchema },
             { name: Committee.name, schema: CommitteeSchema },
-            { name: FundingResult.name, schema: FundingResultSchema },
             { name: Task.name, schema: TaskSchema },
             { name: Funding.name, schema: FundingSchema },
             { name: Key.name, schema: KeySchema },

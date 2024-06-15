@@ -27,7 +27,6 @@ import {
 import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
 import { ZkApp as DkgZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-import { FundingResult } from 'src/schemas/funding-result.schema';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { FundingState } from 'src/interfaces/zkapp-state.interface';
 import _ from 'lodash';
@@ -60,8 +59,6 @@ export class FundingContractService implements ContractServiceInterface {
         private readonly fundingActionModel: Model<FundingAction>,
         @InjectModel(Funding.name)
         private readonly fundingModel: Model<Funding>,
-        @InjectModel(FundingResult.name)
-        private readonly fundingResultModel: Model<FundingResult>,
     ) {
         this._nextFundingId = 0;
         this._actionState = '';

@@ -12,7 +12,6 @@ import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Campaign } from 'src/schemas/campaign.schema';
-import { FundingResult } from 'src/schemas/funding-result.schema';
 import { Participation } from 'src/schemas/participation.schema';
 import { Project } from 'src/schemas/project.schema';
 
@@ -24,8 +23,6 @@ export class CampaignsService {
         private readonly campaignModel: Model<Campaign>,
         @InjectModel(Participation.name)
         private readonly participationModel: Model<Participation>,
-        @InjectModel(FundingResult.name)
-        private readonly fundingResultModel: Model<FundingResult>,
     ) {}
 
     async createCampaign(

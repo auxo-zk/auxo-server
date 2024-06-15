@@ -32,10 +32,6 @@ import {
     Participation,
     ParticipationSchema,
 } from 'src/schemas/participation.schema';
-import {
-    FundingResult,
-    FundingResultSchema,
-} from 'src/schemas/funding-result.schema';
 import { MethodInputsService } from './method-inputs/method-inputs.service';
 import { MethodInputsController } from './method-inputs/method-inputs.controller';
 import { Task, TaskSchema } from 'src/schemas/task.schema';
@@ -58,7 +54,6 @@ import { Funding, FundingSchema } from 'src/schemas/funding.schema';
             { name: Organizer.name, schema: OrganizerSchema },
             { name: Campaign.name, schema: CampaignSchema },
             { name: Participation.name, schema: ParticipationSchema },
-            { name: FundingResult.name, schema: FundingResultSchema },
             { name: Funding.name, schema: FundingSchema },
             { name: Task.name, schema: TaskSchema },
         ]),
