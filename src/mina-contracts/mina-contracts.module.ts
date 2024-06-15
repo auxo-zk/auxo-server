@@ -66,10 +66,6 @@ import {
 } from 'src/schemas/actions/funding-action.schema';
 import { Funding, FundingSchema } from 'src/schemas/funding.schema';
 import {
-    FundingResult,
-    FundingResultSchema,
-} from 'src/schemas/funding-result.schema';
-import {
     TreasuryManagerAction,
     TreasuryManagerActionSchema,
 } from 'src/schemas/actions/treasury-manager-action.schema';
@@ -101,10 +97,6 @@ import {
     ResponseRespondedEvent,
     ResponseRespondedEventSchema,
 } from 'src/schemas/actions/response-event.schema';
-import {
-    CampaignResult,
-    CampaignResultSchema,
-} from 'src/schemas/campaign-result.schema';
 import {
     RequestEvent,
     RequestEventSchema,
