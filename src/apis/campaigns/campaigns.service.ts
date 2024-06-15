@@ -146,30 +146,4 @@ export class CampaignsService {
         ]);
         return result;
     }
-
-    async getCampaignResult(campaignId: number): Promise<{ projects: any }> {
-        const exist = await this.campaignModel.exists({
-            campaignId: campaignId,
-        });
-        if (exist) {
-            const projects = await this.participationModel.aggregate([
-                { $match: { campaignId: campaignId } },
-                { $sort: { projectIndex: 1 } },
-                { $project: { campaignId: 0, active: 0, _id: 0 } },
-                {
-                    $addFields: {
-                        totalRaising: {
-                            $sum: '$ipfsData.scopeOfWorks.raisingAmount',
-                        },
-                        totalFunded: '0',
-                    },
-                },
-            ]);
-            return {
-                projects: projects,
-            };
-        } else {
-            throw new NotFoundException();
-        }
-    }
 }

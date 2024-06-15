@@ -416,6 +416,7 @@ export class TreasuryManagerContractService
                             {
                                 state: Storage.TreasuryManagerStorage
                                     .CampaignStateEnum.COMPLETED,
+                                result: request.result,
                             },
                             { new: true, upsert: true },
                         ),
