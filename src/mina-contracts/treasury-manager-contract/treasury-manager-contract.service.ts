@@ -25,6 +25,11 @@ import { TreasuryManagerState } from 'src/interfaces/zkapp-state.interface';
 import * as _ from 'lodash';
 import { Campaign } from 'src/schemas/campaign.schema';
 import { Participation } from 'src/schemas/participation.schema';
+import { ProjectContractService } from '../project-contract/project-contract.service';
+import { CampaignContractService } from '../campaign-contract/campaign-contract.service';
+import { ParticipationContractService } from '../participation-contract/participation-contract.service';
+import { FundingContractService } from '../funding-contract/funding-contract.service';
+import { Utils } from '@auxo-dev/auxo-libs';
 
 @Injectable()
 export class TreasuryManagerContractService
@@ -49,6 +54,10 @@ export class TreasuryManagerContractService
 
     constructor(
         private readonly queryService: QueryService,
+        private readonly projectContractService: ProjectContractService,
+        private readonly campaignContractService: CampaignContractService,
+        private readonly participationContractService: ParticipationContractService,
+        private readonly fundingContractService: FundingContractService,
         @InjectModel(TreasuryManagerAction.name)
         private readonly treasuryManagerActionModel: Model<TreasuryManagerAction>,
         @InjectModel(Campaign.name)
@@ -68,6 +77,12 @@ export class TreasuryManagerContractService
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            // await this.projectContractService.compile();
+            // await this.campaignContractService.compile();
+            // await this.participationContractService.compile();
+            // await this.fundingContractService.compile();
+            // await this.compile();
+            // await this.rollup();
         } catch (err) {}
     }
 
@@ -92,6 +107,8 @@ export class TreasuryManagerContractService
 
     async compile() {
         const cache = ZkAppCache;
+        await ZkApp.TreasuryManager.RollupTreasuryManager.compile({ cache });
+        await ZkApp.TreasuryManager.TreasuryManagerContract.compile({ cache });
     }
 
     async fetchTreasuryManagerState(): Promise<TreasuryManagerState> {
@@ -135,12 +152,18 @@ export class TreasuryManagerContractService
             if (notReducedActions.length > 0) {
                 const state = await this.fetchTreasuryManagerState();
 
-                let proof =
-                    await ZkApp.TreasuryManager.RollupTreasuryManager.firstStep(
-                        state.campaignStateRoot,
-                        state.claimedIndexRoot,
-                        state.actionState,
-                    );
+                let proof = await Utils.prove(
+                    ZkApp.TreasuryManager.RollupTreasuryManager.name,
+                    'firstStep',
+                    async () =>
+                        ZkApp.TreasuryManager.RollupTreasuryManager.firstStep(
+                            state.campaignStateRoot,
+                            state.claimedIndexRoot,
+                            state.actionState,
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
                 const campaignStateStorage = _.cloneDeep(
                     this._campaignStateStorage,
                 );
@@ -158,18 +181,24 @@ export class TreasuryManagerContractService
                         Storage.TreasuryManagerStorage.TreasuryManagerActionEnum
                             .COMPLETE_CAMPAIGN
                     ) {
-                        proof =
-                            await ZkApp.TreasuryManager.RollupTreasuryManager.completeCampaignStep(
-                                proof,
-                                ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notReducedAction.actions,
+                        proof = await Utils.prove(
+                            ZkApp.TreasuryManager.RollupTreasuryManager.name,
+                            'completeCampaignStep',
+                            async () =>
+                                ZkApp.TreasuryManager.RollupTreasuryManager.completeCampaignStep(
+                                    proof,
+                                    ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notReducedAction.actions,
+                                        ),
+                                    ),
+                                    campaignStateStorage.getLevel1Witness(
+                                        campaignId,
                                     ),
                                 ),
-                                campaignStateStorage.getLevel1Witness(
-                                    campaignId,
-                                ),
-                            );
+                            undefined,
+                            { info: true, error: true },
+                        );
                         campaignStateStorage.updateLeaf(
                             campaignId,
                             campaignStateStorage.calculateLeaf(
@@ -182,18 +211,24 @@ export class TreasuryManagerContractService
                         Storage.TreasuryManagerStorage.TreasuryManagerActionEnum
                             .ABORT_CAMPAIGN
                     ) {
-                        proof =
-                            await ZkApp.TreasuryManager.RollupTreasuryManager.completeCampaignStep(
-                                proof,
-                                ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notReducedAction.actions,
+                        proof = await Utils.prove(
+                            ZkApp.TreasuryManager.RollupTreasuryManager.name,
+                            'abortCampaignStep',
+                            async () =>
+                                ZkApp.TreasuryManager.RollupTreasuryManager.abortCampaignStep(
+                                    proof,
+                                    ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notReducedAction.actions,
+                                        ),
+                                    ),
+                                    campaignStateStorage.getLevel1Witness(
+                                        campaignId,
                                     ),
                                 ),
-                                campaignStateStorage.getLevel1Witness(
-                                    campaignId,
-                                ),
-                            );
+                            undefined,
+                            { info: true, error: true },
+                        );
                         campaignStateStorage.updateLeaf(
                             campaignId,
                             campaignStateStorage.calculateLeaf(
@@ -210,18 +245,24 @@ export class TreasuryManagerContractService
                                         1,
                                 ),
                             });
-                        proof =
-                            await ZkApp.TreasuryManager.RollupTreasuryManager.claimFundStep(
-                                proof,
-                                ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notReducedAction.actions,
+                        proof = await Utils.prove(
+                            ZkApp.TreasuryManager.RollupTreasuryManager.name,
+                            'claimFundStep',
+                            async () =>
+                                ZkApp.TreasuryManager.RollupTreasuryManager.claimFundStep(
+                                    proof,
+                                    ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notReducedAction.actions,
+                                        ),
+                                    ),
+                                    claimedAmountStorage.getLevel1Witness(
+                                        level1Index,
                                     ),
                                 ),
-                                claimedAmountStorage.getLevel1Witness(
-                                    level1Index,
-                                ),
-                            );
+                            undefined,
+                            { info: true, error: true },
+                        );
                         claimedAmountStorage.updateLeaf(
                             level1Index,
                             Field(notReducedAction.actionData.amount),
@@ -237,23 +278,24 @@ export class TreasuryManagerContractService
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
+                await Utils.proveAndSendTx(
+                    ZkApp.TreasuryManager.TreasuryManagerContract.name,
+                    'rollup',
+                    async () => treasuryContract.rollup(proof),
                     {
-                        sender: feePayerPrivateKey.toPublicKey(),
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
                         fee: process.env.FEE,
+                        memo: '',
                         nonce: await this.queryService.fetchAccountNonce(
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    async () => {
-                        await treasuryContract.rollup(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 return true;
             }
