@@ -77,6 +77,7 @@ export class CampaignContractService implements ContractServiceInterface {
             // Provable.log(this._timelineStorage.root);
             // Provable.log(this._ipfsHashStorage.root);
             // Provable.log(this._keyIndexStorage.root);
+            // Provable.log(this._zkAppStorage.root);
             // await this.compile();
             // await this.rollup();
         } catch (err) {}
@@ -124,7 +125,7 @@ export class CampaignContractService implements ContractServiceInterface {
         return result;
     }
 
-    async rollup() {
+    async rollup(): Promise<boolean> {
         try {
             const lastReducedAction = await this.campaignActionModel.findOne(
                 { active: true },
