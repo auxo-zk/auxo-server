@@ -87,12 +87,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
             const jobId = job.id as string;
             const type = jobId.includes('-') ? Number(jobId.split('-')[0]) : -1;
             if (type == -1) continue;
-
-            if (jobCounters.has(type)) {
-                jobCounters.set(type, jobCounters.get(type) + 1);
-            } else {
-                jobCounters.set(type, 1);
-            }
+            this.updateJobCounters(type, jobCounters);
         }
         this.logger.log('Querying done!');
         const jobCounts = await this.contractServices.getJobCounts();
@@ -121,6 +116,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
                     rollupJob.options,
                 );
                 newJobCounter++;
+                this.updateJobCounters(ReducerJobEnum.ROLLUP, jobCounters);
                 this.logger.log('Queued Rollup job: ' + rollupJobId);
             }
         }
@@ -141,6 +137,10 @@ export class DkgContractCronTasksService implements OnModuleInit {
                     updateCommitteeJob.options,
                 );
                 newJobCounter++;
+                this.updateJobCounters(
+                    ReducerJobEnum.UPDATE_COMMITTEE,
+                    jobCounters,
+                );
                 this.logger.log(
                     'Queued Update Committee job: ' + updateCommitteeJobId,
                 );
@@ -163,6 +163,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
                     updateKeyJob.options,
                 );
                 newJobCounter++;
+                this.updateJobCounters(ReducerJobEnum.UPDATE_KEY, jobCounters);
                 this.logger.log('Queued Update Key job: ' + updateKeyJobId);
             }
         }
@@ -187,6 +188,10 @@ export class DkgContractCronTasksService implements OnModuleInit {
                     finalizeRound1Job.options,
                 );
                 newJobCounter++;
+                this.updateJobCounters(
+                    ReducerJobEnum.FINALIZE_ROUND_1,
+                    jobCounters,
+                );
                 this.logger.log(
                     'Queued Finalize Round 1 job: ' +
                         finalizeRound1Job.options.jobId,
@@ -214,6 +219,10 @@ export class DkgContractCronTasksService implements OnModuleInit {
                     finalizeRound2Job.options,
                 );
                 newJobCounter++;
+                this.updateJobCounters(
+                    ReducerJobEnum.FINALIZE_ROUND_2,
+                    jobCounters,
+                );
                 this.logger.log(
                     'Queued Finalize Round 2 job: ' +
                         finalizeRound2Job.options.jobId,
@@ -238,6 +247,10 @@ export class DkgContractCronTasksService implements OnModuleInit {
                         updateTaskJob.options,
                     );
                     newJobCounter++;
+                    this.updateJobCounters(
+                        ReducerJobEnum.UPDATE_TASK,
+                        jobCounters,
+                    );
                     this.logger.log(
                         'Queued Update Task job: ' +
                             updateTaskJob.options.jobId,
@@ -262,6 +275,10 @@ export class DkgContractCronTasksService implements OnModuleInit {
                     updateRequestJob.options,
                 );
                 newJobCounter++;
+                this.updateJobCounters(
+                    ReducerJobEnum.UPDATE_REQUEST,
+                    jobCounters,
+                );
                 this.logger.log(
                     'Queued Update Request job: ' +
                         updateRequestJob.options.jobId,
@@ -291,6 +308,10 @@ export class DkgContractCronTasksService implements OnModuleInit {
                     finalizeResponseJob.options,
                 );
                 newJobCounter++;
+                this.updateJobCounters(
+                    ReducerJobEnum.FINALIZE_RESPONSE,
+                    jobCounters,
+                );
                 this.logger.log(
                     'Queued Finalize Response job: ' +
                         finalizeResponseJob.options.jobId,
@@ -318,6 +339,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
                     resolveJob.options,
                 );
                 newJobCounter++;
+                this.updateJobCounters(ReducerJobEnum.RESOLVE, jobCounters);
                 this.logger.log(
                     'Queued Resolve job: ' + resolveJob.options.jobId,
                 );
@@ -359,5 +381,16 @@ export class DkgContractCronTasksService implements OnModuleInit {
                 date: Date.now(),
             },
         };
+    }
+
+    updateJobCounters(
+        jobType: ReducerJobEnum,
+        jobCounters: Map<ReducerJobEnum, number>,
+    ) {
+        if (jobCounters.has(jobType)) {
+            jobCounters.set(jobType, jobCounters.get(jobType) + 1);
+        } else {
+            jobCounters.set(jobType, 1);
+        }
     }
 }

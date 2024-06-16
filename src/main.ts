@@ -8,7 +8,6 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
-    app.enableCors();
     const config = new DocumentBuilder()
         .setTitle('Auxo server')
         .setDescription('Server for auxo project')
