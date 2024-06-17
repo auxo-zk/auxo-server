@@ -9,9 +9,8 @@ import {
 import { FileInformation } from 'src/entities/file-information.entity';
 
 class ScopeOfWork {
-    @IsArray()
-    @IsString({ each: true })
-    information: string[];
+    @IsString()
+    information: string;
 
     @IsString()
     milestone: string;
