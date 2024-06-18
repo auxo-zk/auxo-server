@@ -98,22 +98,19 @@ export class ProjectsService {
         createParticipationDto: CreateParticipationDto,
         jwtPayload: JwtPayload,
     ): Promise<IpfsResponse> {
+        console.log(jwtPayload.role == AuthRoleEnum.BUILDER);
         if (jwtPayload.role == AuthRoleEnum.BUILDER) {
             const project = await this.projectModel.findOne({
                 projectId: projectId,
             });
             if (project) {
-                if (project.treasuryAddress == jwtPayload.sub) {
-                    const result = await this.ipfs.uploadJson(
-                        createParticipationDto,
-                    );
-                    if (result == null) {
-                        throw new BadRequestException();
-                    }
-                    return result;
-                } else {
-                    throw new UnauthorizedException();
+                const result = await this.ipfs.uploadJson(
+                    createParticipationDto,
+                );
+                if (result == null) {
+                    throw new BadRequestException();
                 }
+                return result;
             } else {
                 throw new NotFoundException();
             }

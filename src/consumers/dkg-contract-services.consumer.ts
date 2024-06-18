@@ -41,14 +41,14 @@ export class DkgContractServicesConsumer {
                         await this.dkgUsageContractsService.compile();
                         await this.requesterContractsService.compile();
                         this.logger.log('All contracts compiled successfully');
-                        await job.progress();
                     } catch (err) {
                         this.logger.error(
                             'Error during compiling contracts: ',
                             err,
                         );
+                    } finally {
+                        break;
                     }
-                    break;
                 case 1:
                     try {
                         this.logger.log('Start rolluping 1st...');
@@ -76,15 +76,15 @@ export class DkgContractServicesConsumer {
                         if (tmp == false) {
                             await this.dkgUsageContractsService.computeResult();
                         }
-                        await job.progress();
                         this.logger.log('All contract rolluped successfully');
                     } catch (err) {
                         this.logger.error(
                             'Error during rolluping contracts: ',
                             err,
                         );
+                    } finally {
+                        break;
                     }
-                    break;
                 case 2:
                     try {
                         this.logger.log('Start rolluping 2nd...');
@@ -115,15 +115,15 @@ export class DkgContractServicesConsumer {
                         if (tmp == false) {
                             await this.dkgUsageContractsService.computeResult();
                         }
-                        await job.progress();
                         this.logger.log('All contract rolluped successfully');
                     } catch (err) {
                         this.logger.error(
                             'Error during rolluping contracts: ',
                             err,
                         );
+                    } finally {
+                        break;
                     }
-                    break;
             }
         } catch (err) {
             console.log(err);

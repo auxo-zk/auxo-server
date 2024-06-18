@@ -49,8 +49,9 @@ export class BoiContractServicesConsumer {
                             'Error during compiling contracts: ',
                             err,
                         );
+                    } finally {
+                        break;
                     }
-                    break;
                 case 1:
                     try {
                         this.logger.log('Start rolluping 1st...');
@@ -76,8 +77,9 @@ export class BoiContractServicesConsumer {
                             'Error during rolluping contracts: ',
                             err,
                         );
+                    } finally {
+                        break;
                     }
-                    break;
                 case 2:
                     try {
                         this.logger.log('Start rolluping 2nd...');
@@ -103,13 +105,13 @@ export class BoiContractServicesConsumer {
                             'Error during rolluping contracts: ',
                             err,
                         );
+                    } finally {
+                        break;
                     }
-                    break;
             }
         } catch (err) {
             console.log(err);
         } finally {
-            await job.progress();
         }
     }
 }
