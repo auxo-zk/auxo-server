@@ -12,6 +12,7 @@ import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Campaign } from 'src/schemas/campaign.schema';
+import { Funding } from 'src/schemas/funding.schema';
 import { Participation } from 'src/schemas/participation.schema';
 import { Project } from 'src/schemas/project.schema';
 
@@ -23,6 +24,10 @@ export class CampaignsService {
         private readonly campaignModel: Model<Campaign>,
         @InjectModel(Participation.name)
         private readonly participationModel: Model<Participation>,
+        @InjectModel(Project.name)
+        private readonly projectModel: Model<Project>,
+        @InjectModel(Funding.name)
+        private readonly fundingModel: Model<Funding>,
     ) {}
 
     async createCampaign(
@@ -142,6 +147,52 @@ export class CampaignsService {
             },
             {
                 $replaceRoot: { newRoot: '$project' },
+            },
+        ]);
+        return result;
+    }
+
+    async getProjectsNotParticipated(
+        campaignId: number,
+        projectOwner: string,
+    ): Promise<number[]> {
+        const projects = await this.projectModel.find({
+            'members.0': projectOwner,
+        });
+        const allProjectIds = projects.map((project) => project.projectId);
+        const participations = await this.participationModel.find({
+            campaignId: campaignId,
+        });
+        const participatedProjectIds = participations.map(
+            (participation) => participation.projectId,
+        );
+        const result = allProjectIds.filter((projectId) => {
+            return participatedProjectIds.indexOf(projectId) === -1;
+        });
+        return result;
+    }
+
+    async getFundings(campaignId: number) {
+        const result = await this.fundingModel.aggregate([
+            {
+                $match: {
+                    campaignId: campaignId,
+                },
+            },
+            {
+                $group: {
+                    _id: '$investor',
+                    totalAmount: {
+                        $sum: '$amount',
+                    },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    investor: '$_id',
+                    totalAmount: 1,
+                },
             },
         ]);
         return result;

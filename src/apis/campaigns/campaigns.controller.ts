@@ -56,6 +56,26 @@ export class CampaignsController {
         return this.campaignsService.getProjects(campaignId);
     }
 
+    @Get(':campaignId/projects/not-participated')
+    @ApiTags('Campaign')
+    async getProjectsNotParticipated(
+        @Param('campaignId', ParseIntPipe) campaignId: number,
+        @Query('projectOwner') projectOwner: string,
+    ): Promise<number[]> {
+        return this.campaignsService.getProjectsNotParticipated(
+            campaignId,
+            projectOwner,
+        );
+    }
+
+    @Get(':campaignId/fundings/')
+    @ApiTags('Campaign')
+    async getFundings(
+        @Param('campaignId', ParseIntPipe) campaignId: number,
+    ): Promise<number[]> {
+        return this.campaignsService.getFundings(campaignId);
+    }
+
     @Get(':campaignId')
     @ApiTags('Campaign')
     async getCampaign(
