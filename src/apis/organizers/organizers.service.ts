@@ -66,6 +66,6 @@ export class OrganizersService {
     }
 
     async getCampaigns(address: string): Promise<Campaign[]> {
-        return await this.campaignModel.find({ owner: address, active: true });
+        return await this.campaignModel.find({ owner: address });
     }
 }

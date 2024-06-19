@@ -98,7 +98,6 @@ export class ProjectsService {
         createParticipationDto: CreateParticipationDto,
         jwtPayload: JwtPayload,
     ): Promise<IpfsResponse> {
-        console.log(jwtPayload.role == AuthRoleEnum.BUILDER);
         if (jwtPayload.role == AuthRoleEnum.BUILDER) {
             const project = await this.projectModel.findOne({
                 projectId: projectId,
