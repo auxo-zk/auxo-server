@@ -65,17 +65,36 @@ export class ProjectsService {
     }
 
     async getParticipations(projectId: number): Promise<Participation[]> {
-        return await this.participationModel.find(
+        const result = await this.participationModel.aggregate([
             {
-                projectId: projectId,
-            },
-            {},
-            {
-                sort: {
-                    campaignId: 1,
+                $match: {
+                    projectId: projectId,
                 },
             },
-        );
+            {
+                $lookup: {
+                    from: 'campaigns',
+                    as: 'campaign',
+                    localField: 'campaignId',
+                    foreignField: 'campaignId',
+                    pipeline: [
+                        {
+                            $project: {
+                                _id: 0,
+                                ipfsData: 1,
+                                ipfsHash: 1,
+                                owner: 1,
+                                state: 1,
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                $unwind: '$campaign',
+            },
+        ]);
+        return result;
     }
 
     async getParticipation(
