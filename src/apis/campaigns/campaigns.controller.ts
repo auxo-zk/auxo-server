@@ -17,6 +17,7 @@ import { Campaign } from 'src/schemas/campaign.schema';
 import { CreateCampaignDto } from 'src/dtos/create-campaign.dto';
 import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { AuthGuard } from '../auth/auth.guard';
+import { Project } from 'src/schemas/project.schema';
 
 @Controller('campaigns')
 export class CampaignsController {
@@ -61,7 +62,7 @@ export class CampaignsController {
     async getProjectsNotParticipated(
         @Param('campaignId', ParseIntPipe) campaignId: number,
         @Query('projectOwner') projectOwner: string,
-    ): Promise<number[]> {
+    ): Promise<Project[]> {
         return this.campaignsService.getProjectsNotParticipated(
             campaignId,
             projectOwner,

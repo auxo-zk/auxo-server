@@ -155,21 +155,20 @@ export class CampaignsService {
     async getProjectsNotParticipated(
         campaignId: number,
         projectOwner: string,
-    ): Promise<number[]> {
-        const projects = await this.projectModel.find({
-            'members.0': projectOwner,
-        });
-        const allProjectIds = projects.map((project) => project.projectId);
+    ): Promise<Project[]> {
         const participations = await this.participationModel.find({
             campaignId: campaignId,
         });
         const participatedProjectIds = participations.map(
             (participation) => participation.projectId,
         );
-        const result = allProjectIds.filter((projectId) => {
-            return participatedProjectIds.indexOf(projectId) === -1;
+        const result = await this.projectModel.find({
+            projectId: {
+                $nin: participatedProjectIds,
+            },
+            'members.0': projectOwner,
         });
-        return result;
+        return result ? result : [];
     }
 
     async getFundings(campaignId: number) {
