@@ -534,7 +534,6 @@ export class DkgContractsService implements ContractServiceInterface {
                             },
                             Field(KeyStatusEnum.ACTIVE),
                         );
-
                         break;
                     case DkgActionEnum.DEPRECATE_KEY:
                         break;
@@ -648,7 +647,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 );
 
                 if (notActiveActions.length == committee.numberOfMembers) {
-                    jobIds.push(`${committee.committeeId}-${key.keyId}`);
+                    jobIds.push(key.keyIndex.toString());
                 }
             }
         } catch (err) {
@@ -658,25 +657,24 @@ export class DkgContractsService implements ContractServiceInterface {
         return jobIds;
     }
 
-    async processFinalizeRound1Job(combinedId: string) {
+    async processFinalizeRound1Job(keyIndex: string) {
         try {
             const numRollupedActions = await this.rollupActionModel.count({
                 'actionData.zkAppIndex': ZkAppIndex.ROUND1,
                 active: true,
             });
-            const [committeeId, keyId] = combinedId.split('-').map(Number);
             const key = await this.keyModel.findOne({
-                keyId,
+                keyIndex: Number(keyIndex),
             });
             const committee = await this.committeeModel.findOne({
-                committeeId,
+                committeeId: key.committeeId,
             });
 
             const notActiveActions = await this.round1ActionModel.aggregate([
                 {
                     $match: {
-                        'actionData.keyId': keyId,
-                        'actionData.committeeId': committeeId,
+                        'actionData.keyId': key.keyId,
+                        'actionData.committeeId': key.committeeId,
                         active: false,
                         actionId: { $lt: numRollupedActions },
                     },
@@ -929,7 +927,7 @@ export class DkgContractsService implements ContractServiceInterface {
                 );
 
                 if (notActiveActions.length == committee.numberOfMembers) {
-                    jobIds.push(`${committee.committeeId}-${key.keyId}`);
+                    jobIds.push(key.keyIndex.toString());
                 }
             }
         } catch (err) {
@@ -939,18 +937,17 @@ export class DkgContractsService implements ContractServiceInterface {
         return jobIds;
     }
 
-    async processFinalizeRound2Job(combinedId: string) {
+    async processFinalizeRound2Job(keyIndex: string) {
         try {
             const numRollupedActions = await this.rollupActionModel.count({
                 'actionData.zkAppIndex': ZkAppIndex.ROUND2,
                 active: true,
             });
-            const [committeeId, keyId] = combinedId.split('-').map(Number);
             const key = await this.keyModel.findOne({
-                keyId,
+                keyIndex: Number(keyIndex),
             });
             const committee = await this.committeeModel.findOne({
-                committeeId,
+                committeeId: key.committeeId,
             });
             const notActiveActions = await this.round2ActionModel.aggregate([
                 {
