@@ -919,78 +919,72 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const totalMi = totalM[j];
                 const totalDi = totalD[j];
                 const result = rawResult[j];
-
-                        proof = await Utils.prove(
-                            ComputeResult.name,
-                            'compute',
-                            async () =>
-                                ComputeResult.compute(
-                                    {
-                                        M: totalMi,
-                                        D: totalDi,
-                                        result,
-                                    },
-                                    proof,
-                                    accumulationStorageM.getWitness(Field(j)),
-                                    groupVectorStorage.getWitness(Field(j)),
-                                    rawResultStorage.getWitness(Field(j)),
-                                ),
-                            undefined,
-                            { info: true, error: true },
-                        );
-                    }
-                    const requestContract = new RequestContract(
-                        PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-                    );
-                    const feePayerPrivateKey = PrivateKey.fromBase58(
-                        process.env.FEE_PAYER_PRIVATE_KEY,
-                    );
-                    await Utils.proveAndSendTx(
-                        RequestContract.name,
-                        'resolve',
-                        async () =>
-                            requestContract.resolve(
-                                proof,
-                                new UInt64(request.expirationTimestamp),
-                                accumulationStorageR.root,
-                                this._dkgRequest.expirationStorage.getWitness(
-                                    Field(request.requestId),
-                                ),
-                                this._dkgRequest.accumulationStorage.getWitness(
-                                    Field(request.requestId),
-                                ),
-                                this._dkgResponse.responseStorage.getWitness(
-                                    Field(request.requestId),
-                                ),
-                                this._dkgRequest.resultStorage.getWitness(
-                                    Field(request.requestId),
-                                ),
-                                this._dkgRequest.zkAppStorage.getZkAppRef(
-                                    ZkAppIndex.RESPONSE,
-                                    PublicKey.fromBase58(
-                                        process.env.RESPONSE_ADDRESS,
-                                    ),
-                                ),
-                            ),
-                        {
-                            sender: {
-                                privateKey: feePayerPrivateKey,
-                                publicKey: feePayerPrivateKey.toPublicKey(),
+                proof = await Utils.prove(
+                    ComputeResult.name,
+                    'compute',
+                    async () =>
+                        ComputeResult.compute(
+                            {
+                                M: totalMi,
+                                D: totalDi,
+                                result,
                             },
-                            fee: process.env.FEE,
-                            memo: '',
-                            nonce: await this.queryService.fetchAccountNonce(
-                                feePayerPrivateKey.toPublicKey().toBase58(),
-                            ),
-                        },
-                        undefined,
-                        undefined,
-                        { info: true, error: true, memoryUsage: false },
-                    );
-                    return true;
-                }
+                            proof,
+                            accumulationStorageM.getWitness(Field(j)),
+                            groupVectorStorage.getWitness(Field(j)),
+                            rawResultStorage.getWitness(Field(j)),
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
             }
-            return false;
+            const requestContract = new RequestContract(
+                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                RequestContract.name,
+                'resolve',
+                async () =>
+                    requestContract.resolve(
+                        proof,
+                        new UInt64(request.expirationTimestamp),
+                        accumulationStorageR.root,
+                        this._dkgRequest.expirationStorage.getWitness(
+                            Field(request.requestId),
+                        ),
+                        this._dkgRequest.accumulationStorage.getWitness(
+                            Field(request.requestId),
+                        ),
+                        this._dkgResponse.responseStorage.getWitness(
+                            Field(request.requestId),
+                        ),
+                        this._dkgRequest.resultStorage.getWitness(
+                            Field(request.requestId),
+                        ),
+                        this._dkgRequest.zkAppStorage.getZkAppRef(
+                            ZkAppIndex.RESPONSE,
+                            PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+                        ),
+                    ),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
         } catch (err) {
             console.log(err);
             return false;
