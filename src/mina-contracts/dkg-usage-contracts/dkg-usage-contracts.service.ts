@@ -242,7 +242,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         await ResponseContract.compile({ cache });
     }
 
-    async rollupRequest(): Promise<boolean> {
+    async getNextUpdateRequestJob(): Promise<string | undefined> {
         try {
             const notActiveActions = await this.requestActionModel.find(
                 { active: false },
@@ -250,563 +250,171 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 { sort: { actionId: 1 } },
             );
             if (notActiveActions.length > 0) {
-                const state = await this.fetchDkgRequestState();
-                let proof = await Utils.prove(
-                    UpdateRequest.name,
-                    'init',
-                    async () =>
-                        UpdateRequest.init(
-                            ZkApp.Request.RequestAction.empty(),
-                            state.requestCounter,
-                            state.keyIndexRoot,
-                            state.taskRoot,
-                            state.accumulationRoot,
-                            state.expirationRoot,
-                            state.resultRoot,
-                            state.actionState,
-                        ),
-                    undefined,
-                    { info: true, error: true },
-                );
-                const keyIndexStorage = _.cloneDeep(
-                    this._dkgRequest.keyIndexStorage,
-                );
-                const taskStorage = _.cloneDeep(this._dkgRequest.taskStorage);
-                const accumulationStorage = _.cloneDeep(
-                    this._dkgRequest.accumulationStorage,
-                );
-                const expirationStorage = _.cloneDeep(
-                    this._dkgRequest.expirationStorage,
-                );
-                const resultStorage = _.cloneDeep(
-                    this._dkgRequest.resultStorage,
-                );
-
-                let nextRequestId = state.requestCounter;
-                for (let i = 0; i < notActiveActions.length; i++) {
-                    const notActiveAction = notActiveActions[i];
-                    if (
-                        notActiveAction.actionData.requestId ==
-                        Number(Field(-1).toBigInt())
-                    ) {
-                        proof = await Utils.prove(
-                            UpdateRequest.name,
-                            'initialize',
-                            async () =>
-                                UpdateRequest.initialize(
-                                    ZkApp.Request.RequestAction.fromFields(
-                                        Utilities.stringArrayToFields(
-                                            notActiveAction.actions,
-                                        ),
-                                    ),
-                                    proof,
-                                    keyIndexStorage.getLevel1Witness(
-                                        nextRequestId,
-                                    ),
-                                    taskStorage.getLevel1Witness(nextRequestId),
-                                    accumulationStorage.getLevel1Witness(
-                                        nextRequestId,
-                                    ),
-                                    expirationStorage.getLevel1Witness(
-                                        nextRequestId,
-                                    ),
-                                ),
-                            undefined,
-                            { info: true, error: true },
-                        );
-                        keyIndexStorage.updateLeaf(
-                            { level1Index: nextRequestId },
-                            Field(notActiveAction.actionData.keyIndex),
-                        );
-                        taskStorage.updateLeaf(
-                            { level1Index: nextRequestId },
-                            Field(notActiveAction.actionData.task),
-                        );
-                        accumulationStorage.updateLeaf(
-                            { level1Index: nextRequestId },
-                            Field(notActiveAction.actionData.accumulationRoot),
-                        );
-                        expirationStorage.updateLeaf(
-                            { level1Index: nextRequestId },
-                            expirationStorage.calculateLeaf(
-                                new UInt64(
-                                    notActiveAction.actionData.expirationTimestamp,
-                                ),
-                            ),
-                        );
-                        nextRequestId = nextRequestId.add(1);
-                    } else {
-                        proof = await Utils.prove(
-                            UpdateRequest.name,
-                            'resolve',
-                            async () =>
-                                UpdateRequest.resolve(
-                                    ZkApp.Request.RequestAction.fromFields(
-                                        Utilities.stringArrayToFields(
-                                            notActiveAction.actions,
-                                        ),
-                                    ),
-                                    proof,
-                                    resultStorage.getLevel1Witness(
-                                        Field(
-                                            notActiveAction.actionData
-                                                .requestId,
-                                        ),
-                                    ),
-                                ),
-                            undefined,
-                            { info: true, error: true },
-                        );
-                        resultStorage.updateLeaf(
-                            {
-                                level1Index: Field(
-                                    notActiveAction.actionData.requestId,
-                                ),
-                            },
-                            Field(notActiveAction.actionData.resultRoot),
-                        );
-                    }
-                }
-                const requestContract = new RequestContract(
-                    PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                await Utils.proveAndSendTx(
-                    RequestContract.name,
-                    'update',
-                    async () => requestContract.update(proof),
-                    {
-                        sender: {
-                            privateKey: feePayerPrivateKey,
-                            publicKey: feePayerPrivateKey.toPublicKey(),
-                        },
-                        fee: process.env.FEE,
-                        memo: '',
-                        nonce: await this.queryService.fetchAccountNonce(
-                            feePayerPrivateKey.toPublicKey().toBase58(),
-                        ),
-                    },
-                    undefined,
-                    undefined,
-                    { info: true, error: true, memoryUsage: false },
-                );
-                return true;
+                return notActiveActions[0].previousActionState;
             }
-            return false;
         } catch (err) {
             console.log(err);
-            return false;
         }
     }
 
-    async rollupResponse(): Promise<boolean> {
+    async processUpdateRequestJob(previousActionState: string) {
         try {
-            const numRollupedActions = await this.rollupActionModel.count({
-                'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
-                active: true,
-            });
-            const requests = await this.dkgRequestModel.find({
-                status: RequestStatusEnum.INITIALIZED,
-            });
-            for (let i = 0; i < requests.length; i++) {
-                try {
-                    const request = requests[i];
-                    const key = await this.keyModel.findOne({
-                        keyIndex: request.keyIndex,
-                    });
-                    const committee = await this.committeeModel.findOne({
-                        committeeId: key.committeeId,
-                    });
-                    // const notActiveActions = await this.responseActionModel.find({
-                    //     'actionData.requestId': request.requestId,
-                    //     active: false,
-                    //     actionId: {
-                    //         $lt: numRollupedActions,
-                    //     },
-                    // });
-                    const finalizedEventExist =
-                        await this.responseFinalizedEventModel.exists({
-                            'data.requestId': request.requestId,
-                        });
-                    if (finalizedEventExist) {
-                        continue;
-                    }
-                    let notActiveActions =
-                        await this.responseActionModel.aggregate([
-                            {
-                                $match: {
-                                    'actionData.requestId': request.requestId,
-                                    active: false,
-                                    actionId: { $lt: numRollupedActions },
-                                },
-                            },
-                            {
-                                $sort: { actionId: -1 },
-                            },
-                            {
-                                $group: {
-                                    _id: '$actionData.memberId',
-                                    latestAction: { $first: '$$ROOT' },
-                                },
-                            },
-                            {
-                                $replaceRoot: { newRoot: '$latestAction' },
-                            },
-                            {
-                                $sort: { 'actionData.memberId': 1 },
-                            },
-                        ]);
-                    if (notActiveActions.length > committee.threshold) {
-                        notActiveActions = notActiveActions.slice(
-                            0,
-                            committee.threshold,
-                        );
-                    }
-                    if (notActiveActions.length == committee.threshold) {
-                        // console.log(notActiveActions);
-                        const task = await this.taskModel.findOne({
-                            task: request.task,
-                        });
-                        const state = await this.fetchDkgResponseState();
-                        const contributionStorage = _.cloneDeep(
-                            this._dkgResponse.contributionStorage,
-                        );
-                        const responseStorage = _.cloneDeep(
-                            this._dkgResponse.responseStorage,
-                        );
-                        const processStorage = _.cloneDeep(
-                            this._dkgResponse.processStorage,
-                        );
-                        const processStorageMapping = _.cloneDeep(
-                            this._dkgResponse.processStorageMapping,
-                        );
-                        const rollupStorage = _.cloneDeep(
-                            this.rollupContractService.rollupStorage,
-                        );
-                        const level1Index = Field(request.requestId);
-                        const indexList = Field.fromBits(
-                            notActiveActions
-                                .map((action) =>
-                                    Field(action.actionData.memberId),
-                                )
-                                .map((e) => e.toBits(6))
-                                .flat(),
-                        );
+            const notActiveActions = await this.requestActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
 
-                        let proof = await Utils.prove(
-                            FinalizeResponse.name,
-                            'init',
-                            async () =>
-                                FinalizeResponse.init(
-                                    FinalizeResponseInput.empty(),
-                                    Field(committee.threshold),
-                                    Field(committee.numberOfMembers),
-                                    new UInt8(
-                                        Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
-                                    ),
-                                    level1Index,
-                                    indexList,
-                                    state.contributionRoot,
-                                    state.processRoot,
-                                    rollupStorage.root,
-                                    contributionStorage.getLevel1Witness(
-                                        level1Index,
-                                    ),
-                                ),
-                            undefined,
-                            { info: true, error: true },
-                        );
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
 
-                        const memberIds = [];
-                        const D: Group[][] = [];
-                        const groupVectorStorages: GroupVectorStorage[] = [];
-                        contributionStorage.updateInternal(
-                            level1Index,
-                            DKG_LEVEL_2_TREE(),
-                        );
-                        // responseStorage.
-                        for (let j = 0; j < notActiveActions.length; j++) {
-                            const notActiveAction = notActiveActions[j];
-                            const level2Index = Field(
-                                notActiveAction.actionData.memberId,
-                            );
-                            memberIds.push(notActiveAction.actionData.memberId);
-                            let respondedEvents =
-                                await this.responseRespondedEventModel.find(
-                                    {
-                                        'data.requestId': request.requestId,
-                                        'data.memberId':
-                                            notActiveAction.actionData.memberId,
-                                    },
-                                    {},
-                                    { sort: { eventId: -1 } },
-                                );
-                            respondedEvents = respondedEvents.slice(
-                                0,
-                                Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
-                            );
-                            respondedEvents = respondedEvents.sort(
-                                (a, b) =>
-                                    a.data.dimensionIndex -
-                                    b.data.dimensionIndex,
-                            );
-                            D[j] = respondedEvents.map((event) =>
-                                Group.from(event.data.Di.x, event.data.Di.y),
-                            );
-                            const groupVectorStorage = new GroupVectorStorage();
-                            // console.log(D[j].length);
-                            D[j].map((Di, index) => {
-                                groupVectorStorage.updateRawLeaf(
-                                    { level1Index: Field(index) },
-                                    Di,
-                                );
-                            });
+            const state = await this.fetchDkgRequestState();
+            let proof = await Utils.prove(
+                UpdateRequest.name,
+                'init',
+                async () =>
+                    UpdateRequest.init(
+                        ZkApp.Request.RequestAction.empty(),
+                        state.requestCounter,
+                        state.keyIndexRoot,
+                        state.taskRoot,
+                        state.accumulationRoot,
+                        state.expirationRoot,
+                        state.resultRoot,
+                        state.actionState,
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+            const keyIndexStorage = _.cloneDeep(
+                this._dkgRequest.keyIndexStorage,
+            );
+            const taskStorage = _.cloneDeep(this._dkgRequest.taskStorage);
+            const accumulationStorage = _.cloneDeep(
+                this._dkgRequest.accumulationStorage,
+            );
+            const expirationStorage = _.cloneDeep(
+                this._dkgRequest.expirationStorage,
+            );
+            const resultStorage = _.cloneDeep(this._dkgRequest.resultStorage);
 
-                            groupVectorStorages.push(groupVectorStorage);
-                            const responseAction =
-                                ZkApp.Response.ResponseAction.fromFields(
+            let nextRequestId = state.requestCounter;
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                if (
+                    notActiveAction.actionData.requestId ==
+                    Number(Field(-1).toBigInt())
+                ) {
+                    proof = await Utils.prove(
+                        UpdateRequest.name,
+                        'initialize',
+                        async () =>
+                            UpdateRequest.initialize(
+                                ZkApp.Request.RequestAction.fromFields(
                                     Utilities.stringArrayToFields(
                                         notActiveAction.actions,
                                     ),
-                                );
-
-                            proof = await Utils.prove(
-                                FinalizeResponse.name,
-                                'contribute',
-                                async () =>
-                                    FinalizeResponse.contribute(
-                                        {
-                                            previousActionState: Field(
-                                                notActiveAction.previousActionState,
-                                            ),
-                                            action: responseAction,
-                                            actionId: Field(
-                                                notActiveAction.actionId,
-                                            ),
-                                        },
-                                        proof,
-                                        contributionStorage.getWitness(
-                                            level1Index,
-                                            level2Index,
-                                        ),
-                                        rollupStorage.getWitness(
-                                            rollupStorage.calculateLevel1Index({
-                                                zkAppIndex: Field(
-                                                    ZkAppIndex.RESPONSE,
-                                                ),
-                                                actionId: Field(
-                                                    notActiveAction.actionId,
-                                                ),
-                                            }),
-                                        ),
-                                        processStorage.getWitness(
-                                            Field(notActiveAction.actionId),
-                                        ),
-                                    ),
-                                undefined,
-                                { info: true, error: true },
-                            );
-
-                            contributionStorage.updateRawLeaf(
-                                {
-                                    level1Index: level1Index,
-                                    level2Index: level2Index,
-                                },
-                                Field(notActiveAction.actionData.responseRootD),
-                            );
-                            if (
-                                processStorageMapping[
-                                    notActiveAction.currentActionState
-                                ] == undefined
-                            ) {
-                                processStorageMapping[
-                                    notActiveAction.currentActionState
-                                ] = 0;
-                            } else {
-                                processStorageMapping[
-                                    notActiveAction.currentActionState
-                                ] += 1;
-                            }
-                            processStorage.updateLeaf(
-                                {
-                                    level1Index: Field(
-                                        notActiveAction.actionId,
-                                    ),
-                                },
-                                processStorage.calculateLeaf({
-                                    actionState: Field(
-                                        notActiveAction.currentActionState,
-                                    ),
-                                    processCounter: new UInt8(
-                                        processStorageMapping[
-                                            notActiveAction.currentActionState
-                                        ],
-                                    ),
-                                }),
-                            );
-                        }
-                        const sumD = accumulateResponses(memberIds, D);
-                        const groupVectorStorage = new GroupVectorStorage();
-                        for (let j = 0; j < task.totalR.length; j++) {
-                            for (let k = 0; k < notActiveActions.length; k++) {
-                                const notActiveAction = notActiveActions[k];
-                                const responseAction =
-                                    ZkApp.Response.ResponseAction.fromFields(
-                                        Utilities.stringArrayToFields(
-                                            notActiveAction.actions,
-                                        ),
-                                    );
-
-                                proof = await Utils.prove(
-                                    FinalizeResponse.name,
-                                    'compute',
-                                    async () =>
-                                        FinalizeResponse.compute(
-                                            {
-                                                previousActionState: Field(
-                                                    notActiveAction.previousActionState,
-                                                ),
-                                                action: responseAction,
-                                                actionId: Field(
-                                                    notActiveAction.actionId,
-                                                ),
-                                            },
-                                            proof,
-                                            D[k][j],
-                                            groupVectorStorages[k].getWitness(
-                                                Field(j),
-                                            ),
-                                            processStorage.getWitness(
-                                                Field(notActiveAction.actionId),
-                                            ),
-                                        ),
-                                    undefined,
-                                    { info: true, error: true },
-                                );
-                                if (
-                                    processStorageMapping[
-                                        notActiveAction.currentActionState
-                                    ] == undefined
-                                ) {
-                                    processStorageMapping[
-                                        notActiveAction.currentActionState
-                                    ] = 0;
-                                } else {
-                                    processStorageMapping[
-                                        notActiveAction.currentActionState
-                                    ] += 1;
-                                }
-                                processStorage.updateLeaf(
-                                    {
-                                        level1Index: Field(
-                                            notActiveAction.actionId,
-                                        ),
-                                    },
-                                    processStorage.calculateLeaf({
-                                        actionState: Field(
-                                            notActiveAction.currentActionState,
-                                        ),
-                                        processCounter: new UInt8(
-                                            processStorageMapping[
-                                                notActiveAction.currentActionState
-                                            ],
-                                        ),
-                                    }),
-                                );
-                            }
-
-                            proof = await Utils.prove(
-                                FinalizeResponse.name,
-                                'finalize',
-                                async () =>
-                                    FinalizeResponse.finalize(
-                                        FinalizeResponseInput.empty(),
-                                        proof,
-                                        groupVectorStorage.getWitness(Field(j)),
-                                    ),
-                                undefined,
-                                { info: true, error: true },
-                            );
-                            groupVectorStorage.updateRawLeaf(
-                                { level1Index: Field(j) },
-                                sumD[j],
-                            );
-                        }
-                        responseStorage.updateRawLeaf(
-                            { level1Index },
-                            groupVectorStorage.root,
-                        );
-                        const responseContract = new ResponseContract(
-                            PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-                        );
-                        const feePayerPrivateKey = PrivateKey.fromBase58(
-                            process.env.FEE_PAYER_PRIVATE_KEY,
-                        );
-                        await Utils.proveAndSendTx(
-                            ResponseContract.name,
-                            'finalize',
-                            async () =>
-                                responseContract.finalize(
-                                    proof,
-                                    this.committeeContractService.settingStorage.getLevel1Witness(
-                                        Field(committee.committeeId),
-                                    ),
-                                    this._dkgRequest.keyIndexStorage.getLevel1Witness(
-                                        level1Index,
-                                    ),
-                                    this._dkgResponse.responseStorage.getLevel1Witness(
-                                        level1Index,
-                                    ),
-                                    this._dkgResponse.zkAppStorage.getZkAppRef(
-                                        ZkAppIndex.COMMITTEE,
-                                        PublicKey.fromBase58(
-                                            process.env.COMMITTEE_ADDRESS,
-                                        ),
-                                    ),
-                                    this._dkgResponse.zkAppStorage.getZkAppRef(
-                                        ZkAppIndex.REQUEST,
-                                        PublicKey.fromBase58(
-                                            process.env.REQUEST_ADDRESS,
-                                        ),
-                                    ),
-                                    this._dkgResponse.zkAppStorage.getZkAppRef(
-                                        ZkAppIndex.ROLLUP,
-                                        PublicKey.fromBase58(
-                                            process.env.ROLLUP_ADDRESS,
-                                        ),
+                                ),
+                                proof,
+                                keyIndexStorage.getLevel1Witness(nextRequestId),
+                                taskStorage.getLevel1Witness(nextRequestId),
+                                accumulationStorage.getLevel1Witness(
+                                    nextRequestId,
+                                ),
+                                expirationStorage.getLevel1Witness(
+                                    nextRequestId,
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+                    keyIndexStorage.updateLeaf(
+                        { level1Index: nextRequestId },
+                        Field(notActiveAction.actionData.keyIndex),
+                    );
+                    taskStorage.updateLeaf(
+                        { level1Index: nextRequestId },
+                        Field(notActiveAction.actionData.task),
+                    );
+                    accumulationStorage.updateLeaf(
+                        { level1Index: nextRequestId },
+                        Field(notActiveAction.actionData.accumulationRoot),
+                    );
+                    expirationStorage.updateLeaf(
+                        { level1Index: nextRequestId },
+                        expirationStorage.calculateLeaf(
+                            new UInt64(
+                                notActiveAction.actionData.expirationTimestamp,
+                            ),
+                        ),
+                    );
+                    nextRequestId = nextRequestId.add(1);
+                } else {
+                    proof = await Utils.prove(
+                        UpdateRequest.name,
+                        'resolve',
+                        async () =>
+                            UpdateRequest.resolve(
+                                ZkApp.Request.RequestAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
                                     ),
                                 ),
-                            {
-                                sender: {
-                                    privateKey: feePayerPrivateKey,
-                                    publicKey: feePayerPrivateKey.toPublicKey(),
-                                },
-                                fee: process.env.FEE,
-                                memo: '',
-                                nonce: await this.queryService.fetchAccountNonce(
-                                    feePayerPrivateKey.toPublicKey().toBase58(),
+                                proof,
+                                resultStorage.getLevel1Witness(
+                                    Field(notActiveAction.actionData.requestId),
                                 ),
-                            },
-                            undefined,
-                            undefined,
-                            { info: true, error: true, memoryUsage: false },
-                        );
-                        return true;
-                    }
-                    return false;
-                } catch (err) {
-                    console.log(err);
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+                    resultStorage.updateLeaf(
+                        {
+                            level1Index: Field(
+                                notActiveAction.actionData.requestId,
+                            ),
+                        },
+                        Field(notActiveAction.actionData.resultRoot),
+                    );
                 }
             }
+            const requestContract = new RequestContract(
+                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                RequestContract.name,
+                'update',
+                async () => requestContract.update(proof),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
         } catch (err) {
             console.log(err);
             return false;
         }
     }
 
-    async computeResult() {
+    async getNextFinalizeResponseJobs(): Promise<Array<string>> {
+        const jobIds: Array<string> = [];
         try {
             const numRollupedActions = await this.rollupActionModel.count({
                 'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
@@ -823,69 +431,494 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const committee = await this.committeeModel.findOne({
                     committeeId: key.committeeId,
                 });
-                if (request.responses.length == committee.threshold) {
-                    const task = await this.taskModel.findOne({
-                        task: request.task,
+                const finalizedEventExist =
+                    await this.responseFinalizedEventModel.exists({
+                        'data.requestId': request.requestId,
                     });
-                    const totalM = task.totalM.map((Mi) =>
-                        Group.from(Mi.x, Mi.y),
+                if (finalizedEventExist) {
+                    continue;
+                }
+                const notActiveActions =
+                    await this.responseActionModel.aggregate([
+                        {
+                            $match: {
+                                'actionData.requestId': request.requestId,
+                                active: false,
+                                actionId: { $lt: numRollupedActions },
+                            },
+                        },
+                        {
+                            $sort: { actionId: -1 },
+                        },
+                        {
+                            $group: {
+                                _id: '$actionData.memberId',
+                                latestAction: { $first: '$$ROOT' },
+                            },
+                        },
+                        {
+                            $replaceRoot: { newRoot: '$latestAction' },
+                        },
+                        {
+                            $sort: { 'actionData.memberId': 1 },
+                        },
+                    ]);
+                if (notActiveActions.length >= committee.threshold)
+                    jobIds.push(`${request.requestId}`);
+            }
+        } catch (err) {
+            console.log(err);
+            return [];
+        }
+        return jobIds;
+    }
+
+    async processFinalizeResponseJob(requestId: string): Promise<boolean> {
+        try {
+            const numRollupedActions = await this.rollupActionModel.count({
+                'actionData.zkAppIndex': ZkAppIndex.RESPONSE,
+                active: true,
+            });
+            const request = await this.dkgRequestModel.findOne({
+                requestId,
+            });
+            const key = await this.keyModel.findOne({
+                keyIndex: request.keyIndex,
+            });
+            const committee = await this.committeeModel.findOne({
+                committeeId: key.committeeId,
+            });
+
+            const finalizedEventExist =
+                await this.responseFinalizedEventModel.exists({
+                    'data.requestId': request.requestId,
+                });
+            if (finalizedEventExist)
+                throw new Error('Request is already finalized!');
+
+            let notActiveActions = await this.responseActionModel.aggregate([
+                {
+                    $match: {
+                        'actionData.requestId': request.requestId,
+                        active: false,
+                        actionId: { $lt: numRollupedActions },
+                    },
+                },
+                {
+                    $sort: { actionId: -1 },
+                },
+                {
+                    $group: {
+                        _id: '$actionData.memberId',
+                        latestAction: { $first: '$$ROOT' },
+                    },
+                },
+                {
+                    $replaceRoot: { newRoot: '$latestAction' },
+                },
+                {
+                    $sort: { 'actionData.memberId': 1 },
+                },
+            ]);
+            if (notActiveActions.length < committee.threshold)
+                throw new Error('Not enough actions to finalize!');
+
+            notActiveActions = notActiveActions.slice(0, committee.threshold);
+
+            // console.log(notActiveActions);
+            const task = await this.taskModel.findOne({
+                task: request.task,
+            });
+            const state = await this.fetchDkgResponseState();
+            const contributionStorage = _.cloneDeep(
+                this._dkgResponse.contributionStorage,
+            );
+            const responseStorage = _.cloneDeep(
+                this._dkgResponse.responseStorage,
+            );
+            const processStorage = _.cloneDeep(
+                this._dkgResponse.processStorage,
+            );
+            const processStorageMapping = _.cloneDeep(
+                this._dkgResponse.processStorageMapping,
+            );
+            const rollupStorage = _.cloneDeep(
+                this.rollupContractService.rollupStorage,
+            );
+            const level1Index = Field(request.requestId);
+            const indexList = Field.fromBits(
+                notActiveActions
+                    .map((action) => Field(action.actionData.memberId))
+                    .map((e) => e.toBits(6))
+                    .flat(),
+            );
+
+            let proof = await Utils.prove(
+                FinalizeResponse.name,
+                'init',
+                async () =>
+                    FinalizeResponse.init(
+                        FinalizeResponseInput.empty(),
+                        Field(committee.threshold),
+                        Field(committee.numberOfMembers),
+                        new UInt8(Constants.ENCRYPTION_LIMITS.FULL_DIMENSION),
+                        level1Index,
+                        indexList,
+                        state.contributionRoot,
+                        state.processRoot,
+                        rollupStorage.root,
+                        contributionStorage.getLevel1Witness(level1Index),
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+
+            const memberIds = [];
+            const D: Group[][] = [];
+            const groupVectorStorages: GroupVectorStorage[] = [];
+            contributionStorage.updateInternal(level1Index, DKG_LEVEL_2_TREE());
+
+            for (let j = 0; j < notActiveActions.length; j++) {
+                const notActiveAction = notActiveActions[j];
+                const level2Index = Field(notActiveAction.actionData.memberId);
+                memberIds.push(notActiveAction.actionData.memberId);
+                let respondedEvents =
+                    await this.responseRespondedEventModel.find(
+                        {
+                            'data.requestId': request.requestId,
+                            'data.memberId':
+                                notActiveAction.actionData.memberId,
+                        },
+                        {},
+                        { sort: { eventId: -1 } },
                     );
-                    const totalD = request.finalizedD.map((Di) =>
-                        Group.from(Di.x, Di.y),
+                respondedEvents = respondedEvents.slice(
+                    0,
+                    Constants.ENCRYPTION_LIMITS.FULL_DIMENSION,
+                );
+                respondedEvents = respondedEvents.sort(
+                    (a, b) => a.data.dimensionIndex - b.data.dimensionIndex,
+                );
+                D[j] = respondedEvents.map((event) =>
+                    Group.from(event.data.Di.x, event.data.Di.y),
+                );
+                const groupVectorStorage = new GroupVectorStorage();
+                // console.log(D[j].length);
+                D[j].map((Di, index) => {
+                    groupVectorStorage.updateRawLeaf(
+                        { level1Index: Field(index) },
+                        Di,
                     );
-                    const accumulationStorageM =
-                        this.requesterContractsService.storage(task.requester)
-                            .groupVectorStorageMapping[task.taskId].M;
-                    const accumulationStorageR =
-                        this.requesterContractsService.storage(task.requester)
-                            .groupVectorStorageMapping[task.taskId].R;
-                    const rawResultStorage = new ScalarVectorStorage();
-                    const rawResult = bruteForceResultVector(
-                        getResultVector(totalD, totalM),
-                        1,
-                    );
-                    const groupVectorStorage = new GroupVectorStorage();
-                    totalD.map((Di, index) => {
-                        groupVectorStorage.updateRawLeaf(
-                            { level1Index: Field(index) },
-                            Di,
-                        );
-                    });
-                    for (
-                        let j = 0;
-                        j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
-                        j++
-                    ) {
-                        rawResultStorage.updateRawLeaf(
-                            { level1Index: Field(j) },
-                            rawResult[j],
-                        );
-                    }
-                    let proof = await Utils.prove(
-                        ComputeResult.name,
-                        'init',
-                        async () =>
-                            ComputeResult.init(
-                                new ComputeResultInput({
-                                    M: Group.zero,
-                                    D: Group.zero,
-                                    result: Scalar.from(0),
+                });
+
+                groupVectorStorages.push(groupVectorStorage);
+                const responseAction = ZkApp.Response.ResponseAction.fromFields(
+                    Utilities.stringArrayToFields(notActiveAction.actions),
+                );
+
+                proof = await Utils.prove(
+                    FinalizeResponse.name,
+                    'contribute',
+                    async () =>
+                        FinalizeResponse.contribute(
+                            {
+                                previousActionState: Field(
+                                    notActiveAction.previousActionState,
+                                ),
+                                action: responseAction,
+                                actionId: Field(notActiveAction.actionId),
+                            },
+                            proof,
+                            contributionStorage.getWitness(
+                                level1Index,
+                                level2Index,
+                            ),
+                            rollupStorage.getWitness(
+                                rollupStorage.calculateLevel1Index({
+                                    zkAppIndex: Field(ZkAppIndex.RESPONSE),
+                                    actionId: Field(notActiveAction.actionId),
                                 }),
-                                accumulationStorageM.root,
-                                groupVectorStorage.root,
-                                rawResultStorage.root,
+                            ),
+                            processStorage.getWitness(
+                                Field(notActiveAction.actionId),
+                            ),
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
+
+                contributionStorage.updateRawLeaf(
+                    {
+                        level1Index: level1Index,
+                        level2Index: level2Index,
+                    },
+                    Field(notActiveAction.actionData.responseRootD),
+                );
+                if (
+                    processStorageMapping[notActiveAction.currentActionState] ==
+                    undefined
+                ) {
+                    processStorageMapping[notActiveAction.currentActionState] =
+                        0;
+                } else {
+                    processStorageMapping[notActiveAction.currentActionState] +=
+                        1;
+                }
+                processStorage.updateLeaf(
+                    {
+                        level1Index: Field(notActiveAction.actionId),
+                    },
+                    processStorage.calculateLeaf({
+                        actionState: Field(notActiveAction.currentActionState),
+                        processCounter: new UInt8(
+                            processStorageMapping[
+                                notActiveAction.currentActionState
+                            ],
+                        ),
+                    }),
+                );
+            }
+            const sumD = accumulateResponses(memberIds, D);
+            const groupVectorStorage = new GroupVectorStorage();
+            for (let j = 0; j < task.totalR.length; j++) {
+                for (let k = 0; k < notActiveActions.length; k++) {
+                    const notActiveAction = notActiveActions[k];
+                    const responseAction =
+                        ZkApp.Response.ResponseAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notActiveAction.actions,
+                            ),
+                        );
+
+                    proof = await Utils.prove(
+                        FinalizeResponse.name,
+                        'compute',
+                        async () =>
+                            FinalizeResponse.compute(
+                                {
+                                    previousActionState: Field(
+                                        notActiveAction.previousActionState,
+                                    ),
+                                    action: responseAction,
+                                    actionId: Field(notActiveAction.actionId),
+                                },
+                                proof,
+                                D[k][j],
+                                groupVectorStorages[k].getWitness(Field(j)),
+                                processStorage.getWitness(
+                                    Field(notActiveAction.actionId),
+                                ),
                             ),
                         undefined,
                         { info: true, error: true },
                     );
-                    for (
-                        let j = 0;
-                        j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
-                        j++
+                    if (
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ] == undefined
                     ) {
-                        const totalMi = totalM[j];
-                        const totalDi = totalD[j];
-                        const result = rawResult[j];
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ] = 0;
+                    } else {
+                        processStorageMapping[
+                            notActiveAction.currentActionState
+                        ] += 1;
+                    }
+                    processStorage.updateLeaf(
+                        {
+                            level1Index: Field(notActiveAction.actionId),
+                        },
+                        processStorage.calculateLeaf({
+                            actionState: Field(
+                                notActiveAction.currentActionState,
+                            ),
+                            processCounter: new UInt8(
+                                processStorageMapping[
+                                    notActiveAction.currentActionState
+                                ],
+                            ),
+                        }),
+                    );
+                }
+
+                proof = await Utils.prove(
+                    FinalizeResponse.name,
+                    'finalize',
+                    async () =>
+                        FinalizeResponse.finalize(
+                            FinalizeResponseInput.empty(),
+                            proof,
+                            groupVectorStorage.getWitness(Field(j)),
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
+                groupVectorStorage.updateRawLeaf(
+                    { level1Index: Field(j) },
+                    sumD[j],
+                );
+            }
+            responseStorage.updateRawLeaf(
+                { level1Index },
+                groupVectorStorage.root,
+            );
+            const responseContract = new ResponseContract(
+                PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                ResponseContract.name,
+                'finalize',
+                async () =>
+                    responseContract.finalize(
+                        proof,
+                        this.committeeContractService.settingStorage.getLevel1Witness(
+                            Field(committee.committeeId),
+                        ),
+                        this._dkgRequest.keyIndexStorage.getLevel1Witness(
+                            level1Index,
+                        ),
+                        this._dkgResponse.responseStorage.getLevel1Witness(
+                            level1Index,
+                        ),
+                        this._dkgResponse.zkAppStorage.getZkAppRef(
+                            ZkAppIndex.COMMITTEE,
+                            PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                        ),
+                        this._dkgResponse.zkAppStorage.getZkAppRef(
+                            ZkAppIndex.REQUEST,
+                            PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                        ),
+                        this._dkgResponse.zkAppStorage.getZkAppRef(
+                            ZkAppIndex.ROLLUP,
+                            PublicKey.fromBase58(process.env.ROLLUP_ADDRESS),
+                        ),
+                    ),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
+    async getNextResolveJobs(): Promise<Array<string>> {
+        const jobIds: Array<string> = [];
+        try {
+            const requests = await this.dkgRequestModel.find({
+                status: RequestStatusEnum.INITIALIZED,
+            });
+            for (let i = 0; i < requests.length; i++) {
+                const request = requests[i];
+                const key = await this.keyModel.findOne({
+                    keyIndex: request.keyIndex,
+                });
+                const committee = await this.committeeModel.findOne({
+                    committeeId: key.committeeId,
+                });
+                if (request.responses.length == committee.threshold)
+                    jobIds.push(`${request.requestId}`);
+            }
+        } catch (err) {
+            console.log(err);
+            return [];
+        }
+        return jobIds;
+    }
+
+    async processResolveJob(requestId: string): Promise<boolean> {
+        try {
+            const request = await this.dkgRequestModel.findOne({
+                requestId,
+            });
+            const key = await this.keyModel.findOne({
+                keyIndex: request.keyIndex,
+            });
+            const committee = await this.committeeModel.findOne({
+                committeeId: key.committeeId,
+            });
+
+            if (request.responses.length != committee.threshold) {
+                throw new Error('Not enough responses to resolve!');
+            }
+
+            const task = await this.taskModel.findOne({
+                task: request.task,
+            });
+            const totalM = task.totalM.map((Mi) => Group.from(Mi.x, Mi.y));
+            const totalD = request.finalizedD.map((Di) =>
+                Group.from(Di.x, Di.y),
+            );
+            const accumulationStorageM = this.requesterContractsService.storage(
+                task.requester,
+            ).groupVectorStorageMapping[task.taskId].M;
+            const accumulationStorageR = this.requesterContractsService.storage(
+                task.requester,
+            ).groupVectorStorageMapping[task.taskId].R;
+            const rawResultStorage = new ScalarVectorStorage();
+            const rawResult = bruteForceResultVector(
+                getResultVector(totalD, totalM),
+            );
+            const groupVectorStorage = new GroupVectorStorage();
+            totalD.map((Di, index) => {
+                groupVectorStorage.updateRawLeaf(
+                    { level1Index: Field(index) },
+                    Di,
+                );
+            });
+            for (
+                let j = 0;
+                j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
+                j++
+            ) {
+                rawResultStorage.updateRawLeaf(
+                    { level1Index: Field(j) },
+                    rawResult[j],
+                );
+            }
+
+            let proof = await Utils.prove(
+                ComputeResult.name,
+                'init',
+                async () =>
+                    ComputeResult.init(
+                        new ComputeResultInput({
+                            M: Group.zero,
+                            D: Group.zero,
+                            result: Scalar.from(0),
+                        }),
+                        accumulationStorageM.root,
+                        groupVectorStorage.root,
+                        rawResultStorage.root,
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+            for (
+                let j = 0;
+                j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
+                j++
+            ) {
+                const totalMi = totalM[j];
+                const totalDi = totalD[j];
+                const result = rawResult[j];
 
                         proof = await Utils.prove(
                             ComputeResult.name,
@@ -960,8 +993,10 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             return false;
         } catch (err) {
             console.log(err);
+            return false;
         }
     }
+
     // ===== PRIVATE FUNCTIONS
 
     private async fetchDkgRequestState(): Promise<DkgRequestState> {

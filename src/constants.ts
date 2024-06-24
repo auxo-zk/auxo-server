@@ -160,3 +160,92 @@ export function getFullDimensionEmptyGroupVector(): {
     return FullDimensionEmptyGroupVector;
 }
 export { RequesterAddressMapping };
+
+export enum ReducerJobEnum {
+    COMPILE,
+    ROLLUP,
+    UPDATE_COMMITTEE,
+    UPDATE_KEY,
+    FINALIZE_ROUND_1,
+    FINALIZE_ROUND_2,
+    FINALIZE_RESPONSE,
+    RESOLVE,
+    UPDATE_REQUEST,
+    UPDATE_TASK,
+}
+
+export const ReducerDependencies: Map<
+    ReducerJobEnum,
+    Array<ReducerJobEnum>
+> = new Map([
+    [ReducerJobEnum.COMPILE, [ReducerJobEnum.COMPILE]],
+    [ReducerJobEnum.ROLLUP, [ReducerJobEnum.ROLLUP]],
+    [ReducerJobEnum.UPDATE_COMMITTEE, [ReducerJobEnum.UPDATE_COMMITTEE]],
+    [
+        ReducerJobEnum.UPDATE_KEY,
+        [ReducerJobEnum.ROLLUP, ReducerJobEnum.UPDATE_KEY], // TODO: Remove Rollup dependency in the next version
+    ],
+    [
+        ReducerJobEnum.FINALIZE_ROUND_1,
+        [
+            ReducerJobEnum.ROLLUP,
+            ReducerJobEnum.UPDATE_COMMITTEE,
+            ReducerJobEnum.UPDATE_KEY,
+            ReducerJobEnum.FINALIZE_ROUND_1,
+        ],
+    ],
+    [
+        ReducerJobEnum.FINALIZE_ROUND_2,
+        [
+            ReducerJobEnum.ROLLUP,
+            ReducerJobEnum.UPDATE_COMMITTEE,
+            ReducerJobEnum.UPDATE_KEY,
+            ReducerJobEnum.FINALIZE_ROUND_2,
+        ],
+    ],
+    [
+        ReducerJobEnum.FINALIZE_RESPONSE,
+        [
+            ReducerJobEnum.ROLLUP,
+            ReducerJobEnum.UPDATE_REQUEST,
+            ReducerJobEnum.FINALIZE_RESPONSE,
+        ],
+    ],
+    [
+        ReducerJobEnum.RESOLVE,
+        [
+            ReducerJobEnum.FINALIZE_RESPONSE,
+            ReducerJobEnum.UPDATE_REQUEST,
+            ReducerJobEnum.RESOLVE,
+        ],
+    ],
+    [ReducerJobEnum.UPDATE_REQUEST, [ReducerJobEnum.UPDATE_REQUEST]],
+    [ReducerJobEnum.UPDATE_TASK, []],
+]);
+
+export const ReducerPriorities: Map<ReducerJobEnum, number> = new Map([
+    [ReducerJobEnum.COMPILE, 1],
+    [ReducerJobEnum.ROLLUP, 4],
+    [ReducerJobEnum.UPDATE_COMMITTEE, 4],
+    [ReducerJobEnum.UPDATE_KEY, 4],
+    [ReducerJobEnum.FINALIZE_ROUND_1, 3],
+    [ReducerJobEnum.FINALIZE_ROUND_2, 3],
+    [ReducerJobEnum.FINALIZE_RESPONSE, 2],
+    [ReducerJobEnum.RESOLVE, 2],
+    [ReducerJobEnum.UPDATE_REQUEST, 4],
+    [ReducerJobEnum.UPDATE_TASK, 4],
+]);
+
+export type ReducerJob = {
+    options: {
+        jobId: string;
+        priority: number;
+        removeOnFail: boolean;
+    };
+    data: ReducerJobData;
+};
+
+export type ReducerJobData = {
+    type: ReducerJobEnum;
+    date: number;
+};

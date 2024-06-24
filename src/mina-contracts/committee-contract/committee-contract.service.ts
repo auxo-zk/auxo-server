@@ -114,117 +114,132 @@ export class CommitteeContractService implements ContractServiceInterface {
         await CommitteeContract.compile({ cache });
     }
 
-    async rollup() {
+    async getNextUpdateCommitteeJob(): Promise<string | undefined> {
+        try {
+            const notActiveActions = await this.committeeActionModel.find(
+                {
+                    active: false,
+                },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                return notActiveActions[0].previousActionState;
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async processUpdateCommitteeJob(previousActionState: string) {
         try {
             const notActiveActions = await this.committeeActionModel.find(
                 { active: false },
                 {},
                 { sort: { actionId: 1 } },
             );
-            if (notActiveActions.length > 0) {
-                const state = await this.fetchCommitteeState();
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
 
-                let proof = await Utils.prove(
+            const state = await this.fetchCommitteeState();
+            let proof = await Utils.prove(
+                UpdateCommittee.name,
+                'init',
+                async () =>
+                    UpdateCommittee.init(
+                        state.actionState,
+                        state.memberRoot,
+                        state.settingRoot,
+                        state.nextCommitteeId,
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+            const memberStorage = _.cloneDeep(this._memberStorage);
+            const settingStorage = _.cloneDeep(this._settingStorage);
+            let nextCommitteeId = state.nextCommitteeId;
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+
+                proof = await Utils.prove(
                     UpdateCommittee.name,
-                    'init',
+                    'update',
                     async () =>
-                        UpdateCommittee.init(
-                            state.actionState,
-                            state.memberRoot,
-                            state.settingRoot,
-                            state.nextCommitteeId,
+                        UpdateCommittee.update(
+                            proof,
+                            ZkApp.Committee.CommitteeAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
+                                ),
+                            ),
+                            memberStorage.getLevel1Witness(nextCommitteeId),
+                            settingStorage.getLevel1Witness(nextCommitteeId),
                         ),
                     undefined,
                     { info: true, error: true },
                 );
-                const memberStorage = _.cloneDeep(this._memberStorage);
-                const settingStorage = _.cloneDeep(this._settingStorage);
-                let nextCommitteeId = state.nextCommitteeId;
-                for (let i = 0; i < notActiveActions.length; i++) {
-                    const notActiveAction = notActiveActions[i];
-
-                    proof = await Utils.prove(
-                        UpdateCommittee.name,
-                        'update',
-                        async () =>
-                            UpdateCommittee.update(
-                                proof,
-                                ZkApp.Committee.CommitteeAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notActiveAction.actions,
-                                    ),
-                                ),
-                                memberStorage.getLevel1Witness(nextCommitteeId),
-                                settingStorage.getLevel1Witness(
-                                    nextCommitteeId,
-                                ),
-                            ),
-                        undefined,
-                        { info: true, error: true },
+                memberStorage.updateInternal(
+                    nextCommitteeId,
+                    Storage.CommitteeStorage.COMMITTEE_LEVEL_2_TREE(),
+                );
+                settingStorage.updateRawLeaf(
+                    {
+                        level1Index: nextCommitteeId,
+                    },
+                    {
+                        T: Field(notActiveAction.actionData.threshold),
+                        N: Field(notActiveAction.actionData.addresses.length),
+                    },
+                );
+                for (
+                    let j = 0;
+                    j < notActiveAction.actionData.addresses.length;
+                    j++
+                ) {
+                    const level2Index = memberStorage.calculateLevel2Index(
+                        Field(j),
                     );
-                    memberStorage.updateInternal(
-                        nextCommitteeId,
-                        Storage.CommitteeStorage.COMMITTEE_LEVEL_2_TREE(),
-                    );
-                    settingStorage.updateRawLeaf(
+                    memberStorage.updateRawLeaf(
                         {
                             level1Index: nextCommitteeId,
+                            level2Index: level2Index,
                         },
-                        {
-                            T: Field(notActiveAction.actionData.threshold),
-                            N: Field(
-                                notActiveAction.actionData.addresses.length,
-                            ),
-                        },
-                    );
-                    for (
-                        let j = 0;
-                        j < notActiveAction.actionData.addresses.length;
-                        j++
-                    ) {
-                        const level2Index = memberStorage.calculateLevel2Index(
-                            Field(j),
-                        );
-                        memberStorage.updateRawLeaf(
-                            {
-                                level1Index: nextCommitteeId,
-                                level2Index: level2Index,
-                            },
-                            PublicKey.fromBase58(
-                                notActiveAction.actionData.addresses[j],
-                            ),
-                        );
-                    }
-                    nextCommitteeId = nextCommitteeId.add(1);
-                }
-                const committeeContract = new CommitteeContract(
-                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
-                );
-                const feePayerPrivateKey = PrivateKey.fromBase58(
-                    process.env.FEE_PAYER_PRIVATE_KEY,
-                );
-                await Utils.proveAndSendTx(
-                    CommitteeContract.name,
-                    'update',
-                    async () => committeeContract.update(proof),
-                    {
-                        sender: {
-                            privateKey: feePayerPrivateKey,
-                            publicKey: feePayerPrivateKey.toPublicKey(),
-                        },
-                        fee: process.env.FEE,
-                        memo: '',
-                        nonce: await this.queryService.fetchAccountNonce(
-                            feePayerPrivateKey.toPublicKey().toBase58(),
+                        PublicKey.fromBase58(
+                            notActiveAction.actionData.addresses[j],
                         ),
-                    },
-                    undefined,
-                    undefined,
-                    { info: true, error: true, memoryUsage: false },
-                );
-                return true;
+                    );
+                }
+                nextCommitteeId = nextCommitteeId.add(1);
             }
-            return false;
+            const committeeContract = new CommitteeContract(
+                PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                CommitteeContract.name,
+                'update',
+                async () => committeeContract.update(proof),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
         } catch (err) {
             console.log(err);
             return false;

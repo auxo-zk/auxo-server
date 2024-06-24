@@ -11,6 +11,7 @@ import { FundingContractService } from '../mina-contracts/funding-contract/fundi
 import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
 import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
+import { ReducerJobData, ReducerJobEnum } from 'src/constants';
 
 @Processor('dkg-contract-services')
 export class DkgContractServicesConsumer {
@@ -29,104 +30,92 @@ export class DkgContractServicesConsumer {
     ) {}
 
     @Process({ name: 'handleContractServices', concurrency: 1 })
-    async handleContractServices(job: Job<{ type: number; date: Date }>) {
+    async handleContractServices(job: Job<ReducerJobData>) {
         try {
+            const jobId = job.id as string;
+            console.log('Job ID:', jobId);
+            let isSuccessful = false;
             switch (job.data.type) {
-                case 0:
-                    try {
-                        this.logger.log('Start compiling contract...');
-                        await this.rollupContractService.compile();
-                        await this.committeeContractService.compile();
-                        await this.dkgContractsService.compile();
-                        await this.dkgUsageContractsService.compile();
-                        await this.requesterContractsService.compile();
-                        this.logger.log('All contracts compiled successfully');
-                        await job.progress();
-                    } catch (err) {
-                        this.logger.error(
-                            'Error during compiling contracts: ',
-                            err,
-                        );
-                    }
+                case ReducerJobEnum.COMPILE:
+                    this.logger.log('Start compile job...');
+                    await this.rollupContractService.compile();
+                    await this.committeeContractService.compile();
+                    await this.dkgContractsService.compile();
+                    await this.dkgUsageContractsService.compile();
+                    await this.requesterContractsService.compile();
+                    isSuccessful = true;
                     break;
-                case 1:
-                    try {
-                        this.logger.log('Start rolluping 1st...');
-                        await this.rollupContractService.update();
-                        await this.committeeContractService.update();
-                        await this.dkgContractsService.update();
-                        await this.dkgUsageContractsService.update();
-                        await this.requesterContractsService.update();
-
-                        await this.requesterContractsService.rollup();
-                        const result = [];
-                        let tmp: boolean;
-                        tmp = await this.committeeContractService.rollup();
-                        result.push(tmp);
-                        tmp = await this.rollupContractService.rollup();
-                        result.push(tmp);
-                        if (!result.includes(true)) {
-                            await this.dkgUsageContractsService.rollupResponse();
-                            await this.dkgContractsService.rollupRound2();
-                            await this.dkgContractsService.rollupRound1();
-                            await this.dkgContractsService.rollupDkg();
-                        }
-                        tmp =
-                            await this.dkgUsageContractsService.rollupRequest();
-                        if (tmp == false) {
-                            await this.dkgUsageContractsService.computeResult();
-                        }
-                        await job.progress();
-                        this.logger.log('All contract rolluped successfully');
-                    } catch (err) {
-                        this.logger.error(
-                            'Error during rolluping contracts: ',
-                            err,
+                case ReducerJobEnum.ROLLUP:
+                    this.logger.log('Start rollup job...');
+                    isSuccessful =
+                        await this.rollupContractService.processRollupJob(
+                            jobId.slice(2),
                         );
-                    }
                     break;
-                case 2:
-                    try {
-                        this.logger.log('Start rolluping 2nd...');
-                        await this.rollupContractService.update();
-                        await this.committeeContractService.update();
-                        await this.dkgContractsService.update();
-                        await this.dkgUsageContractsService.update();
-                        await this.requesterContractsService.update();
-                        await this.requesterContractsService.rollup();
-                        const result = [];
-                        let tmp: boolean;
-                        tmp =
-                            await this.dkgUsageContractsService.rollupResponse();
-                        result.push(tmp);
-                        tmp = await this.dkgContractsService.rollupRound2();
-                        result.push(tmp);
-                        tmp = await this.dkgContractsService.rollupRound1();
-                        result.push(tmp);
-                        tmp = await this.dkgContractsService.rollupDkg();
-                        result.push(tmp);
-
-                        if (!result.includes(true)) {
-                            await this.committeeContractService.rollup();
-                            await this.rollupContractService.rollup();
-                        }
-                        tmp =
-                            await this.dkgUsageContractsService.rollupRequest();
-                        if (tmp == false) {
-                            await this.dkgUsageContractsService.computeResult();
-                        }
-                        await job.progress();
-                        this.logger.log('All contract rolluped successfully');
-                    } catch (err) {
-                        this.logger.error(
-                            'Error during rolluping contracts: ',
-                            err,
+                case ReducerJobEnum.UPDATE_COMMITTEE:
+                    this.logger.log('Start update committee job...');
+                    isSuccessful =
+                        await this.committeeContractService.processUpdateCommitteeJob(
+                            jobId.slice(2),
                         );
-                    }
+                    break;
+                case ReducerJobEnum.UPDATE_KEY:
+                    this.logger.log('Start update key job...');
+                    isSuccessful =
+                        await this.dkgContractsService.processUpdateKeyJob(
+                            jobId.slice(2),
+                        );
+                    break;
+                case ReducerJobEnum.FINALIZE_ROUND_1:
+                    this.logger.log('Start finalize round 1 job...');
+                    await this.dkgContractsService.processFinalizeRound1Job(
+                        jobId.slice(2),
+                    );
+                    break;
+                case ReducerJobEnum.FINALIZE_ROUND_2:
+                    this.logger.log('Start finalize round 2 job...');
+                    isSuccessful =
+                        await this.dkgContractsService.processFinalizeRound2Job(
+                            jobId.slice(2),
+                        );
+                    break;
+                case ReducerJobEnum.UPDATE_TASK:
+                    this.logger.log('Start update task job...');
+                    isSuccessful =
+                        await this.requesterContractsService.processUpdateTaskJob(
+                            jobId.slice(2),
+                        );
+                    break;
+                case ReducerJobEnum.UPDATE_REQUEST:
+                    this.logger.log('Start update request job...');
+                    isSuccessful =
+                        await this.dkgUsageContractsService.processUpdateRequestJob(
+                            jobId.slice(2),
+                        );
+                    break;
+                case ReducerJobEnum.FINALIZE_RESPONSE:
+                    this.logger.log('Start finalize response job...');
+                    isSuccessful =
+                        await this.dkgUsageContractsService.processFinalizeResponseJob(
+                            jobId.slice(2),
+                        );
+                    break;
+                case ReducerJobEnum.RESOLVE:
+                    this.logger.log('Start resolve job...');
+                    isSuccessful =
+                        await this.dkgUsageContractsService.processResolveJob(
+                            jobId.slice(2),
+                        );
                     break;
             }
-        } catch (err) {
-            console.log(err);
+            if (!isSuccessful) {
+                throw new Error();
+            }
+            // await job.moveToCompleted(undefined, true);
+            this.logger.log(`Job ${jobId} processed!`);
+        } catch (error) {
+            this.logger.error(`Failed to process job ${job.id}`, error);
+            throw error;
         }
     }
 }
