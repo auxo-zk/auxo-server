@@ -194,13 +194,15 @@ export class DkgUsageContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // Provable.log(await this.fetchDkgResponseState());
+            // Provable.log(await this.fetchDkgRequestState());
+            // Provable.log(this._dkgRequest.resultStorage.root);
             // Provable.log(this._dkgResponse.contributionStorage.root);
             // Provable.log(this._dkgResponse.responseStorage.root);
             // Provable.log(this._dkgResponse.processStorage.root);
             // await this.compile();
             // await this.rollupContractService.compile();
             // await this.rollupResponse();
+            // await this.rollupRequest();
             // await this.computeResult();
         } catch (err) {
             console.log(err);
@@ -918,72 +920,77 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const totalDi = totalD[j];
                 const result = rawResult[j];
 
-                proof = await Utils.prove(
-                    ComputeResult.name,
-                    'compute',
-                    async () =>
-                        ComputeResult.compute(
-                            {
-                                M: totalMi,
-                                D: totalDi,
-                                result,
+                        proof = await Utils.prove(
+                            ComputeResult.name,
+                            'compute',
+                            async () =>
+                                ComputeResult.compute(
+                                    {
+                                        M: totalMi,
+                                        D: totalDi,
+                                        result,
+                                    },
+                                    proof,
+                                    accumulationStorageM.getWitness(Field(j)),
+                                    groupVectorStorage.getWitness(Field(j)),
+                                    rawResultStorage.getWitness(Field(j)),
+                                ),
+                            undefined,
+                            { info: true, error: true },
+                        );
+                    }
+                    const requestContract = new RequestContract(
+                        PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
+                    );
+                    const feePayerPrivateKey = PrivateKey.fromBase58(
+                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    );
+                    await Utils.proveAndSendTx(
+                        RequestContract.name,
+                        'resolve',
+                        async () =>
+                            requestContract.resolve(
+                                proof,
+                                new UInt64(request.expirationTimestamp),
+                                accumulationStorageR.root,
+                                this._dkgRequest.expirationStorage.getWitness(
+                                    Field(request.requestId),
+                                ),
+                                this._dkgRequest.accumulationStorage.getWitness(
+                                    Field(request.requestId),
+                                ),
+                                this._dkgResponse.responseStorage.getWitness(
+                                    Field(request.requestId),
+                                ),
+                                this._dkgRequest.resultStorage.getWitness(
+                                    Field(request.requestId),
+                                ),
+                                this._dkgRequest.zkAppStorage.getZkAppRef(
+                                    ZkAppIndex.RESPONSE,
+                                    PublicKey.fromBase58(
+                                        process.env.RESPONSE_ADDRESS,
+                                    ),
+                                ),
+                            ),
+                        {
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
                             },
-                            proof,
-                            accumulationStorageM.getWitness(Field(j)),
-                            groupVectorStorage.getWitness(Field(j)),
-                            rawResultStorage.getWitness(Field(j)),
-                        ),
-                    undefined,
-                    { info: true, error: true },
-                );
+                            fee: process.env.FEE,
+                            memo: '',
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
+                            ),
+                        },
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
+                    );
+                    return true;
+                }
             }
-            const requestContract = new RequestContract(
-                PublicKey.fromBase58(process.env.REQUEST_ADDRESS),
-            );
-            const feePayerPrivateKey = PrivateKey.fromBase58(
-                process.env.FEE_PAYER_PRIVATE_KEY,
-            );
-            await Utils.proveAndSendTx(
-                RequestContract.name,
-                'update',
-                async () =>
-                    requestContract.resolve(
-                        proof,
-                        new UInt64(request.expirationTimestamp),
-                        accumulationStorageR.root,
-                        this._dkgRequest.expirationStorage.getWitness(
-                            Field(request.requestId),
-                        ),
-                        this._dkgRequest.accumulationStorage.getWitness(
-                            Field(request.requestId),
-                        ),
-                        this._dkgResponse.responseStorage.getWitness(
-                            Field(request.requestId),
-                        ),
-                        this._dkgRequest.resultStorage.getWitness(
-                            Field(request.requestId),
-                        ),
-                        this._dkgRequest.zkAppStorage.getZkAppRef(
-                            ZkAppIndex.RESPONSE,
-                            PublicKey.fromBase58(process.env.RESPONSE_ADDRESS),
-                        ),
-                    ),
-                {
-                    sender: {
-                        privateKey: feePayerPrivateKey,
-                        publicKey: feePayerPrivateKey.toPublicKey(),
-                    },
-                    fee: process.env.FEE,
-                    memo: '',
-                    nonce: await this.queryService.fetchAccountNonce(
-                        feePayerPrivateKey.toPublicKey().toBase58(),
-                    ),
-                },
-                undefined,
-                undefined,
-                { info: true, error: true, memoryUsage: false },
-            );
-            return true;
+            return false;
         } catch (err) {
             console.log(err);
             return false;

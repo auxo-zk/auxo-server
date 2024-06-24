@@ -31,6 +31,7 @@ import { FundingResult } from 'src/schemas/funding-result.schema';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { FundingState } from 'src/interfaces/zkapp-state.interface';
 import _ from 'lodash';
+import { ParticipationContractService } from '../participation-contract/participation-contract.service';
 
 @Injectable()
 export class FundingContractService implements ContractServiceInterface {
@@ -54,6 +55,7 @@ export class FundingContractService implements ContractServiceInterface {
 
     constructor(
         private readonly queryService: QueryService,
+        private readonly participationContractService: ParticipationContractService,
         @InjectModel(FundingAction.name)
         private readonly fundingActionModel: Model<FundingAction>,
         @InjectModel(Funding.name)
@@ -100,7 +102,7 @@ export class FundingContractService implements ContractServiceInterface {
 
     async fetchFundingState(): Promise<FundingState> {
         const state = await this.queryService.fetchZkAppState(
-            process.env.FUNDING_CONTRACT,
+            process.env.FUNDING_ADDRESS,
         );
         const result: FundingState = {
             nextFundingId: Field(state[0]),
@@ -281,7 +283,12 @@ export class FundingContractService implements ContractServiceInterface {
                 {},
                 { sort: { actionId: 1 } },
             );
-
+            const lastFunding = await this.fundingModel.findOne(
+                {},
+                {},
+                { sort: { fundingId: -1 } },
+            );
+            let nextFundingId = lastFunding ? lastFunding.fundingId + 1 : 0;
             for (let i = 0; i < notActiveActions.length; i++) {
                 const promises = [];
                 const notActiveAction = notActiveActions[i];
@@ -294,10 +301,10 @@ export class FundingContractService implements ContractServiceInterface {
                     promises.push(
                         this.fundingModel.findOneAndUpdate(
                             {
-                                fundingId: this._nextFundingId,
+                                fundingId: nextFundingId,
                             },
                             {
-                                fundingId: this._nextFundingId,
+                                fundingId: nextFundingId,
                                 campaignId:
                                     notActiveAction.actionData.campaignId,
                                 investor: notActiveAction.actionData.investor,
@@ -306,7 +313,7 @@ export class FundingContractService implements ContractServiceInterface {
                             { new: true, upsert: true },
                         ),
                     );
-                    this._nextFundingId += 1;
+                    nextFundingId += 1;
                 } else {
                     promises.push(
                         this.fundingModel.findOneAndUpdate(

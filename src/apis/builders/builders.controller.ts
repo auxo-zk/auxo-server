@@ -22,6 +22,7 @@ import { CreateProjectDraftDto } from 'src/dtos/create-project-draft.dto';
 import { ProjectDraft } from 'src/schemas/draft.schema';
 import { UpdateProjectDraftDto } from 'src/dtos/update-project-draft.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 @Controller('builders')
 export class BuildersController {

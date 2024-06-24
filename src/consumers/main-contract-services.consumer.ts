@@ -4,13 +4,13 @@ import { CommitteeContractService } from '../mina-contracts/committee-contract/c
 import { Logger } from '@nestjs/common';
 import { DkgContractsService } from '../mina-contracts/dkg-contracts/dkg-contracts.service';
 import { DkgUsageContractsService } from '../mina-contracts/dkg-usage-contracts/dkg-usage-contracts.service';
-// import { CampaignContractService } from '../mina-contracts/campaign-contract/campaign-contract.service';
-// import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
-// import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
-// import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
-// import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
-import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
+import { CampaignContractService } from '../mina-contracts/campaign-contract/campaign-contract.service';
+import { ParticipationContractService } from '../mina-contracts/participation-contract/participation-contract.service';
+import { ProjectContractService } from '../mina-contracts/project-contract/project-contract.service';
+import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
+import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
+import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
 
 @Processor('main-contract-services')
 export class MainContractServicesConsumer {
@@ -21,11 +21,11 @@ export class MainContractServicesConsumer {
         private readonly dkgUsageContractsService: DkgUsageContractsService,
         private readonly requesterContractsService: RequesterContractsService,
         private readonly rollupContractService: RollupContractService,
-        // private readonly campaignContractService: CampaignContractService,
-        // private readonly participationContractService: ParticipationContractService,
-        // private readonly projectContractService: ProjectContractService,
-        // private readonly fundingContractService: FundingContractService,
-        // private readonly treasuryManagerContractService: TreasuryManagerContractService,
+        private readonly campaignContractService: CampaignContractService,
+        private readonly participationContractService: ParticipationContractService,
+        private readonly projectContractService: ProjectContractService,
+        private readonly fundingContractService: FundingContractService,
+        private readonly treasuryManagerContractService: TreasuryManagerContractService,
     ) {}
 
     @Process('updateContractMerkleTrees')
@@ -56,10 +56,15 @@ export class MainContractServicesConsumer {
         try {
             this.rollupContractService.update().then(() => {
                 Promise.all([
+                    this.rollupContractService.update(),
                     this.committeeContractService.update(),
                     this.dkgContractsService.update(),
                     this.dkgUsageContractsService.update(),
                     this.requesterContractsService.update(),
+                    // this.projectContractService.update(),
+                    // this.campaignContractService.update(),
+                    // this.participationContractService.update(),
+                    // this.fundingContractService.update(),
                 ]).then(async () => {
                     this.logger.log('All contracts updated successfully');
                     await job.progress();

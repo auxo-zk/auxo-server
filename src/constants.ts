@@ -122,6 +122,7 @@ export enum ZkAppIndex {
     FUNDING,
     TREASURY_MANAGER,
     FUNDING_REQUESTER,
+    COMMITMENT,
     __LENGTH,
 }
 
@@ -136,10 +137,6 @@ const RequesterAddressMapping: {
     [key: string]: { taskManagerAddress: string; submissionAddress: string };
 } = {};
 
-// RequesterAddressMapping[process.env.FUNDING_REQUESTER] = {
-//     taskManagerAddress: process.env.CAMPAIGN_ADDRESS,
-//     submissionAddress: process.env.FUNDING_ADDRESS,
-// };
 RequesterAddressMapping[
     'B62qovNcjV7L6BQEZu8tHBocUZetcnuzKWLyjp2ZEMpkQeHMSUF5MWL'
 ] = {

@@ -96,10 +96,10 @@ export class AppController {
         private readonly treasuryActionModel: Model<TreasuryManagerAction>,
     ) {}
 
-    // @Get()
-    // getServerConfig(): ServerConfig {
-    //     return this.appService.getServerConfig();
-    // }
+    @Get()
+    getServerConfig(): ServerConfig {
+        return this.appService.getServerConfig();
+    }
 
     // @Post('reset-contract-collections')
     // async resetContractCollections() {

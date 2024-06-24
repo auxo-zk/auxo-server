@@ -6,6 +6,7 @@ import {
     IsUrl,
     ValidateNested,
 } from 'class-validator';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 class ScopeOfWork {
     @IsArray()
@@ -34,6 +35,7 @@ export class CreateParticipationDto {
     scopeOfWorks: ScopeOfWork[];
 
     @IsArray()
-    @IsUrl({}, { each: true })
-    documents: string[];
+    @ValidateNested({ each: true })
+    @Type(() => FileInformation)
+    documents: FileInformation[];
 }

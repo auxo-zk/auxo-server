@@ -73,15 +73,15 @@ export class TreasuryManagerContractService
 
     async update() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
         } catch (err) {}
     }
 
     async fetch() {
         for (let count = 0; count < MaxRetries; count++) {
             try {
-                await this.fetchTreasuryActions();
+                await this.fetchTreasuryManagerActions();
                 await this.updateTreasuryManagers();
                 count = MaxRetries;
             } catch (err) {
@@ -266,7 +266,7 @@ export class TreasuryManagerContractService
 
     // ===== PRIVATE FUNCTIONS ========
 
-    async fetchTreasuryActions() {
+    async fetchTreasuryManagerActions() {
         const lastAction = await this.treasuryManagerActionModel.findOne(
             {},
             {},

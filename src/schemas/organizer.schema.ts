@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 @Schema({ versionKey: false })
 export class Organizer {

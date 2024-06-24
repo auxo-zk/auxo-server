@@ -531,4 +531,228 @@ export class StoragesController {
             requesterAddress,
         );
     }
+
+    @Get('project/member/level1')
+    @ApiTags('Storage Project')
+    getProjectMemberStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getProjectMemberStorageLevel1();
+    }
+
+    @Get('project/member/leafs')
+    @ApiTags('Storage Project')
+    getProjectMemberStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getProjectMemberStorageLeafs();
+    }
+
+    @Get('project/ipfs-hash/level1')
+    @ApiTags('Storage Project')
+    getProjectIpfsHashStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getProjectIpfsHashStorageLevel1();
+    }
+
+    @Get('project/ipfs-hash/leafs')
+    @ApiTags('Storage Project')
+    getProjectIpfsHashStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getProjectIpfsHashStorageLeafs();
+    }
+
+    @Get('project/treasury-address/level1')
+    @ApiTags('Storage Project')
+    getProjectTreasuryAddressStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getProjectTreasuryAddressStorageLevel1();
+    }
+
+    @Get('project/treasury-address/leafs')
+    @ApiTags('Storage Project')
+    getProjectTreasuryAddressStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getProjectTreasuryAddressStorageLeafs();
+    }
+
+    @Get('campaign/timeline/level1')
+    @ApiTags('Storage Campaign')
+    getCampaignTimelineStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getCampaignTimelineStorageLevel1();
+    }
+
+    @Get('campaign/timeline/leafs')
+    @ApiTags('Storage Campaign')
+    getCampaignTimelineStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getCampaignTimelineStorageLeafs();
+    }
+
+    @Get('campaign/ipfs-hash/level1')
+    @ApiTags('Storage Campaign')
+    getCampaignIpfsHashStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getCampaignIpfsHashStorageLevel1();
+    }
+
+    @Get('campaign/ipfs-hash/leafs')
+    @ApiTags('Storage Campaign')
+    getCampaignIpfsHashStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getCampaignIpfsHashStorageLeafs();
+    }
+
+    @Get('campaign/key-index/level1')
+    @ApiTags('Storage Campaign')
+    getCampaignKeyIndexStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getCampaignKeyIndexStorageLevel1();
+    }
+
+    @Get('campaign/key-index/leafs')
+    @ApiTags('Storage Campaign')
+    getCampaignKeyIndexStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getCampaignKeyIndexStorageLeafs();
+    }
+
+    @Get('campaign/zkapp')
+    @ApiTags('Storage Campaign')
+    getCampaignZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getCampaignZkAppStorage();
+    }
+
+    @Get('campaign/zkapp/leafs')
+    @ApiTags('Storage Campaign')
+    getCampaignZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getCampaignZkAppStorageLeafs();
+    }
+
+    @Get('participation/project-index/level1')
+    @ApiTags('Storage Participation')
+    getParticipationProjectIndexStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getParticipationProjectIndexStorageLevel1();
+    }
+
+    @Get('participation/project-index/leafs')
+    @ApiTags('Storage Participation')
+    getParticipationProjectIndexStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getParticipationProjectIndexStorageLeafs();
+    }
+
+    @Get('participation/project-counter/level1')
+    @ApiTags('Storage Participation')
+    getParticipationProjectCounterStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getParticipationProjectCounterStorageLevel1();
+    }
+
+    @Get('participation/project-counter/leafs')
+    @ApiTags('Storage Participation')
+    getParticipationProjectCounterStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getParticipationProjectCounterStorageLeafs();
+    }
+
+    @Get('participation/ipfs-hash/level1')
+    @ApiTags('Storage Participation')
+    getParticipationIpfsHashStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getParticipationIpfsHashStorageLevel1();
+    }
+
+    @Get('participation/ipfs-hash/leafs')
+    @ApiTags('Storage Participation')
+    getParticipationIpfsHashStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getParticipationIpfsHashStorageLeafs();
+    }
+
+    @Get('participation/zkapp')
+    @ApiTags('Storage Participation')
+    getParticipationZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getParticipationZkAppStorage();
+    }
+
+    @Get('participation/zkapp/leafs')
+    @ApiTags('Storage Participation')
+    getParticipationZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getParticipationZkAppStorageLeafs();
+    }
+
+    @Get('funding/information/level1')
+    @ApiTags('Storage Funding')
+    getFundingInformationStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getFundingInformationStorageLevel1();
+    }
+
+    @Get('funding/information/leafs')
+    @ApiTags('Storage Funding')
+    getFundingInformationStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getFundingInformationStorageLeafs();
+    }
+
+    @Get('funding/zkapp')
+    @ApiTags('Storage Funding')
+    getFundingZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getFundingZkAppStorage();
+    }
+
+    @Get('funding/zkapp/leafs')
+    @ApiTags('Storage Funding')
+    getFundingZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getFundingZkAppStorageLeafs();
+    }
+
+    @Get('treasury-manager/campaign-state/level1')
+    @ApiTags('Storage Treasury Manager')
+    getTreasuryManagerCampaignStateStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getTreasuryManagerCampaignStateStorageLevel1();
+    }
+
+    @Get('treasury-manager/campaign-state/leafs')
+    @ApiTags('Storage Treasury Manager')
+    getTreasuryManagerCampaignStateStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getTreasuryManagerCampaignStateStorageLeafs();
+    }
+
+    @Get('treasury-manager/claimed-amount/level1')
+    @ApiTags('Storage Treasury Manager')
+    getTreasuryManagerClaimedAmountStorageLevel1(): MerkleLeaf[] {
+        return this.storagesService.getTreasuryManagerClaimedAmountStorageLevel1();
+    }
+
+    @Get('treasury-manager/claimed-amount/leafs')
+    @ApiTags('Storage Treasury Manager')
+    getTreasuryManagerClaimedAmountStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getTreasuryManagerClaimedAmountStorageLeafs();
+    }
+
+    @Get('treasury-manager/zkapp')
+    @ApiTags('Storage Treasury Manager')
+    getTreasuryManagerZkAppStorage(): MerkleLeaf[] {
+        return this.storagesService.getTreasuryManagerZkAppStorage();
+    }
+
+    @Get('treasury-manager/zkapp/leafs')
+    @ApiTags('Storage Treasury Manager')
+    getTreasuryManagerZkAppStorageLeafs(): {
+        [key: string]: any;
+    } {
+        return this.storagesService.getTreasuryManagerZkAppStorageLeafs();
+    }
 }

@@ -18,6 +18,7 @@ import { UpdateOrganizerDto } from 'src/dtos/update-organizer.dto';
 import { Organizer } from 'src/schemas/organizer.schema';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Campaign } from 'src/schemas/campaign.schema';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 @Controller('organizers')
 export class OrganizersController {

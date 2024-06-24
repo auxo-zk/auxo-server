@@ -6,6 +6,7 @@ import {
     IsUrl,
     ValidateNested,
 } from 'class-validator';
+import { FileInformation } from 'src/entities/file-information.entity';
 
 class ProjectMember {
     @IsString()
@@ -19,6 +20,10 @@ class ProjectMember {
     @IsString()
     @IsOptional()
     link?: string;
+
+    @IsString()
+    @IsOptional()
+    publicKey?: string;
 }
 
 export class CreateProjectDraftDto {
@@ -61,7 +66,8 @@ export class CreateProjectDraftDto {
     members?: ProjectMember[];
 
     @IsArray()
-    @IsUrl({}, { each: true })
     @IsOptional()
-    documents?: string[];
+    @ValidateNested({ each: true })
+    @Type(() => FileInformation)
+    documents?: FileInformation[];
 }

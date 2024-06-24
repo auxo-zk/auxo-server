@@ -9,6 +9,7 @@ import { AuthRoleEnum } from 'src/constants';
 import { CreateProjectDraftDto } from 'src/dtos/create-project-draft.dto';
 import { UpdateBuilderDto } from 'src/dtos/update-builder.dto';
 import { UpdateProjectDraftDto } from 'src/dtos/update-project-draft.dto';
+import { FileInformation } from 'src/entities/file-information.entity';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { ObjectStorageService } from 'src/object-storage/object-storage.service';
 import { Builder } from 'src/schemas/builder.schema';
@@ -41,16 +42,15 @@ export class BuildersService {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
-            const avatarUrl =
-                await this.objectStorageService.uploadFile(avatar);
+            const fileInfo = await this.objectStorageService.uploadFile(avatar);
             await this.builderModel.findOneAndUpdate(
                 { address: jwtPayload.sub },
                 {
-                    img: avatarUrl,
+                    img: fileInfo.URL,
                 },
                 { new: true, upsert: true },
             );
-            return avatarUrl;
+            return fileInfo.URL;
         }
     }
 
