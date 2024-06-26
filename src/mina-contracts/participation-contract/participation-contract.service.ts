@@ -121,6 +121,143 @@ export class ParticipationContractService implements ContractServiceInterface {
         return result;
     }
 
+    async getNextRollupJob(): Promise<string | undefined> {
+        try {
+            const notActiveActions = await this.participationActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                return notActiveActions[0].previousActionState;
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async processRollupJob(previousActionState: string): Promise<boolean> {
+        try {
+            const notActiveActions = await this.participationActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
+            const state = await this.fetchParticipationState();
+            let proof = await Utils.prove(
+                ZkApp.Participation.RollupParticipation.name,
+                'firstStep',
+                async () =>
+                    ZkApp.Participation.RollupParticipation.firstStep(
+                        state.projectIndexRoot,
+                        state.projectCounterRoot,
+                        state.ipfsHashRoot,
+                        Field(notActiveActions[0].previousActionState),
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+
+            const projectIndexStorage = _.cloneDeep(this._projectIndexStorage);
+            const projectCounterStorage = _.cloneDeep(
+                this._projectCounterStorage,
+            );
+            const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
+            const projectCounterMapping: {
+                [key: number]: number;
+            } = {};
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                const campaignId = notActiveAction.actionData.campaignId;
+                if (projectCounterMapping[campaignId] == undefined) {
+                    const campaign = await this.campaignModel.findOne({
+                        campaignId: campaignId,
+                    });
+                    projectCounterMapping[campaignId] = campaign.projectCounter;
+                }
+                const level1Index = projectIndexStorage.calculateLevel1Index({
+                    campaignId: Field(campaignId),
+                    projectId: Field(notActiveAction.actionData.projectId),
+                });
+                proof = await Utils.prove(
+                    ZkApp.Participation.RollupParticipation.name,
+                    'participateCampaignStep',
+                    async () =>
+                        ZkApp.Participation.RollupParticipation.participateCampaignStep(
+                            proof,
+                            ZkApp.Participation.ParticipationAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
+                                ),
+                            ),
+                            Field(projectCounterMapping[campaignId]),
+                            projectIndexStorage.getLevel1Witness(level1Index),
+                            projectCounterStorage.getLevel1Witness(
+                                Field(campaignId),
+                            ),
+                            ipfsHashStorage.getLevel1Witness(level1Index),
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
+
+                projectCounterMapping[campaignId] += 1;
+                projectIndexStorage.updateLeaf(
+                    level1Index,
+                    Field(projectCounterMapping[campaignId]),
+                );
+                projectCounterStorage.updateLeaf(
+                    Field(campaignId),
+                    Field(projectCounterMapping[campaignId]),
+                );
+                ipfsHashStorage.updateLeaf(
+                    level1Index,
+                    ipfsHashStorage.calculateLeaf(
+                        IpfsHash.fromString(
+                            notActiveAction.actionData.ipfsHash,
+                        ),
+                    ),
+                );
+            }
+
+            const participationContract =
+                new ZkApp.Participation.ParticipationContract(
+                    PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
+                );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                ZkApp.Participation.ParticipationContract.name,
+                'rollup',
+                async () => participationContract.rollup(proof),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async rollup(): Promise<boolean> {
         try {
             const lastReducedAction =

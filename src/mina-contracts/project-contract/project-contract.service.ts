@@ -110,6 +110,193 @@ export class ProjectContractService implements ContractServiceInterface {
         return result;
     }
 
+    async getNextRollupJob(): Promise<string | undefined> {
+        try {
+            const notActiveActions = await this.projectActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                return notActiveActions[0].previousActionState;
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async processRollupJob(previousActionState: string): Promise<boolean> {
+        try {
+            const notActiveActions = await this.projectActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
+            const state = await this.fetchProjectState();
+            let nextProjectId = state.nextProjectId;
+            let proof = await Utils.prove(
+                ZkApp.Project.RollupProject.name,
+                'firstStep',
+                async () =>
+                    ZkApp.Project.RollupProject.firstStep(
+                        state.nextProjectId,
+                        state.memberRoot,
+                        state.ipfsHashRoot,
+                        state.treasuryAddressRoot,
+                        Field(notActiveActions[0].previousActionState),
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+
+            const memberStorage = _.cloneDeep(this._memberStorage);
+            const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
+            const treasuryAddressStorage = _.cloneDeep(
+                this._treasuryAddressStorage,
+            );
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                if (
+                    notActiveAction.actionData.actionType ==
+                    Storage.ProjectStorage.ProjectActionEnum.CREATE_PROJECT
+                ) {
+                    proof = await Utils.prove(
+                        ZkApp.Project.RollupProject.name,
+                        'createProjectStep',
+                        async () =>
+                            ZkApp.Project.RollupProject.createProjectStep(
+                                proof,
+                                ZkApp.Project.ProjectAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                memberStorage.getLevel1Witness(nextProjectId),
+                                ipfsHashStorage.getLevel1Witness(nextProjectId),
+                                treasuryAddressStorage.getLevel1Witness(
+                                    nextProjectId,
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+
+                    memberStorage.updateInternal(
+                        nextProjectId,
+                        Storage.ProjectStorage.EMPTY_LEVEL_2_PROJECT_MEMBER_TREE(),
+                    );
+                    for (
+                        let j = 0;
+                        j < notActiveAction.actionData.members.length;
+                        j++
+                    ) {
+                        memberStorage.updateLeaf(
+                            {
+                                level1Index: nextProjectId,
+                                level2Index: Field(j),
+                            },
+                            memberStorage.calculateLeaf(
+                                PublicKey.fromBase58(
+                                    notActiveAction.actionData.members[j],
+                                ),
+                            ),
+                        );
+                    }
+
+                    ipfsHashStorage.updateLeaf(
+                        { level1Index: nextProjectId },
+                        ipfsHashStorage.calculateLeaf(
+                            IpfsHash.fromString(
+                                notActiveAction.actionData.ipfsHash,
+                            ),
+                        ),
+                    );
+                    treasuryAddressStorage.updateLeaf(
+                        {
+                            level1Index: nextProjectId,
+                        },
+                        treasuryAddressStorage.calculateLeaf(
+                            PublicKey.fromBase58(
+                                notActiveAction.actionData.treasuryAddress,
+                            ),
+                        ),
+                    );
+                    nextProjectId = nextProjectId.add(1);
+                } else {
+                    proof = await Utils.prove(
+                        ZkApp.Project.RollupProject.name,
+                        'updateProjectStep',
+                        async () =>
+                            ZkApp.Project.RollupProject.updateProjectStep(
+                                proof,
+                                ZkApp.Project.ProjectAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                IpfsHash.fromString(
+                                    notActiveAction.actionData.ipfsHash,
+                                ),
+                                ipfsHashStorage.getLevel1Witness(
+                                    Field(notActiveAction.actionData.projectId),
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+
+                    ipfsHashStorage.updateLeaf(
+                        {
+                            level1Index: Field(
+                                notActiveAction.actionData.projectId,
+                            ),
+                        },
+                        ipfsHashStorage.calculateLeaf(
+                            IpfsHash.fromString(
+                                notActiveAction.actionData.ipfsHash,
+                            ),
+                        ),
+                    );
+                }
+            }
+
+            const projectContract = new ZkApp.Project.ProjectContract(
+                PublicKey.fromBase58(process.env.PROJECT_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                ZkApp.Project.ProjectContract.name,
+                'rollup',
+                async () => projectContract.rollup(proof),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async rollup() {
         try {
             const lastReducedAction = await this.projectActionModel.findOne(

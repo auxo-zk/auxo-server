@@ -125,6 +125,131 @@ export class CampaignContractService implements ContractServiceInterface {
         return result;
     }
 
+    async getNextRollupJob(): Promise<string | undefined> {
+        try {
+            const notActiveActions = await this.campaignActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                return notActiveActions[0].previousActionState;
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async processRollupJob(previousActionState: string): Promise<boolean> {
+        try {
+            const notActiveActions = await this.campaignActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
+            const state = await this.fetchCampaignState();
+            const timelineStorage = _.cloneDeep(this._timelineStorage);
+            const ipfsHashStorage = _.cloneDeep(this._ipfsHashStorage);
+            const keyIndexStorage = _.cloneDeep(this._keyIndexStorage);
+            let nextCampaignId = state.nextCampaignId;
+            let proof = await Utils.prove(
+                ZkApp.Campaign.RollupCampaign.name,
+                'firstStep',
+                async () =>
+                    ZkApp.Campaign.RollupCampaign.firstStep(
+                        nextCampaignId,
+                        state.timelineRoot,
+                        state.ipfsHashRoot,
+                        state.keyIndexRoot,
+                        state.actionState,
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                proof = await Utils.prove(
+                    ZkApp.Campaign.RollupCampaign.name,
+                    'createCampaignStep',
+                    async () =>
+                        ZkApp.Campaign.RollupCampaign.createCampaignStep(
+                            proof,
+                            ZkApp.Campaign.CampaignAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
+                                ),
+                            ),
+                            timelineStorage.getLevel1Witness(nextCampaignId),
+                            ipfsHashStorage.getLevel1Witness(nextCampaignId),
+                            keyIndexStorage.getLevel1Witness(nextCampaignId),
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
+
+                timelineStorage.updateLeaf(
+                    nextCampaignId,
+                    timelineStorage.calculateLeaf(
+                        Timeline.toAction(notActiveAction.actionData.timeline),
+                    ),
+                );
+                ipfsHashStorage.updateLeaf(
+                    nextCampaignId,
+                    ipfsHashStorage.calculateLeaf(
+                        IpfsHash.fromString(
+                            notActiveAction.actionData.ipfsHash,
+                        ),
+                    ),
+                );
+                keyIndexStorage.updateLeaf(
+                    nextCampaignId,
+                    keyIndexStorage.calculateLeaf({
+                        committeeId: Field(
+                            notActiveAction.actionData.committeeId,
+                        ),
+                        keyId: Field(notActiveAction.actionData.keyId),
+                    }),
+                );
+                nextCampaignId = nextCampaignId.add(1);
+            }
+            const campaignContract = new ZkApp.Campaign.CampaignContract(
+                PublicKey.fromBase58(process.env.CAMPAIGN_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                ZkApp.Campaign.CampaignContract.name,
+                'rollup',
+                async () => campaignContract.rollup(proof),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async rollup(): Promise<boolean> {
         try {
             const lastReducedAction = await this.campaignActionModel.findOne(

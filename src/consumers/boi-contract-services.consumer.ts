@@ -10,6 +10,8 @@ import { ProjectContractService } from '../mina-contracts/project-contract/proje
 import { FundingContractService } from '../mina-contracts/funding-contract/funding-contract.service';
 import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
+import { ReducerJobData, ReducerJobEnum } from 'src/constants';
+import { NullifierContractService } from 'src/mina-contracts/nullifier-contract/nullifier-contract.service';
 
 @Processor('boi-contract-services')
 export class BoiContractServicesConsumer {
@@ -24,91 +26,75 @@ export class BoiContractServicesConsumer {
         private readonly projectContractService: ProjectContractService,
         private readonly fundingContractService: FundingContractService,
         private readonly treasuryManagerContractService: TreasuryManagerContractService,
+        private readonly nullifierContractService: NullifierContractService,
     ) {}
 
     @Process({ name: 'handleContractServices', concurrency: 1 })
-    async handleContractServices(job: Job<{ type: number; date: Date }>) {
+    async handleContractServices(job: Job<ReducerJobData>) {
         try {
+            const jobId = job.id as string;
+            console.log('Job ID:', jobId);
+            let isSuccessful = false;
             switch (job.data.type) {
-                case 0:
-                    try {
-                        this.logger.log('Start compiling contract...');
-                        await this.committeeContractService.compile();
-                        await this.dkgContractsService.compile();
-                        await this.dkgUsageContractsService.compile();
-                        await this.requesterContractsService.compile();
-                        await this.projectContractService.compile();
-                        await this.campaignContractService.compile();
-                        await this.participationContractService.compile();
-                        await this.fundingContractService.compile();
-                        await this.treasuryManagerContractService.compile();
-                        this.logger.log('All contracts compiled successfully');
-                        await job.progress();
-                    } catch (err) {
-                        this.logger.error(
-                            'Error during compiling contracts: ',
-                            err,
+                case ReducerJobEnum.COMPILE:
+                    this.logger.log('Start compile job...');
+                    await this.projectContractService.compile();
+                    await this.campaignContractService.compile();
+                    await this.participationContractService.compile();
+                    await this.participationContractService.compile();
+                    await this.fundingContractService.compile();
+                    await this.treasuryManagerContractService.compile();
+                    await this.nullifierContractService.compile();
+                    isSuccessful = true;
+                    break;
+                case ReducerJobEnum.ROLLUP_PROJECT:
+                    this.logger.log('Start rollup project job...');
+                    isSuccessful =
+                        await this.projectContractService.processRollupJob(
+                            jobId.slice(jobId.indexOf('-') + 1),
                         );
-                    } finally {
-                        break;
-                    }
-                case 1:
-                    try {
-                        this.logger.log('Start rolluping 1st...');
-                        await this.committeeContractService.update();
-                        await this.dkgContractsService.update();
-                        await this.dkgUsageContractsService.update();
-                        await this.requesterContractsService.update();
-                        await this.projectContractService.update();
-                        await this.campaignContractService.update();
-                        await this.participationContractService.update();
-                        await this.fundingContractService.update();
-                        await this.treasuryManagerContractService.update();
-
-                        await this.projectContractService.rollup();
-                        await this.campaignContractService.rollup();
-                        await this.fundingContractService.rollup();
-                        await this.participationContractService.rollup();
-                        await this.treasuryManagerContractService.rollup();
-
-                        this.logger.log('All contract rolluped successfully');
-                    } catch (err) {
-                        this.logger.error(
-                            'Error during rolluping contracts: ',
-                            err,
+                    break;
+                case ReducerJobEnum.ROLLUP_CAMPAIGN:
+                    this.logger.log('Start rollup campaign job...');
+                    isSuccessful =
+                        await this.campaignContractService.processRollupJob(
+                            jobId.slice(jobId.indexOf('-') + 1),
                         );
-                    } finally {
-                        break;
-                    }
-                case 2:
-                    try {
-                        this.logger.log('Start rolluping 2nd...');
-                        await this.committeeContractService.update();
-                        await this.dkgContractsService.update();
-                        await this.dkgUsageContractsService.update();
-                        await this.requesterContractsService.update();
-                        await this.projectContractService.update();
-                        await this.campaignContractService.update();
-                        await this.participationContractService.update();
-                        await this.fundingContractService.update();
-                        await this.treasuryManagerContractService.update();
-
-                        await this.projectContractService.rollup();
-                        await this.campaignContractService.rollup();
-                        await this.fundingContractService.rollup();
-                        await this.participationContractService.rollup();
-                        await this.treasuryManagerContractService.rollup();
-
-                        this.logger.log('All contract rolluped successfully');
-                    } catch (err) {
-                        this.logger.error(
-                            'Error during rolluping contracts: ',
-                            err,
+                    break;
+                case ReducerJobEnum.ROLLUP_PARTICIPATION:
+                    this.logger.log('Start rollup participation job...');
+                    isSuccessful =
+                        await this.participationContractService.processRollupJob(
+                            jobId.slice(jobId.indexOf('-') + 1),
                         );
-                    } finally {
-                        break;
-                    }
+                    break;
+                case ReducerJobEnum.ROLLUP_FUNDING:
+                    this.logger.log('Start rollup funding job...');
+                    isSuccessful =
+                        await this.fundingContractService.processRollupJob(
+                            jobId.slice(2),
+                        );
+                    break;
+                case ReducerJobEnum.ROLLUP_TREASURY_MANAGER:
+                    this.logger.log('Start rollup treasury manager job...');
+                    isSuccessful =
+                        await this.treasuryManagerContractService.processRollupJob(
+                            jobId.slice(2),
+                        );
+                    break;
+                case ReducerJobEnum.ROLLUP_NULLIFIER:
+                    this.logger.log('Start rollup nullifier job...');
+                    isSuccessful =
+                        await this.nullifierContractService.processRollupJob(
+                            jobId.slice(jobId.indexOf('-') + 1),
+                        );
+                    break;
             }
+            if (!isSuccessful) {
+                throw new Error();
+            }
+            // await job.moveToCompleted(undefined, true);
+            this.logger.log(`Job ${jobId} processed!`);
         } catch (err) {
             console.log(err);
         } finally {

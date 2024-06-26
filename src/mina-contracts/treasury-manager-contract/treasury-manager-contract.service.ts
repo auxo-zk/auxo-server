@@ -134,6 +134,182 @@ export class TreasuryManagerContractService
         return result;
     }
 
+    async getNextRollupJob(): Promise<string | undefined> {
+        try {
+            const notActiveActions = await this.treasuryManagerActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                return notActiveActions[0].previousActionState;
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async processRollupJob(previousActionState: string): Promise<boolean> {
+        try {
+            const notActiveActions = await this.treasuryManagerActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
+            const state = await this.fetchTreasuryManagerState();
+
+            let proof = await Utils.prove(
+                ZkApp.TreasuryManager.RollupTreasuryManager.name,
+                'firstStep',
+                async () =>
+                    ZkApp.TreasuryManager.RollupTreasuryManager.firstStep(
+                        state.campaignStateRoot,
+                        state.claimedIndexRoot,
+                        state.actionState,
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+            const campaignStateStorage = _.cloneDeep(
+                this._campaignStateStorage,
+            );
+            const claimedAmountStorage = _.cloneDeep(
+                this._claimedAmountStorage,
+            );
+
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                const campaignId = Field(notActiveAction.actionData.campaignId);
+                if (
+                    notActiveAction.actionData.actionType ==
+                    Storage.TreasuryManagerStorage.TreasuryManagerActionEnum
+                        .COMPLETE_CAMPAIGN
+                ) {
+                    proof = await Utils.prove(
+                        ZkApp.TreasuryManager.RollupTreasuryManager.name,
+                        'completeCampaignStep',
+                        async () =>
+                            ZkApp.TreasuryManager.RollupTreasuryManager.completeCampaignStep(
+                                proof,
+                                ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                campaignStateStorage.getLevel1Witness(
+                                    campaignId,
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+                    campaignStateStorage.updateLeaf(
+                        campaignId,
+                        campaignStateStorage.calculateLeaf(
+                            Storage.TreasuryManagerStorage.CampaignStateEnum
+                                .COMPLETED,
+                        ),
+                    );
+                } else if (
+                    notActiveAction.actionData.actionType ==
+                    Storage.TreasuryManagerStorage.TreasuryManagerActionEnum
+                        .ABORT_CAMPAIGN
+                ) {
+                    proof = await Utils.prove(
+                        ZkApp.TreasuryManager.RollupTreasuryManager.name,
+                        'abortCampaignStep',
+                        async () =>
+                            ZkApp.TreasuryManager.RollupTreasuryManager.abortCampaignStep(
+                                proof,
+                                ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                campaignStateStorage.getLevel1Witness(
+                                    campaignId,
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+                    campaignStateStorage.updateLeaf(
+                        campaignId,
+                        campaignStateStorage.calculateLeaf(
+                            Storage.TreasuryManagerStorage.CampaignStateEnum
+                                .ABORTED,
+                        ),
+                    );
+                } else {
+                    const level1Index =
+                        claimedAmountStorage.calculateLevel1Index({
+                            campaignId: campaignId,
+                            dimensionIndex: new UInt8(
+                                notActiveAction.actionData.projectIndex - 1,
+                            ),
+                        });
+                    proof = await Utils.prove(
+                        ZkApp.TreasuryManager.RollupTreasuryManager.name,
+                        'claimFundStep',
+                        async () =>
+                            ZkApp.TreasuryManager.RollupTreasuryManager.claimFundStep(
+                                proof,
+                                ZkApp.TreasuryManager.TreasuryManagerAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                claimedAmountStorage.getLevel1Witness(
+                                    level1Index,
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+                    claimedAmountStorage.updateLeaf(
+                        level1Index,
+                        Field(notActiveAction.actionData.amount),
+                    );
+                }
+            }
+            const treasuryContract =
+                new ZkApp.TreasuryManager.TreasuryManagerContract(
+                    PublicKey.fromBase58(process.env.TREASURY_MANAGER_ADDRESS),
+                );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                ZkApp.TreasuryManager.TreasuryManagerContract.name,
+                'rollup',
+                async () => treasuryContract.rollup(proof),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async rollup() {
         try {
             const lastReducedAction =

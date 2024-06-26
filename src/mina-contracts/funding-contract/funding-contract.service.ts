@@ -112,6 +112,118 @@ export class FundingContractService implements ContractServiceInterface {
         return result;
     }
 
+    async getNextRollupJob(): Promise<string | undefined> {
+        try {
+            const notActiveActions = await this.fundingActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                return notActiveActions[0].previousActionState;
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async processRollupJob(previousActionState: string): Promise<boolean> {
+        try {
+            const notActiveActions = await this.fundingActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
+            const state = await this.fetchFundingState();
+            let nextFundingId = state.nextFundingId;
+            let proof = await ZkApp.Funding.RollupFunding.firstStep(
+                state.nextFundingId,
+                state.fundingInformationRoot,
+                state.actionState,
+            );
+            const fundingInformationStorage = _.cloneDeep(
+                this._fundingInformationStorage,
+            );
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                if (
+                    notActiveAction.actionData.actionType ==
+                    Storage.FundingStorage.FundingActionEnum.FUND
+                ) {
+                    proof = await ZkApp.Funding.RollupFunding.fundStep(
+                        proof,
+                        ZkApp.Funding.FundingAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notActiveAction.actions,
+                            ),
+                        ),
+                        fundingInformationStorage.getLevel1Witness(
+                            nextFundingId,
+                        ),
+                    );
+                    fundingInformationStorage.updateLeaf(
+                        nextFundingId,
+                        fundingInformationStorage.calculateLeaf(
+                            notActiveAction.actionData.toFundingInformation(),
+                        ),
+                    );
+                    nextFundingId = nextFundingId.add(1);
+                } else {
+                    proof = await ZkApp.Funding.RollupFunding.fundStep(
+                        proof,
+                        ZkApp.Funding.FundingAction.fromFields(
+                            Utilities.stringArrayToFields(
+                                notActiveAction.actions,
+                            ),
+                        ),
+                        fundingInformationStorage.getLevel1Witness(
+                            Field(notActiveAction.actionData.fundingId),
+                        ),
+                    );
+                    fundingInformationStorage.updateLeaf(
+                        Field(notActiveAction.actionData.fundingId),
+                        fundingInformationStorage.calculateLeaf(
+                            notActiveAction.actionData.toFundingInformation(),
+                        ),
+                    );
+                }
+            }
+            const fundingContract = new ZkApp.Funding.FundingContract(
+                PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            const tx = await Mina.transaction(
+                {
+                    sender: feePayerPrivateKey.toPublicKey(),
+                    fee: process.env.FEE,
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                async () => {
+                    await fundingContract.rollup(proof);
+                },
+            );
+            await Utilities.proveAndSend(
+                tx,
+                feePayerPrivateKey,
+                false,
+                this.logger,
+            );
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async rollup(): Promise<boolean> {
         try {
             const lastReducedAction = await this.fundingActionModel.findOne(

@@ -108,6 +108,103 @@ export class NullifierContractService implements ContractServiceInterface {
         return result;
     }
 
+    async getNextRollupJob(): Promise<string | undefined> {
+        try {
+            const notActiveActions = await this.nullifierActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                return notActiveActions[0].previousActionState;
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async processRollupJob(previousActionState: string): Promise<boolean> {
+        try {
+            const notActiveActions = await this.nullifierActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
+            const state = await this.fetchNullifierState();
+            let proof = await Utils.prove(
+                ZkApp.Nullifier.RollupNullifier.name,
+                'firstStep',
+                async () =>
+                    ZkApp.Nullifier.RollupNullifier.firstStep(
+                        state.nullifierRoot,
+                        state.actionState,
+                    ),
+                undefined,
+                { info: true, error: true },
+            );
+            const nullifierStorage = _.cloneDeep(this._nullifierStorage);
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                proof = await Utils.prove(
+                    ZkApp.Nullifier.RollupNullifier.name,
+                    'firstStep',
+                    async () =>
+                        ZkApp.Nullifier.RollupNullifier.commit(
+                            proof,
+                            ZkApp.Nullifier.NullifierAction.fromFields(
+                                Utilities.stringArrayToFields(
+                                    notActiveAction.actions,
+                                ),
+                            ),
+                            nullifierStorage.getLevel1Witness(
+                                Field(notActiveAction.actionData.nullifier),
+                            ),
+                        ),
+                    undefined,
+                    { info: true, error: true },
+                );
+                nullifierStorage.updateRawLeaf(
+                    Field(notActiveAction.actionData.nullifier),
+                    Bool(true),
+                );
+            }
+            const nullifierContract = new ZkApp.Nullifier.NullifierContract(
+                PublicKey.fromBase58(process.env.NULLIFIER_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                ZkApp.Nullifier.NullifierContract.name,
+                'rollup',
+                async () => nullifierContract.rollup(proof),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
     async rollup(): Promise<boolean> {
         try {
             const lastReducedAction = await this.nullifierActionModel.findOne(

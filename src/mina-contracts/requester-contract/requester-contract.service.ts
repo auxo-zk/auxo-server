@@ -146,23 +146,6 @@ export class RequesterContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // Provable.log(
-            //     await this.fetchRequesterState(this.requesterAddresses[0]),
-            // );
-            // Provable.log(this.storage(this.requesterAddresses[0]).counters);
-            // Provable.log(
-            //     this.storage(this.requesterAddresses[0]).keyIndexStorage.root,
-            // );
-            // Provable.log(
-            //     this.storage(this.requesterAddresses[0]).timestampStorage.root,
-            // );
-            // Provable.log(
-            //     this.storage(this.requesterAddresses[0]).accumulationStorage
-            //         .root,
-            // );
-            // Provable.log(
-            //     this.storage(this.requesterAddresses[0]).commitmentStorage.root,
-            // );
             // await this.compile();
             // await this.rollup();
         } catch (err) {
