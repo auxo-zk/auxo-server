@@ -95,6 +95,8 @@ export class FundingContractService implements ContractServiceInterface {
 
     async compile() {
         const cache = ZkAppCache;
+        await ZkApp.Funding.RollupFunding.compile({ cache });
+        await ZkApp.Funding.FundingContract.compile({ cache });
     }
 
     async fetchFundingState(): Promise<FundingState> {
