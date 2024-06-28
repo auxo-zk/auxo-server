@@ -72,14 +72,14 @@ export class BoiContractServicesConsumer {
                     this.logger.log('Start rollup funding job...');
                     isSuccessful =
                         await this.fundingContractService.processRollupJob(
-                            jobId.slice(2),
+                            jobId.slice(jobId.indexOf('-') + 1),
                         );
                     break;
                 case ReducerJobEnum.ROLLUP_TREASURY_MANAGER:
                     this.logger.log('Start rollup treasury manager job...');
                     isSuccessful =
                         await this.treasuryManagerContractService.processRollupJob(
-                            jobId.slice(2),
+                            jobId.slice(jobId.indexOf('-') + 1),
                         );
                     break;
                 case ReducerJobEnum.ROLLUP_NULLIFIER:
