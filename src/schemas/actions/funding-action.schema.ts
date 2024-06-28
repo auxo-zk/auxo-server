@@ -35,13 +35,15 @@ export class FundingActionData {
         );
     }
 
-    toFundingInformation(): Storage.FundingStorage.FundingInformation {
+    static toFundingInformation(
+        data: FundingActionData,
+    ): Storage.FundingStorage.FundingInformation {
         return new Storage.FundingStorage.FundingInformation({
-            campaignId: Field(this.campaignId),
-            investor: PublicKey.fromBase58(this.investor),
+            campaignId: Field(data.campaignId),
+            investor: PublicKey.fromBase58(data.investor),
             amount: new UInt64(
-                this.actionType == Storage.FundingStorage.FundingActionEnum.FUND
-                    ? this.amount
+                data.actionType == Storage.FundingStorage.FundingActionEnum.FUND
+                    ? data.amount
                     : 0,
             ),
         });

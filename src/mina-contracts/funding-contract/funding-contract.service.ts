@@ -3,6 +3,7 @@ import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     FundingAction,
+    FundingActionData,
     getFundingActionData,
 } from 'src/schemas/actions/funding-action.schema';
 import { Model } from 'mongoose';
@@ -171,7 +172,9 @@ export class FundingContractService implements ContractServiceInterface {
                     fundingInformationStorage.updateLeaf(
                         nextFundingId,
                         fundingInformationStorage.calculateLeaf(
-                            notActiveAction.actionData.toFundingInformation(),
+                            FundingActionData.toFundingInformation(
+                                notActiveAction.actionData,
+                            ),
                         ),
                     );
                     nextFundingId = nextFundingId.add(1);
@@ -190,7 +193,9 @@ export class FundingContractService implements ContractServiceInterface {
                     fundingInformationStorage.updateLeaf(
                         Field(notActiveAction.actionData.fundingId),
                         fundingInformationStorage.calculateLeaf(
-                            notActiveAction.actionData.toFundingInformation(),
+                            FundingActionData.toFundingInformation(
+                                notActiveAction.actionData,
+                            ),
                         ),
                     );
                 }
@@ -279,7 +284,9 @@ export class FundingContractService implements ContractServiceInterface {
                         fundingInformationStorage.updateLeaf(
                             nextFundingId,
                             fundingInformationStorage.calculateLeaf(
-                                notReducedAction.actionData.toFundingInformation(),
+                                FundingActionData.toFundingInformation(
+                                    notReducedAction.actionData,
+                                ),
                             ),
                         );
                         nextFundingId = nextFundingId.add(1);
@@ -298,7 +305,9 @@ export class FundingContractService implements ContractServiceInterface {
                         fundingInformationStorage.updateLeaf(
                             Field(notReducedAction.actionData.fundingId),
                             fundingInformationStorage.calculateLeaf(
-                                notReducedAction.actionData.toFundingInformation(),
+                                FundingActionData.toFundingInformation(
+                                    notReducedAction.actionData,
+                                ),
                             ),
                         );
                     }
