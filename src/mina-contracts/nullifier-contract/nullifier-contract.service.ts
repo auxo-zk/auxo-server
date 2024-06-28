@@ -76,7 +76,14 @@ export class NullifierContractService implements ContractServiceInterface {
     }
 
     async update() {
-        throw new Error('Method not implemented.');
+        try {
+            await this.fetch();
+            await this.updateMerkleTrees();
+            // await this.compile();
+            // await this.rollup();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     async onModuleInit() {
