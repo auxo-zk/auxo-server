@@ -41,7 +41,6 @@ export class BoiContractServicesConsumer {
                     await this.projectContractService.compile();
                     await this.campaignContractService.compile();
                     await this.participationContractService.compile();
-                    await this.participationContractService.compile();
                     await this.fundingContractService.compile();
                     await this.treasuryManagerContractService.compile();
                     await this.nullifierContractService.compile();
