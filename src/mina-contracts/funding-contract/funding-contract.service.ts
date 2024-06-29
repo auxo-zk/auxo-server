@@ -77,10 +77,10 @@ export class FundingContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            Provable.log(await this.fetchFundingState());
-            await this.projectContractService.compile();
-            await this.campaignContractService.compile();
-            await this.participationContractService.compile();
+            // Provable.log(await this.fetchFundingState());
+            // await this.projectContractService.compile();
+            // await this.campaignContractService.compile();
+            // await this.participationContractService.compile();
             await this.compile();
             await this.rollup();
         } catch (err) {}
