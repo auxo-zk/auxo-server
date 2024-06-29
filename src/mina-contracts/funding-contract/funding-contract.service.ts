@@ -78,11 +78,12 @@ export class FundingContractService implements ContractServiceInterface {
             await this.fetch();
             await this.updateMerkleTrees();
             // Provable.log(await this.fetchFundingState());
+            // Provable.log(this.fundingInformationStorage.root);
             // await this.projectContractService.compile();
             // await this.campaignContractService.compile();
             // await this.participationContractService.compile();
-            await this.compile();
-            await this.rollup();
+            // await this.compile();
+            // await this.rollup();
         } catch (err) {}
     }
 
@@ -520,13 +521,15 @@ export class FundingContractService implements ContractServiceInterface {
                     );
                 const fundingInformationLeaf =
                     this._fundingInformationStorage.calculateLeaf(
-                        funding.toFundingInformation(),
+                        Funding.toFundingInformation(funding),
                     );
                 this._fundingInformationStorage.updateLeaf(
                     level1Index,
                     fundingInformationLeaf,
                 );
             }
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 }

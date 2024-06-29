@@ -43,7 +43,7 @@ export class BoiContractServicesConsumer {
                     await this.participationContractService.compile();
                     await this.fundingContractService.compile();
                     await this.treasuryManagerContractService.compile();
-                    await this.nullifierContractService.compile();
+                    // await this.nullifierContractService.compile();
                     isSuccessful = true;
                     break;
                 case ReducerJobEnum.ROLLUP_PROJECT:

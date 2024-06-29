@@ -11,7 +11,7 @@ import {
 } from 'src/schemas/actions/commitment-action.schema';
 import { Model } from 'mongoose';
 import { Action } from 'src/interfaces/action.interface';
-import { Bool, Field, PrivateKey, PublicKey, Reducer } from 'o1js';
+import { Bool, Field, PrivateKey, Provable, PublicKey, Reducer } from 'o1js';
 import { Utils } from '@auxo-dev/auxo-libs';
 import * as _ from 'lodash';
 import { Utilities } from '../utilities';
@@ -79,8 +79,6 @@ export class NullifierContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // await this.compile();
-            // await this.rollup();
         } catch (err) {
             console.log(err);
         }
@@ -90,6 +88,9 @@ export class NullifierContractService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
+            // Provable.log(await this.fetchNullifierState());
+            // Provable.log(this._nullifierStorage.root);
+            // Provable.log(this._nullifierIndexes);
             // await this.compile();
             // await this.rollup();
         } catch (err) {
@@ -159,7 +160,7 @@ export class NullifierContractService implements ContractServiceInterface {
                 const notActiveAction = notActiveActions[i];
                 proof = await Utils.prove(
                     ZkApp.Nullifier.RollupNullifier.name,
-                    'firstStep',
+                    'commit',
                     async () =>
                         ZkApp.Nullifier.RollupNullifier.commit(
                             proof,
@@ -252,7 +253,7 @@ export class NullifierContractService implements ContractServiceInterface {
                     const notReducedAction = notReducedActions[i];
                     proof = await Utils.prove(
                         ZkApp.Nullifier.RollupNullifier.name,
-                        'firstStep',
+                        'commit',
                         async () =>
                             ZkApp.Nullifier.RollupNullifier.commit(
                                 proof,

@@ -208,31 +208,31 @@ export class BoiContractCronTasksService implements OnModuleInit {
                 );
             }
         }
-        if (rollupNullifierJobId) {
-            const isBlocked = this.isJobBlocked(
-                ReducerJobEnum.ROLLUP_NULLIFIER,
-                jobCounters,
-            );
-            if (!isBlocked) {
-                const rollupJob = this.getReducerJob(
-                    ReducerJobEnum.ROLLUP_NULLIFIER,
-                    rollupNullifierJobId,
-                );
-                await this.contractServices.add(
-                    'handleContractServices',
-                    rollupJob.data,
-                    rollupJob.options,
-                );
-                newJobCounter++;
-                this.updateJobCounters(
-                    ReducerJobEnum.ROLLUP_NULLIFIER,
-                    jobCounters,
-                );
-                this.logger.log(
-                    'Queued Rollup Nullifier job: ' + rollupNullifierJobId,
-                );
-            }
-        }
+        // if (rollupNullifierJobId) {
+        //     const isBlocked = this.isJobBlocked(
+        //         ReducerJobEnum.ROLLUP_NULLIFIER,
+        //         jobCounters,
+        //     );
+        //     if (!isBlocked) {
+        //         const rollupJob = this.getReducerJob(
+        //             ReducerJobEnum.ROLLUP_NULLIFIER,
+        //             rollupNullifierJobId,
+        //         );
+        //         await this.contractServices.add(
+        //             'handleContractServices',
+        //             rollupJob.data,
+        //             rollupJob.options,
+        //         );
+        //         newJobCounter++;
+        //         this.updateJobCounters(
+        //             ReducerJobEnum.ROLLUP_NULLIFIER,
+        //             jobCounters,
+        //         );
+        //         this.logger.log(
+        //             'Queued Rollup Nullifier job: ' + rollupNullifierJobId,
+        //         );
+        //     }
+        // }
     }
 
     isJobBlocked(
