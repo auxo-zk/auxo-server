@@ -3,7 +3,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Field } from 'o1js';
 import {
-    getFullDimensionEmptyGroupVector,
+    getFullDimensionEmptyPointVector,
     RequestStatusEnum,
 } from 'src/constants';
 
@@ -33,8 +33,8 @@ export class Encryption {
         this.timestamp = timestamp;
         this.indices = indices;
         this.commitments = commitments;
-        this.R = getFullDimensionEmptyGroupVector();
-        this.M = getFullDimensionEmptyGroupVector();
+        this.R = getFullDimensionEmptyPointVector();
+        this.M = getFullDimensionEmptyPointVector();
         for (let i = 0; i < Constants.ENCRYPTION_LIMITS.DIMENSION; i++) {
             const dimensionIndex = Number(
                 Field.fromBits(

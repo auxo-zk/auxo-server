@@ -1,5 +1,5 @@
 import { Constants } from '@auxo-dev/dkg';
-import { Cache, Mina } from 'o1js';
+import { Cache, Group, Mina } from 'o1js';
 import _, { last } from 'lodash';
 
 export enum CommitteeEventEnum {
@@ -142,7 +142,7 @@ RequesterAddressMapping[process.env.FUNDING_REQUESTER_ADDRESS as string] = {
     submissionAddress: process.env.FUNDING_ADDRESS as string,
 };
 
-export function getFullDimensionEmptyGroupVector(): {
+export function getFullDimensionEmptyPointVector(): {
     x: string;
     y: string;
 }[] {
@@ -152,6 +152,14 @@ export function getFullDimensionEmptyGroupVector(): {
             x: '0',
             y: '0',
         });
+    }
+    return FullDimensionEmptyGroupVector;
+}
+
+export function getFullDimensionEmptyGroupVector(): Group[] {
+    const FullDimensionEmptyGroupVector: Group[] = [];
+    for (let i = 0; i < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION; i++) {
+        FullDimensionEmptyGroupVector.push(Group.zero);
     }
     return FullDimensionEmptyGroupVector;
 }

@@ -39,6 +39,7 @@ import _, { last } from 'lodash';
 import { Encryption, Task } from 'src/schemas/task.schema';
 import {
     getFullDimensionEmptyGroupVector,
+    getFullDimensionEmptyPointVector,
     MaxRetries,
     RequesterAddresses,
     RequesterAddressMapping,
@@ -146,8 +147,11 @@ export class RequesterContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // await this.compile();
-            // await this.rollup();
+            // const address = this.requesterAddresses[0];
+            // Provable.log(await this.fetchRequesterState(address));
+            // Provable.log(this.storage(address).accumulationStorage.root);
+            await this.compile();
+            await this.rollup();
         } catch (err) {
             console.log(err);
         }
@@ -230,19 +234,31 @@ export class RequesterContractsService implements ContractServiceInterface {
                             notActiveAction.actionData.taskId ==
                             Number(UInt32.MAXINT().toBigint())
                         ) {
-                            proof = await UpdateTask.create(
-                                ZkApp.Requester.RequesterAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notActiveAction.actions,
+                            proof = await Utils.prove(
+                                UpdateTask.name,
+                                'create',
+                                async () =>
+                                    UpdateTask.create(
+                                        ZkApp.Requester.RequesterAction.fromFields(
+                                            Utilities.stringArrayToFields(
+                                                notActiveAction.actions,
+                                            ),
+                                        ),
+                                        proof,
+                                        keyIndexStorage.getLevel1Witness(
+                                            nextTaskId,
+                                        ),
+                                        timestampStorage.getLevel1Witness(
+                                            nextTaskId,
+                                        ),
+                                        accumulationStorage.getLevel1Witness(
+                                            nextTaskId,
+                                        ),
                                     ),
-                                ),
-                                proof,
-                                keyIndexStorage.getLevel1Witness(nextTaskId),
-                                timestampStorage.getLevel1Witness(nextTaskId),
-                                accumulationStorage.getLevel1Witness(
-                                    nextTaskId,
-                                ),
+                                undefined,
+                                { info: true, error: true },
                             );
+
                             keyIndexStorage.updateLeaf(
                                 { level1Index: nextTaskId },
                                 Field(notActiveAction.actionData.keyIndex),
@@ -268,8 +284,11 @@ export class RequesterContractsService implements ContractServiceInterface {
                                 R: groupVectorStorageR,
                                 M: groupVectorStorageM,
                             };
-                            // GroupVectorStorage.
                             nextTaskId = nextTaskId.add(1);
+                            // Provable.log(
+                            //     proof.publicOutput.nextAccumulationRoot,
+                            // );
+                            // Provable.log(accumulationStorage.root);
                         } else {
                             if (
                                 groupVectorStorageMapping[
@@ -285,7 +304,12 @@ export class RequesterContractsService implements ContractServiceInterface {
                             }
                             const oldSumR: Group[] = [];
                             const oldSumM: Group[] = [];
-                            const dimensionIndexes: number[] = [];
+                            const accumulationWitnessesR =
+                                new GroupVectorWitnesses();
+                            const accumulationWitnessesM =
+                                new GroupVectorWitnesses();
+                            const commitmentWitnesses =
+                                new CommitmentWitnesses();
                             for (
                                 let j = 0;
                                 j < Constants.ENCRYPTION_LIMITS.DIMENSION;
@@ -300,58 +324,6 @@ export class RequesterContractsService implements ContractServiceInterface {
                                             .slice(j * 8, (j + 1) * 8),
                                     ).toBigInt(),
                                 );
-                                dimensionIndexes.push(dimensionIndex);
-                                if (
-                                    groupVectorStorageMapping[
-                                        notActiveAction.actionData.taskId
-                                    ].R.leafs[dimensionIndex.toString()] ==
-                                    undefined
-                                ) {
-                                    oldSumR.push(Group.zero);
-                                    oldSumM.push(Group.zero);
-                                } else {
-                                    oldSumR.push(
-                                        groupVectorStorageMapping[
-                                            notActiveAction.actionData.taskId
-                                        ].R.leafs[dimensionIndex.toString()]
-                                            ? groupVectorStorageMapping[
-                                                  notActiveAction.actionData
-                                                      .taskId
-                                              ].R.leafs[
-                                                  dimensionIndex.toString()
-                                              ].raw
-                                            : Group.zero,
-                                    );
-                                    oldSumM.push(
-                                        groupVectorStorageMapping[
-                                            notActiveAction.actionData.taskId
-                                        ].M.leafs[dimensionIndex.toString()]
-                                            ? groupVectorStorageMapping[
-                                                  notActiveAction.actionData
-                                                      .taskId
-                                              ].M.leafs[
-                                                  dimensionIndex.toString()
-                                              ].raw
-                                            : Group.zero,
-                                    );
-                                }
-                            }
-                            const groupVectorOldSumR: GroupVector =
-                                new GroupVector(oldSumR);
-                            const groupVectorOldSumM: GroupVector =
-                                new GroupVector(oldSumM);
-                            const accumulationWitnessesR =
-                                new GroupVectorWitnesses();
-                            const accumulationWitnessesM =
-                                new GroupVectorWitnesses();
-                            const commitmentWitnesses =
-                                new CommitmentWitnesses();
-                            for (
-                                let j = 0;
-                                j < Constants.ENCRYPTION_LIMITS.DIMENSION;
-                                j++
-                            ) {
-                                const dimensionIndex = dimensionIndexes[j];
                                 accumulationWitnessesR.set(
                                     Field(j),
                                     groupVectorStorageMapping[
@@ -363,6 +335,26 @@ export class RequesterContractsService implements ContractServiceInterface {
                                     groupVectorStorageMapping[
                                         notActiveAction.actionData.taskId
                                     ].M.getWitness(Field(dimensionIndex)),
+                                );
+                                oldSumR.push(
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.leafs[dimensionIndex.toString()]
+                                        ? groupVectorStorageMapping[
+                                              notActiveAction.actionData.taskId
+                                          ].R.leafs[dimensionIndex.toString()]
+                                              .raw
+                                        : Group.zero,
+                                );
+                                oldSumM.push(
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].M.leafs[dimensionIndex.toString()]
+                                        ? groupVectorStorageMapping[
+                                              notActiveAction.actionData.taskId
+                                          ].M.leafs[dimensionIndex.toString()]
+                                              .raw
+                                        : Group.zero,
                                 );
                                 if (
                                     groupVectorStorageMapping[
@@ -447,6 +439,11 @@ export class RequesterContractsService implements ContractServiceInterface {
                                 nextCommitmentIndex =
                                     nextCommitmentIndex.add(1);
                             }
+                            const groupVectorOldSumR: GroupVector =
+                                new GroupVector(oldSumR);
+                            const groupVectorOldSumM: GroupVector =
+                                new GroupVector(oldSumM);
+
                             proof = await Utils.prove(
                                 UpdateTask.name,
                                 'accumulate',
@@ -647,8 +644,8 @@ export class RequesterContractsService implements ContractServiceInterface {
                             taskId: nextTaskId,
                             timestamp: notActiveAction.actionData.timestamp,
                             keyIndex: notActiveAction.actionData.keyIndex,
-                            totalR: getFullDimensionEmptyGroupVector(),
-                            totalM: getFullDimensionEmptyGroupVector(),
+                            totalR: getFullDimensionEmptyPointVector(),
+                            totalM: getFullDimensionEmptyPointVector(),
                         });
 
                         nextTaskId += 1;
@@ -668,9 +665,9 @@ export class RequesterContractsService implements ContractServiceInterface {
                         task.commitmentCounter +=
                             Constants.ENCRYPTION_LIMITS.DIMENSION;
                         const newTotalR: { x: string; y: string }[] =
-                            getFullDimensionEmptyGroupVector();
+                            getFullDimensionEmptyPointVector();
                         const newTotalM: { x: string; y: string }[] =
-                            getFullDimensionEmptyGroupVector();
+                            getFullDimensionEmptyPointVector();
                         for (
                             let j = 0;
                             j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;
