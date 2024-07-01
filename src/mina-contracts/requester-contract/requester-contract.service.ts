@@ -150,8 +150,8 @@ export class RequesterContractsService implements ContractServiceInterface {
             // const address = this.requesterAddresses[0];
             // Provable.log(await this.fetchRequesterState(address));
             // Provable.log(this.storage(address).accumulationStorage.root);
-            await this.compile();
-            await this.rollup();
+            // await this.compile();
+            // await this.rollup();
         } catch (err) {
             console.log(err);
         }
