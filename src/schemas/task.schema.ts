@@ -1,7 +1,7 @@
 import { Constants } from '@auxo-dev/dkg';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { Field } from 'o1js';
+import { Field, Group } from 'o1js';
 import {
     getFullDimensionEmptyPointVector,
     RequestStatusEnum,
@@ -43,8 +43,16 @@ export class Encryption {
                         .slice(i * 8, (i + 1) * 8),
                 ).toBigInt(),
             );
-            this.R[dimensionIndex] = R[i];
-            this.M[dimensionIndex] = M[i];
+            const newR = Group.from(R[i].x, R[i].y).add(
+                Group.from(this.R[dimensionIndex].x, this.R[dimensionIndex].y),
+            );
+            const newM = Group.from(M[i].x, M[i].y).add(
+                Group.from(this.M[dimensionIndex].x, this.M[dimensionIndex].y),
+            );
+            this.R[dimensionIndex].x = newR.x.toString();
+            this.R[dimensionIndex].y = newR.y.toString();
+            this.M[dimensionIndex].x = newM.x.toString();
+            this.M[dimensionIndex].y = newM.y.toString();
         }
     }
 }
