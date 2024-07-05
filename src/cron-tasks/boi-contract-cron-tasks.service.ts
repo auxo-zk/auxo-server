@@ -176,7 +176,10 @@ export class BoiContractCronTasksService implements OnModuleInit {
                     rollupJob.options,
                 );
                 newJobCounter++;
-                this.updateJobCounters(ReducerJobEnum.ROLLUP, jobCounters);
+                this.updateJobCounters(
+                    ReducerJobEnum.ROLLUP_FUNDING,
+                    jobCounters,
+                );
                 this.logger.log(
                     'Queued Rollup Funding job: ' + rollupFundingJobId,
                 );
