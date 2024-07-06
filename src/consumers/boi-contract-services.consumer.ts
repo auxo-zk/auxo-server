@@ -32,6 +32,12 @@ export class BoiContractServicesConsumer {
     @Process({ name: 'handleContractServices', concurrency: 1 })
     async handleContractServices(job: Job<ReducerJobData>) {
         try {
+            await this.campaignContractService.updateMerkleTrees();
+            await this.projectContractService.updateMerkleTrees();
+            await this.participationContractService.updateMerkleTrees();
+            await this.fundingContractService.updateMerkleTrees();
+            await this.treasuryManagerContractService.updateMerkleTrees();
+            await this.nullifierContractService.updateMerkleTrees();
             const jobId = job.id as string;
             console.log('Job ID:', jobId);
             let isSuccessful = false;
