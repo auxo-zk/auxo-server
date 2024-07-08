@@ -152,6 +152,13 @@ export class CampaignsService {
         return result;
     }
 
+    async getParticipations(campaignId: number) {
+        const result = await this.participationModel.find({
+            campaignId: campaignId,
+        });
+        return result;
+    }
+
     async getProjectsNotParticipated(
         campaignId: number,
         projectOwner: string,
