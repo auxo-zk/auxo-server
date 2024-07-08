@@ -53,14 +53,15 @@ export class MainContractServicesConsumer {
         try {
             await this.rollupContractService.update();
             await this.committeeContractService.update();
-            await this.dkgContractsService.update();
-            await this.requesterContractsService.update();
-            await this.dkgUsageContractsService.update();
-
             await this.projectContractService.update();
             await this.campaignContractService.update();
             await this.participationContractService.update();
             await this.fundingContractService.update();
+
+            await this.dkgContractsService.update();
+            await this.requesterContractsService.update();
+            await this.dkgUsageContractsService.update();
+
             await this.treasuryManagerContractService.update();
             await this.nullifierContractService.update();
             this.logger.log('All contracts updated successfully');
