@@ -86,8 +86,8 @@ export class NullifierContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // Provable.log(await this.fetchNullifierState());
             // Provable.log(this._nullifierStorage.root);
             // Provable.log(this._nullifierIndexes);

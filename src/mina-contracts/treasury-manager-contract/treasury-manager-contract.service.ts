@@ -84,8 +84,8 @@ export class TreasuryManagerContractService
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // await this.projectContractService.compile();
             // await this.campaignContractService.compile();
             // await this.participationContractService.compile();

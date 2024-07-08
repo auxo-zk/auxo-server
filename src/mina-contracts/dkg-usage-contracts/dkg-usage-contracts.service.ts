@@ -192,8 +192,8 @@ export class DkgUsageContractsService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // Provable.log(await this.fetchDkgRequestState());
             // Provable.log(this._dkgRequest.resultStorage.root);
             // Provable.log(this._dkgResponse.contributionStorage.root);

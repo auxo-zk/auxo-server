@@ -80,8 +80,8 @@ export class CommitteeContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // await this.compile();
             // await this.rollup();
         } catch (err) {

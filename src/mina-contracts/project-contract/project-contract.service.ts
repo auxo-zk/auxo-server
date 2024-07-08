@@ -58,8 +58,8 @@ export class ProjectContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // Provable.log(await this.fetchProjectState());
             // Provable.log(this._treasuryAddressStorage.root);
             // await this.compile();

@@ -86,8 +86,8 @@ export class RollupContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // Provable.log(await this.fetchRollupState());
             // Provable.log(this.rollupStorage.root);
             // await this.compile();

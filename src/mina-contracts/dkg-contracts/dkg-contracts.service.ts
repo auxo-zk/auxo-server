@@ -197,8 +197,8 @@ export class DkgContractsService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // await this.rollupContractService.compile();
             // await this.compile();
             // await this.rollupDkg();

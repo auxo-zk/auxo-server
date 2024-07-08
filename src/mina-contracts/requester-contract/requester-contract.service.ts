@@ -145,8 +145,8 @@ export class RequesterContractsService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // const address = this.requesterAddresses[0];
             // Provable.log(await this.fetchRequesterState(address));
             // Provable.log(this.storage(address).accumulationStorage.root);

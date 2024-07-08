@@ -75,8 +75,8 @@ export class FundingContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // Provable.log(await this.fetchFundingState());
             // Provable.log(this.fundingInformationStorage.root);
             // await this.projectContractService.compile();
