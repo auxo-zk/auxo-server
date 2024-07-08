@@ -23,6 +23,9 @@ export class Participation {
 
     @Prop({ required: true, default: 0 })
     claimedAmount?: number;
+
+    @Prop({ required: true, default: 0 })
+    fundedAmount?: number;
 }
 
 export type ParticipationDocument = HydratedDocument<Participation>;

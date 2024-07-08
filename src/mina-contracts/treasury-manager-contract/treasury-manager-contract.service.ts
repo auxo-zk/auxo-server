@@ -577,11 +577,14 @@ export class TreasuryManagerContractService
                         const project = await this.projectModel.findOne({
                             projectId: participation.projectId,
                         });
-                        const totalFundedAmount =
-                            project.totalFundedAmount +
+                        const fundedAmount =
                             request.result[participation.projectIndex - 1];
+                        const totalFundedAmount =
+                            project.totalFundedAmount + fundedAmount;
                         project.set('totalFundedAmount', totalFundedAmount);
+                        participation.set('fundedAmount', fundedAmount);
                         promises.push(project.save());
+                        promises.push(participation.save());
                     }
                     promises.push(
                         this.campaignModel.findOneAndUpdate(
