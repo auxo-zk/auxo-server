@@ -684,9 +684,10 @@ export class MethodInputsService {
                     ZkAppIndex.PARTICIPATION,
                     PublicKey.fromBase58(process.env.PARTICIPATION_ADDRESS),
                 );
-            const dkgContractRef =
-                this.fundingContractService.zkAppStorage.getZkAppRef(
-                    ZkAppIndex.DKG,
+            const dkgContractRef = this.requesterContractService
+                .storage(process.env.FUNDING_REQUESTER_ADDRESS as string)
+                .zkAppStorage.getZkAppRef(
+                    ZkApp.Requester.RequesterAddressBook.DKG,
                     PublicKey.fromBase58(process.env.DKG_ADDRESS),
                 );
             const treasuryManagerContractRef =

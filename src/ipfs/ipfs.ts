@@ -56,7 +56,7 @@ export class Ipfs {
 
     async getData(ipfsHash: string): Promise<object> {
         try {
-            const requestURL = process.env.CLOUDFLARE_IPFS_GATEWAY + ipfsHash;
+            const requestURL = process.env.PINATA_IPFS_GATEWAY + ipfsHash;
             const response = await lastValueFrom(
                 this.httpService.get(requestURL),
             );

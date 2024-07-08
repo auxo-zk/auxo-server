@@ -1,5 +1,5 @@
 import { Constants } from '@auxo-dev/dkg';
-import { Cache, Mina } from 'o1js';
+import { Cache, Group, Mina } from 'o1js';
 import _, { last } from 'lodash';
 
 export enum CommitteeEventEnum {
@@ -122,7 +122,7 @@ export enum ZkAppIndex {
     FUNDING,
     TREASURY_MANAGER,
     FUNDING_REQUESTER,
-    COMMITMENT,
+    NULLIFIER,
     __LENGTH,
 }
 
@@ -146,7 +146,7 @@ RequesterAddressMapping[
         'B62qk4y3YGNT6sT23BeQihK7CwnKBLBe4NQ6mgUTaBZEBWgFjWEpxxi',
 };
 
-export function getFullDimensionEmptyGroupVector(): {
+export function getFullDimensionEmptyPointVector(): {
     x: string;
     y: string;
 }[] {
@@ -159,7 +159,138 @@ export function getFullDimensionEmptyGroupVector(): {
     }
     return FullDimensionEmptyGroupVector;
 }
+
+export function getFullDimensionEmptyGroupVector(): Group[] {
+    const FullDimensionEmptyGroupVector: Group[] = [];
+    for (let i = 0; i < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION; i++) {
+        FullDimensionEmptyGroupVector.push(Group.zero);
+    }
+    return FullDimensionEmptyGroupVector;
+}
 export { RequesterAddressMapping };
+
+export enum ReducerJobEnum {
+    COMPILE,
+    ROLLUP,
+    UPDATE_COMMITTEE,
+    UPDATE_KEY,
+    FINALIZE_ROUND_1,
+    FINALIZE_ROUND_2,
+    FINALIZE_RESPONSE,
+    RESOLVE,
+    UPDATE_REQUEST,
+    UPDATE_TASK,
+    ROLLUP_PROJECT,
+    ROLLUP_CAMPAIGN,
+    ROLLUP_PARTICIPATION,
+    ROLLUP_FUNDING,
+    ROLLUP_TREASURY_MANAGER,
+    ROLLUP_NULLIFIER,
+}
+
+export const ReducerDependencies: Map<
+    ReducerJobEnum,
+    Array<ReducerJobEnum>
+> = new Map([
+    [ReducerJobEnum.COMPILE, [ReducerJobEnum.COMPILE]],
+    [ReducerJobEnum.ROLLUP, [ReducerJobEnum.ROLLUP]],
+    [ReducerJobEnum.UPDATE_COMMITTEE, [ReducerJobEnum.UPDATE_COMMITTEE]],
+    [
+        ReducerJobEnum.UPDATE_KEY,
+        [ReducerJobEnum.ROLLUP, ReducerJobEnum.UPDATE_KEY], // TODO: Remove Rollup dependency in the next version
+    ],
+    [
+        ReducerJobEnum.FINALIZE_ROUND_1,
+        [
+            ReducerJobEnum.ROLLUP,
+            ReducerJobEnum.UPDATE_COMMITTEE,
+            ReducerJobEnum.UPDATE_KEY,
+            ReducerJobEnum.FINALIZE_ROUND_1,
+        ],
+    ],
+    [
+        ReducerJobEnum.FINALIZE_ROUND_2,
+        [
+            ReducerJobEnum.ROLLUP,
+            ReducerJobEnum.UPDATE_COMMITTEE,
+            ReducerJobEnum.UPDATE_KEY,
+            ReducerJobEnum.FINALIZE_ROUND_2,
+        ],
+    ],
+    [
+        ReducerJobEnum.FINALIZE_RESPONSE,
+        [
+            ReducerJobEnum.ROLLUP,
+            ReducerJobEnum.UPDATE_REQUEST,
+            ReducerJobEnum.FINALIZE_RESPONSE,
+        ],
+    ],
+    [
+        ReducerJobEnum.RESOLVE,
+        [
+            ReducerJobEnum.FINALIZE_RESPONSE,
+            ReducerJobEnum.UPDATE_REQUEST,
+            ReducerJobEnum.RESOLVE,
+        ],
+    ],
+    [ReducerJobEnum.UPDATE_REQUEST, [ReducerJobEnum.UPDATE_REQUEST]],
+    [ReducerJobEnum.UPDATE_TASK, []],
+    [ReducerJobEnum.ROLLUP_PROJECT, [ReducerJobEnum.ROLLUP_PROJECT]],
+    [ReducerJobEnum.ROLLUP_CAMPAIGN, [ReducerJobEnum.ROLLUP_CAMPAIGN]],
+    [
+        ReducerJobEnum.ROLLUP_PARTICIPATION,
+        [
+            ReducerJobEnum.ROLLUP_PROJECT,
+            ReducerJobEnum.ROLLUP_CAMPAIGN,
+            ReducerJobEnum.ROLLUP_PARTICIPATION,
+        ],
+    ],
+    [
+        ReducerJobEnum.ROLLUP_FUNDING,
+        [ReducerJobEnum.ROLLUP_PARTICIPATION, ReducerJobEnum.ROLLUP_FUNDING],
+    ],
+    [
+        ReducerJobEnum.ROLLUP_TREASURY_MANAGER,
+        [
+            ReducerJobEnum.ROLLUP_PARTICIPATION,
+            ReducerJobEnum.ROLLUP_TREASURY_MANAGER,
+        ],
+    ],
+    [ReducerJobEnum.ROLLUP_NULLIFIER, [ReducerJobEnum.ROLLUP_NULLIFIER]],
+]);
+
+export const ReducerPriorities: Map<ReducerJobEnum, number> = new Map([
+    [ReducerJobEnum.COMPILE, 1],
+    [ReducerJobEnum.ROLLUP, 4],
+    [ReducerJobEnum.UPDATE_COMMITTEE, 4],
+    [ReducerJobEnum.UPDATE_KEY, 4],
+    [ReducerJobEnum.FINALIZE_ROUND_1, 3],
+    [ReducerJobEnum.FINALIZE_ROUND_2, 3],
+    [ReducerJobEnum.FINALIZE_RESPONSE, 2],
+    [ReducerJobEnum.RESOLVE, 2],
+    [ReducerJobEnum.UPDATE_REQUEST, 4],
+    [ReducerJobEnum.UPDATE_TASK, 4],
+    [ReducerJobEnum.ROLLUP_PROJECT, 4],
+    [ReducerJobEnum.ROLLUP_CAMPAIGN, 4],
+    [ReducerJobEnum.ROLLUP_PARTICIPATION, 3],
+    [ReducerJobEnum.ROLLUP_FUNDING, 2],
+    [ReducerJobEnum.ROLLUP_TREASURY_MANAGER, 2],
+    [ReducerJobEnum.ROLLUP_NULLIFIER, 2],
+]);
+
+export type ReducerJob = {
+    options: {
+        jobId: string;
+        priority: number;
+        removeOnFail: boolean;
+    };
+    data: ReducerJobData;
+};
+
+export type ReducerJobData = {
+    type: ReducerJobEnum;
+    date: number;
+};
 
 export enum ReducerJobEnum {
     COMPILE,

@@ -17,6 +17,7 @@ import { Campaign } from 'src/schemas/campaign.schema';
 import { CreateCampaignDto } from 'src/dtos/create-campaign.dto';
 import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { AuthGuard } from '../auth/auth.guard';
+import { Project } from 'src/schemas/project.schema';
 
 @Controller('campaigns')
 export class CampaignsController {
@@ -38,19 +39,14 @@ export class CampaignsController {
 
     @Get('all')
     @ApiTags('Campaign')
-    async getAllCampaigns(
-        @Query('active', new ParseBoolPipe()) active: boolean,
-    ): Promise<Campaign[]> {
-        return this.campaignsService.getCampaigns(undefined, active);
+    async getAllCampaigns(): Promise<Campaign[]> {
+        return this.campaignsService.getCampaigns(undefined);
     }
 
     @Get()
     @ApiTags('Campaign')
-    async getCampaigns(
-        @Query('owner') owner: string,
-        @Query('active', new ParseBoolPipe()) active: boolean,
-    ): Promise<Campaign[]> {
-        return this.campaignsService.getCampaigns(owner, active);
+    async getCampaigns(@Query('owner') owner: string): Promise<Campaign[]> {
+        return this.campaignsService.getCampaigns(owner);
     }
 
     @Get(':campaignId/projects')
@@ -61,12 +57,24 @@ export class CampaignsController {
         return this.campaignsService.getProjects(campaignId);
     }
 
-    @Get(':campaignId/result')
+    @Get(':campaignId/projects/not-participated')
     @ApiTags('Campaign')
-    async getCampaignResult(
+    async getProjectsNotParticipated(
         @Param('campaignId', ParseIntPipe) campaignId: number,
-    ): Promise<any> {
-        return this.campaignsService.getCampaignResult(campaignId);
+        @Query('projectOwner') projectOwner: string,
+    ): Promise<Project[]> {
+        return this.campaignsService.getProjectsNotParticipated(
+            campaignId,
+            projectOwner,
+        );
+    }
+
+    @Get(':campaignId/fundings/')
+    @ApiTags('Campaign')
+    async getFundings(
+        @Param('campaignId', ParseIntPipe) campaignId: number,
+    ): Promise<number[]> {
+        return this.campaignsService.getFundings(campaignId);
     }
 
     @Get(':campaignId')

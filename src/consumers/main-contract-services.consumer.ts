@@ -11,6 +11,7 @@ import { FundingContractService } from '../mina-contracts/funding-contract/fundi
 import { TreasuryManagerContractService } from 'src/mina-contracts/treasury-manager-contract/treasury-manager-contract.service';
 import { RequesterContractsService } from 'src/mina-contracts/requester-contract/requester-contract.service';
 import { RollupContractService } from 'src/mina-contracts/rollup-contract/rollup-contract.service';
+import { NullifierContractService } from 'src/mina-contracts/nullifier-contract/nullifier-contract.service';
 
 @Processor('main-contract-services')
 export class MainContractServicesConsumer {
@@ -26,6 +27,7 @@ export class MainContractServicesConsumer {
         private readonly projectContractService: ProjectContractService,
         private readonly fundingContractService: FundingContractService,
         private readonly treasuryManagerContractService: TreasuryManagerContractService,
+        private readonly nullifierContractService: NullifierContractService,
     ) {}
 
     @Process('updateContractMerkleTrees')
@@ -54,6 +56,13 @@ export class MainContractServicesConsumer {
             await this.dkgContractsService.update();
             await this.requesterContractsService.update();
             await this.dkgUsageContractsService.update();
+
+            await this.projectContractService.update();
+            await this.campaignContractService.update();
+            await this.participationContractService.update();
+            await this.fundingContractService.update();
+            await this.treasuryManagerContractService.update();
+            await this.nullifierContractService.update();
             this.logger.log('All contracts updated successfully');
         } catch (err) {
             this.logger.error('Error during updating contracts: ', err);

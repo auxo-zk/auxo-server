@@ -3,6 +3,7 @@ import { QueryService } from '../query/query.service';
 import { InjectModel } from '@nestjs/mongoose';
 import {
     FundingAction,
+    FundingActionData,
     getFundingActionData,
 } from 'src/schemas/actions/funding-action.schema';
 import { Model } from 'mongoose';
@@ -27,11 +28,13 @@ import {
 import { Constants, Storage, ZkApp } from '@auxo-dev/platform';
 import { ZkApp as DkgZkApp } from '@auxo-dev/dkg';
 import { Utilities } from '../utilities';
-import { FundingResult } from 'src/schemas/funding-result.schema';
 import { ContractServiceInterface } from 'src/interfaces/contract-service.interface';
 import { FundingState } from 'src/interfaces/zkapp-state.interface';
 import _ from 'lodash';
 import { ParticipationContractService } from '../participation-contract/participation-contract.service';
+import { ProjectContractService } from '../project-contract/project-contract.service';
+import { CampaignContractService } from '../campaign-contract/campaign-contract.service';
+import { Utils } from '@auxo-dev/auxo-libs';
 
 @Injectable()
 export class FundingContractService implements ContractServiceInterface {
@@ -55,13 +58,13 @@ export class FundingContractService implements ContractServiceInterface {
 
     constructor(
         private readonly queryService: QueryService,
+        private readonly projectContractService: ProjectContractService,
+        private readonly campaignContractService: CampaignContractService,
         private readonly participationContractService: ParticipationContractService,
         @InjectModel(FundingAction.name)
         private readonly fundingActionModel: Model<FundingAction>,
         @InjectModel(Funding.name)
         private readonly fundingModel: Model<Funding>,
-        @InjectModel(FundingResult.name)
-        private readonly fundingResultModel: Model<FundingResult>,
     ) {
         this._nextFundingId = 0;
         this._actionState = '';
@@ -72,8 +75,15 @@ export class FundingContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            // await this.fetch();
-            // await this.updateMerkleTrees();
+            await this.fetch();
+            await this.updateMerkleTrees();
+            // Provable.log(await this.fetchFundingState());
+            // Provable.log(this.fundingInformationStorage.root);
+            // await this.projectContractService.compile();
+            // await this.campaignContractService.compile();
+            // await this.participationContractService.compile();
+            // await this.compile();
+            // await this.rollup();
         } catch (err) {}
     }
 
@@ -98,6 +108,8 @@ export class FundingContractService implements ContractServiceInterface {
 
     async compile() {
         const cache = ZkAppCache;
+        await ZkApp.Funding.RollupFunding.compile({ cache });
+        await ZkApp.Funding.FundingContract.compile({ cache });
     }
 
     async fetchFundingState(): Promise<FundingState> {
@@ -113,6 +125,139 @@ export class FundingContractService implements ContractServiceInterface {
         this._nextFundingId = Number(result.nextFundingId);
         this._actionState = result.actionState.toString();
         return result;
+    }
+
+    async getNextRollupJob(): Promise<string | undefined> {
+        try {
+            const notActiveActions = await this.fundingActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (notActiveActions.length > 0) {
+                return notActiveActions[0].previousActionState;
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async processRollupJob(previousActionState: string): Promise<boolean> {
+        try {
+            const notActiveActions = await this.fundingActionModel.find(
+                { active: false },
+                {},
+                { sort: { actionId: 1 } },
+            );
+            if (
+                notActiveActions.length == 0 ||
+                notActiveActions[0].previousActionState != previousActionState
+            )
+                throw new Error('Incorrect previous action state!');
+            const state = await this.fetchFundingState();
+            let nextFundingId = state.nextFundingId;
+            let proof = await ZkApp.Funding.RollupFunding.firstStep(
+                state.nextFundingId,
+                state.fundingInformationRoot,
+                state.actionState,
+            );
+            const fundingInformationStorage = _.cloneDeep(
+                this._fundingInformationStorage,
+            );
+            for (let i = 0; i < notActiveActions.length; i++) {
+                const notActiveAction = notActiveActions[i];
+                if (
+                    notActiveAction.actionData.actionType ==
+                    Storage.FundingStorage.FundingActionEnum.FUND
+                ) {
+                    proof = await Utils.prove(
+                        ZkApp.Funding.RollupFunding.name,
+                        'fundStep',
+                        async () =>
+                            ZkApp.Funding.RollupFunding.fundStep(
+                                proof,
+                                ZkApp.Funding.FundingAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                fundingInformationStorage.getLevel1Witness(
+                                    nextFundingId,
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+
+                    fundingInformationStorage.updateLeaf(
+                        nextFundingId,
+                        fundingInformationStorage.calculateLeaf(
+                            FundingActionData.toFundingInformation(
+                                notActiveAction.actionData,
+                            ),
+                        ),
+                    );
+                    nextFundingId = nextFundingId.add(1);
+                } else {
+                    proof = await Utils.prove(
+                        ZkApp.Funding.RollupFunding.name,
+                        'refundStep',
+                        async () =>
+                            ZkApp.Funding.RollupFunding.refundStep(
+                                proof,
+                                ZkApp.Funding.FundingAction.fromFields(
+                                    Utilities.stringArrayToFields(
+                                        notActiveAction.actions,
+                                    ),
+                                ),
+                                fundingInformationStorage.getLevel1Witness(
+                                    Field(notActiveAction.actionData.fundingId),
+                                ),
+                            ),
+                        undefined,
+                        { info: true, error: true },
+                    );
+
+                    fundingInformationStorage.updateLeaf(
+                        Field(notActiveAction.actionData.fundingId),
+                        fundingInformationStorage.calculateLeaf(
+                            FundingActionData.toFundingInformation(
+                                notActiveAction.actionData,
+                            ),
+                        ),
+                    );
+                }
+            }
+            const fundingContract = new ZkApp.Funding.FundingContract(
+                PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
+            );
+            const feePayerPrivateKey = PrivateKey.fromBase58(
+                process.env.FEE_PAYER_PRIVATE_KEY,
+            );
+            await Utils.proveAndSendTx(
+                ZkApp.Funding.FundingContract.name,
+                'rollup',
+                async () => fundingContract.rollup(proof),
+                {
+                    sender: {
+                        privateKey: feePayerPrivateKey,
+                        publicKey: feePayerPrivateKey.toPublicKey(),
+                    },
+                    fee: process.env.FEE,
+                    memo: '',
+                    nonce: await this.queryService.fetchAccountNonce(
+                        feePayerPrivateKey.toPublicKey().toBase58(),
+                    ),
+                },
+                undefined,
+                undefined,
+                { info: true, error: true, memoryUsage: false },
+            );
+            return true;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
     }
 
     async rollup(): Promise<boolean> {
@@ -140,87 +285,120 @@ export class FundingContractService implements ContractServiceInterface {
             if (notReducedActions.length > 0) {
                 const state = await this.fetchFundingState();
                 let nextFundingId = state.nextFundingId;
-                let proof = await ZkApp.Funding.RollupFunding.firstStep(
-                    state.nextFundingId,
-                    state.fundingInformationRoot,
-                    state.actionState,
+                let proof = await Utils.prove(
+                    ZkApp.Funding.RollupFunding.name,
+                    'firstStep',
+                    async () =>
+                        ZkApp.Funding.RollupFunding.firstStep(
+                            state.nextFundingId,
+                            state.fundingInformationRoot,
+                            state.actionState,
+                        ),
+                    undefined,
+                    { info: true, error: true },
                 );
+
                 const fundingInformationStorage = _.cloneDeep(
                     this._fundingInformationStorage,
                 );
                 for (let i = 0; i < notReducedActions.length; i++) {
                     const notReducedAction = notReducedActions[i];
+
                     if (
                         notReducedAction.actionData.actionType ==
                         Storage.FundingStorage.FundingActionEnum.FUND
                     ) {
-                        proof = await ZkApp.Funding.RollupFunding.fundStep(
-                            proof,
-                            ZkApp.Funding.FundingAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
+                        proof = await Utils.prove(
+                            ZkApp.Funding.RollupFunding.name,
+                            'fundStep',
+                            async () =>
+                                ZkApp.Funding.RollupFunding.fundStep(
+                                    proof,
+                                    ZkApp.Funding.FundingAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notReducedAction.actions,
+                                        ),
+                                    ),
+                                    fundingInformationStorage.getLevel1Witness(
+                                        nextFundingId,
+                                    ),
                                 ),
-                            ),
-                            fundingInformationStorage.getLevel1Witness(
-                                nextFundingId,
-                            ),
+                            undefined,
+                            { info: true, error: true },
                         );
                         fundingInformationStorage.updateLeaf(
                             nextFundingId,
                             fundingInformationStorage.calculateLeaf(
-                                notReducedAction.actionData.toFundingInformation(),
+                                FundingActionData.toFundingInformation(
+                                    notReducedAction.actionData,
+                                ),
                             ),
                         );
                         nextFundingId = nextFundingId.add(1);
                     } else {
-                        proof = await ZkApp.Funding.RollupFunding.fundStep(
-                            proof,
-                            ZkApp.Funding.FundingAction.fromFields(
-                                Utilities.stringArrayToFields(
-                                    notReducedAction.actions,
+                        proof = await Utils.prove(
+                            ZkApp.Funding.RollupFunding.name,
+                            'fundStep',
+                            async () =>
+                                ZkApp.Funding.RollupFunding.fundStep(
+                                    proof,
+                                    ZkApp.Funding.FundingAction.fromFields(
+                                        Utilities.stringArrayToFields(
+                                            notReducedAction.actions,
+                                        ),
+                                    ),
+                                    fundingInformationStorage.getLevel1Witness(
+                                        Field(
+                                            notReducedAction.actionData
+                                                .fundingId,
+                                        ),
+                                    ),
                                 ),
-                            ),
-                            fundingInformationStorage.getLevel1Witness(
-                                Field(notReducedAction.actionData.fundingId),
-                            ),
+                            undefined,
+                            { info: true, error: true },
                         );
                         fundingInformationStorage.updateLeaf(
                             Field(notReducedAction.actionData.fundingId),
                             fundingInformationStorage.calculateLeaf(
-                                notReducedAction.actionData.toFundingInformation(),
+                                FundingActionData.toFundingInformation(
+                                    notReducedAction.actionData,
+                                ),
                             ),
                         );
                     }
                 }
                 const fundingContract = new ZkApp.Funding.FundingContract(
-                    PublicKey.fromBase58(process.env.COMMITTEE_ADDRESS),
+                    PublicKey.fromBase58(process.env.FUNDING_ADDRESS),
                 );
                 const feePayerPrivateKey = PrivateKey.fromBase58(
                     process.env.FEE_PAYER_PRIVATE_KEY,
                 );
-                const tx = await Mina.transaction(
+                // Provable.log(proof.publicOutput);
+                await Utils.proveAndSendTx(
+                    ZkApp.Funding.FundingContract.name,
+                    'rollup',
+                    async () => fundingContract.rollup(proof),
                     {
-                        sender: feePayerPrivateKey.toPublicKey(),
+                        sender: {
+                            privateKey: feePayerPrivateKey,
+                            publicKey: feePayerPrivateKey.toPublicKey(),
+                        },
                         fee: process.env.FEE,
+                        memo: '',
                         nonce: await this.queryService.fetchAccountNonce(
                             feePayerPrivateKey.toPublicKey().toBase58(),
                         ),
                     },
-                    async () => {
-                        await fundingContract.rollup(proof);
-                    },
-                );
-                await Utilities.proveAndSend(
-                    tx,
-                    feePayerPrivateKey,
-                    false,
-                    this.logger,
+                    undefined,
+                    undefined,
+                    { info: true, error: true, memoryUsage: false },
                 );
                 return true;
             }
+            return false;
         } catch (err) {
-            this.logger.error(err);
-        } finally {
+            // this.logger.error(err);
+            console.log(err);
             return false;
         }
     }
@@ -343,13 +521,15 @@ export class FundingContractService implements ContractServiceInterface {
                     );
                 const fundingInformationLeaf =
                     this._fundingInformationStorage.calculateLeaf(
-                        funding.toFundingInformation(),
+                        Funding.toFundingInformation(funding),
                     );
                 this._fundingInformationStorage.updateLeaf(
                     level1Index,
                     fundingInformationLeaf,
                 );
             }
-        } catch (err) {}
+        } catch (err) {
+            console.log(err);
+        }
     }
 }

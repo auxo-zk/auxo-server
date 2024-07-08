@@ -21,12 +21,14 @@ export class Funding {
     @Prop({ required: true, default: FundingStateEnum.FUNDED })
     state: FundingStateEnum;
 
-    toFundingInformation(): Storage.FundingStorage.FundingInformation {
+    static toFundingInformation(
+        data: Funding,
+    ): Storage.FundingStorage.FundingInformation {
         return new Storage.FundingStorage.FundingInformation({
-            campaignId: Field(this.campaignId),
-            investor: PublicKey.fromBase58(this.investor),
+            campaignId: Field(data.campaignId),
+            investor: PublicKey.fromBase58(data.investor),
             amount: new UInt64(
-                this.state == FundingStateEnum.FUNDED ? this.amount : 0,
+                data.state == FundingStateEnum.FUNDED ? data.amount : 0,
             ),
         });
     }

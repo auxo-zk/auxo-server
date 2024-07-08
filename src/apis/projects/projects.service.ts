@@ -65,15 +65,36 @@ export class ProjectsService {
     }
 
     async getParticipations(projectId: number): Promise<Participation[]> {
-        return await this.participationModel.find(
+        const result = await this.participationModel.aggregate([
             {
-                projectId: projectId,
+                $match: {
+                    projectId: projectId,
+                },
             },
             {
-                projectId: 0,
-                _id: 0,
+                $lookup: {
+                    from: 'campaigns',
+                    as: 'campaign',
+                    localField: 'campaignId',
+                    foreignField: 'campaignId',
+                    pipeline: [
+                        {
+                            $project: {
+                                _id: 0,
+                                ipfsData: 1,
+                                ipfsHash: 1,
+                                owner: 1,
+                                state: 1,
+                            },
+                        },
+                    ],
+                },
             },
-        );
+            {
+                $unwind: '$campaign',
+            },
+        ]);
+        return result;
     }
 
     async getParticipation(
@@ -91,29 +112,6 @@ export class ProjectsService {
         }
     }
 
-    async getFundRaising(projectId: number): Promise<Participation[]> {
-        return await this.participationModel.aggregate([
-            { $match: { projectId: projectId, active: true } },
-            {
-                $lookup: {
-                    from: 'campaigns',
-                    as: 'campaign',
-                    foreignField: 'campaignId',
-                    localField: 'campaignId',
-                    pipeline: [
-                        {
-                            $match: {
-                                active: true,
-                            },
-                        },
-                    ],
-                },
-            },
-            { $unwind: '$campaign' },
-            { $project: { campaignId: 0 } },
-        ]);
-    }
-
     async createParticipation(
         projectId: number,
         createParticipationDto: CreateParticipationDto,
@@ -124,17 +122,13 @@ export class ProjectsService {
                 projectId: projectId,
             });
             if (project) {
-                if (project.treasuryAddress == jwtPayload.sub) {
-                    const result = await this.ipfs.uploadJson(
-                        createParticipationDto,
-                    );
-                    if (result == null) {
-                        throw new BadRequestException();
-                    }
-                    return result;
-                } else {
-                    throw new UnauthorizedException();
+                const result = await this.ipfs.uploadJson(
+                    createParticipationDto,
+                );
+                if (result == null) {
+                    throw new BadRequestException();
                 }
+                return result;
             } else {
                 throw new NotFoundException();
             }

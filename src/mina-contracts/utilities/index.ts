@@ -281,8 +281,8 @@ export class Utilities {
             PublicKey.fromBase58(process.env.FUNDING_REQUESTER_ADDRESS),
         );
         zkAppStorage.updateAddress(
-            Field(ZkAppIndex.COMMITMENT),
-            PublicKey.fromBase58(process.env.COMMITMENT_ADDRESS),
+            Field(ZkAppIndex.NULLIFIER),
+            PublicKey.fromBase58(process.env.NULLIFIER_ADDRESS),
         );
 
         return zkAppStorage;

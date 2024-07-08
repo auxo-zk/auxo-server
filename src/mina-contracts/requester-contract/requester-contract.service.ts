@@ -39,6 +39,7 @@ import _, { last } from 'lodash';
 import { Encryption, Task } from 'src/schemas/task.schema';
 import {
     getFullDimensionEmptyGroupVector,
+    getFullDimensionEmptyPointVector,
     MaxRetries,
     RequesterAddresses,
     RequesterAddressMapping,
@@ -146,23 +147,9 @@ export class RequesterContractsService implements ContractServiceInterface {
         try {
             await this.fetch();
             await this.updateMerkleTrees();
-            // Provable.log(
-            //     await this.fetchRequesterState(this.requesterAddresses[0]),
-            // );
-            // Provable.log(this.storage(this.requesterAddresses[0]).counters);
-            // Provable.log(
-            //     this.storage(this.requesterAddresses[0]).keyIndexStorage.root,
-            // );
-            // Provable.log(
-            //     this.storage(this.requesterAddresses[0]).timestampStorage.root,
-            // );
-            // Provable.log(
-            //     this.storage(this.requesterAddresses[0]).accumulationStorage
-            //         .root,
-            // );
-            // Provable.log(
-            //     this.storage(this.requesterAddresses[0]).commitmentStorage.root,
-            // );
+            // const address = this.requesterAddresses[0];
+            // Provable.log(await this.fetchRequesterState(address));
+            // Provable.log(this.storage(address).accumulationStorage.root);
             // await this.compile();
             // await this.rollup();
         } catch (err) {
@@ -191,340 +178,347 @@ export class RequesterContractsService implements ContractServiceInterface {
                     { sort: { actionId: 1 } },
                 );
                 if (notActiveActions.length > 0) {
-                    jobIds.push(
-                        `${notActiveActions[0].previousActionState}-${requesterAddress}`,
-                    );
-                }
-            }
-        } catch (err) {
-            console.log(err);
-            return [];
-        }
-        return jobIds;
-    }
-
-    async processUpdateTaskJob(combinedId: string): Promise<boolean> {
-        try {
-            const [previousActionState, requester] = combinedId.split('-');
-            const notActiveActions = await this.requesterActionModel.find(
-                { active: false, requester },
-                {},
-                { sort: { actionId: 1 } },
-            );
-
-            if (
-                notActiveActions.length == 0 ||
-                notActiveActions[0].previousActionState != previousActionState
-            )
-                throw new Error('Incorrect previous action state!');
-
-            const state = await this.fetchRequesterState(requester);
-            let proof = await Utils.prove(
-                UpdateTask.name,
-                'init',
-                async () =>
-                    UpdateTask.init(
-                        ZkApp.Requester.RequesterAction.empty(),
-                        state.actionState,
-                        new UInt32(
-                            this._storageMapping[
-                                requester
-                            ].counters.taskCounter,
-                        ),
-                        state.keyIndexRoot,
-                        state.timestampRoot,
-                        state.accumulationRoot,
-                        this._storageMapping[requester].counters
-                            .commitmentCounter,
-                        state.commitmentRoot,
-                    ),
-                undefined,
-                { info: true, error: true },
-            );
-            const counters = _.cloneDeep(
-                this._storageMapping[requester].counters,
-            );
-            const keyIndexStorage = _.cloneDeep(
-                this._storageMapping[requester].keyIndexStorage,
-            );
-            const timestampStorage = _.cloneDeep(
-                this._storageMapping[requester].timestampStorage,
-            );
-            const accumulationStorage = _.cloneDeep(
-                this._storageMapping[requester].accumulationStorage,
-            );
-            const commitmentStorage = _.cloneDeep(
-                this._storageMapping[requester].commitmentStorage,
-            );
-            const groupVectorStorageMapping = _.cloneDeep(
-                this._storageMapping[requester].groupVectorStorageMapping,
-            );
-            let nextTaskId = Field.fromFields(counters.taskCounter.toFields());
-            let nextCommitmentIndex = Field.fromFields(
-                counters.commitmentCounter.toFields(),
-            );
-            for (let i = 0; i < notActiveActions.length; i++) {
-                const notActiveAction = notActiveActions[i];
-                if (
-                    notActiveAction.actionData.taskId ==
-                    Number(UInt32.MAXINT().toBigint())
-                ) {
-                    proof = await UpdateTask.create(
-                        ZkApp.Requester.RequesterAction.fromFields(
-                            Utilities.stringArrayToFields(
-                                notActiveAction.actions,
-                            ),
-                        ),
-                        proof,
-                        keyIndexStorage.getLevel1Witness(nextTaskId),
-                        timestampStorage.getLevel1Witness(nextTaskId),
-                        accumulationStorage.getLevel1Witness(nextTaskId),
-                    );
-                    keyIndexStorage.updateLeaf(
-                        { level1Index: nextTaskId },
-                        Field(notActiveAction.actionData.keyIndex),
-                    );
-                    timestampStorage.updateLeaf(
-                        { level1Index: nextTaskId },
-                        Field(notActiveAction.actionData.timestamp),
-                    );
-                    const groupVectorStorageR = new GroupVectorStorage();
-                    const groupVectorStorageM = new GroupVectorStorage();
-                    accumulationStorage.updateLeaf(
-                        { level1Index: nextTaskId },
-                        accumulationStorage.calculateLeaf({
-                            accumulationRootR: groupVectorStorageR.root,
-                            accumulationRootM: groupVectorStorageM.root,
-                        }),
-                    );
-                    groupVectorStorageMapping[Number(nextTaskId.toBigInt())] = {
-                        R: groupVectorStorageR,
-                        M: groupVectorStorageM,
-                    };
-                    nextTaskId = nextTaskId.add(1);
-                } else {
-                    if (
-                        groupVectorStorageMapping[
-                            notActiveAction.actionData.taskId
-                        ] == undefined
-                    ) {
-                        groupVectorStorageMapping[
-                            notActiveAction.actionData.taskId
-                        ] = {
-                            R: new GroupVectorStorage(),
-                            M: new GroupVectorStorage(),
-                        };
-                    }
-                    const oldSumR: Group[] = [];
-                    const oldSumM: Group[] = [];
-                    const dimensionIndexes: number[] = [];
-                    for (
-                        let j = 0;
-                        j < Constants.ENCRYPTION_LIMITS.DIMENSION;
-                        j++
-                    ) {
-                        const dimensionIndex = Number(
-                            Field.fromBits(
-                                Field(notActiveAction.actionData.indices)
-                                    .toBits()
-                                    .slice(j * 8, (j + 1) * 8),
-                            ).toBigInt(),
-                        );
-                        dimensionIndexes.push(dimensionIndex);
-                        if (
-                            groupVectorStorageMapping[
-                                notActiveAction.actionData.taskId
-                            ].R.leafs[dimensionIndex.toString()] == undefined
-                        ) {
-                            oldSumR.push(Group.zero);
-                            oldSumM.push(Group.zero);
-                        } else {
-                            oldSumR.push(
-                                groupVectorStorageMapping[
-                                    notActiveAction.actionData.taskId
-                                ].R.leafs[dimensionIndex.toString()]
-                                    ? groupVectorStorageMapping[
-                                          notActiveAction.actionData.taskId
-                                      ].R.leafs[dimensionIndex.toString()].raw
-                                    : Group.zero,
-                            );
-                            oldSumM.push(
-                                groupVectorStorageMapping[
-                                    notActiveAction.actionData.taskId
-                                ].M.leafs[dimensionIndex.toString()]
-                                    ? groupVectorStorageMapping[
-                                          notActiveAction.actionData.taskId
-                                      ].M.leafs[dimensionIndex.toString()].raw
-                                    : Group.zero,
-                            );
-                        }
-                    }
-                    const groupVectorOldSumR: GroupVector = new GroupVector(
-                        oldSumR,
-                    );
-                    const groupVectorOldSumM: GroupVector = new GroupVector(
-                        oldSumM,
-                    );
-                    const accumulationWitnessesR = new GroupVectorWitnesses();
-                    const accumulationWitnessesM = new GroupVectorWitnesses();
-                    const commitmentWitnesses = new CommitmentWitnesses();
-                    for (
-                        let j = 0;
-                        j < Constants.ENCRYPTION_LIMITS.DIMENSION;
-                        j++
-                    ) {
-                        const dimensionIndex = dimensionIndexes[j];
-                        accumulationWitnessesR.set(
-                            Field(j),
-                            groupVectorStorageMapping[
-                                notActiveAction.actionData.taskId
-                            ].R.getWitness(Field(dimensionIndex)),
-                        );
-                        accumulationWitnessesM.set(
-                            Field(j),
-                            groupVectorStorageMapping[
-                                notActiveAction.actionData.taskId
-                            ].M.getWitness(Field(dimensionIndex)),
-                        );
-                        if (
-                            groupVectorStorageMapping[
-                                notActiveAction.actionData.taskId
-                            ].R.leafs[dimensionIndex.toString()] == undefined
-                        ) {
-                            groupVectorStorageMapping[
-                                notActiveAction.actionData.taskId
-                            ].R.updateRawLeaf(
-                                {
-                                    level1Index: Field(dimensionIndex),
-                                },
-                                Group.from(
-                                    notActiveAction.actionData.R[j].x,
-                                    notActiveAction.actionData.R[j].y,
-                                ),
-                            );
-                            groupVectorStorageMapping[
-                                notActiveAction.actionData.taskId
-                            ].M.updateRawLeaf(
-                                {
-                                    level1Index: Field(dimensionIndex),
-                                },
-                                Group.from(
-                                    notActiveAction.actionData.M[j].x,
-                                    notActiveAction.actionData.M[j].y,
-                                ),
-                            );
-                        } else {
-                            groupVectorStorageMapping[
-                                notActiveAction.actionData.taskId
-                            ].R.updateRawLeaf(
-                                {
-                                    level1Index: Field(dimensionIndex),
-                                },
-                                Group.from(
-                                    notActiveAction.actionData.R[j].x,
-                                    notActiveAction.actionData.R[j].y,
-                                ).add(
-                                    groupVectorStorageMapping[
-                                        notActiveAction.actionData.taskId
-                                    ].R.leafs[dimensionIndex.toString()].raw,
-                                ),
-                            );
-                            groupVectorStorageMapping[
-                                notActiveAction.actionData.taskId
-                            ].M.updateRawLeaf(
-                                {
-                                    level1Index: Field(dimensionIndex),
-                                },
-                                Group.from(
-                                    notActiveAction.actionData.M[j].x,
-                                    notActiveAction.actionData.M[j].y,
-                                ).add(
-                                    groupVectorStorageMapping[
-                                        notActiveAction.actionData.taskId
-                                    ].M.leafs[dimensionIndex.toString()].raw,
-                                ),
-                            );
-                        }
-                        commitmentWitnesses.set(
-                            Field(j),
-                            commitmentStorage.getWitness(nextCommitmentIndex),
-                        );
-                        commitmentStorage.updateRawLeaf(
-                            {
-                                level1Index: nextCommitmentIndex,
-                            },
-                            Field(notActiveAction.actionData.commitments[j]),
-                        );
-                        nextCommitmentIndex = nextCommitmentIndex.add(1);
-                    }
-                    proof = await Utils.prove(
+                    const state =
+                        await this.fetchRequesterState(requesterAddress);
+                    let proof = await Utils.prove(
                         UpdateTask.name,
-                        'accumulate',
+                        'init',
                         async () =>
-                            UpdateTask.accumulate(
-                                ZkApp.Requester.RequesterAction.fromFields(
-                                    Utilities.stringArrayToFields(
-                                        notActiveAction.actions,
-                                    ),
+                            UpdateTask.init(
+                                ZkApp.Requester.RequesterAction.empty(),
+                                state.actionState,
+                                new UInt32(
+                                    this._storageMapping[
+                                        requesterAddress
+                                    ].counters.taskCounter,
                                 ),
-                                proof,
-                                groupVectorOldSumR,
-                                groupVectorOldSumM,
-                                accumulationStorage.getLevel1Witness(
-                                    Field(notActiveAction.actionData.taskId),
-                                ),
-                                accumulationWitnessesR,
-                                accumulationWitnessesM,
-                                commitmentWitnesses,
+                                state.keyIndexRoot,
+                                state.timestampRoot,
+                                state.accumulationRoot,
+                                this._storageMapping[requesterAddress].counters
+                                    .commitmentCounter,
+                                state.commitmentRoot,
                             ),
                         undefined,
                         { info: true, error: true },
                     );
-                    accumulationStorage.updateLeaf(
+                    const counters = _.cloneDeep(
+                        this._storageMapping[requesterAddress].counters,
+                    );
+                    const keyIndexStorage = _.cloneDeep(
+                        this._storageMapping[requesterAddress].keyIndexStorage,
+                    );
+                    const timestampStorage = _.cloneDeep(
+                        this._storageMapping[requesterAddress].timestampStorage,
+                    );
+                    const accumulationStorage = _.cloneDeep(
+                        this._storageMapping[requesterAddress]
+                            .accumulationStorage,
+                    );
+                    const commitmentStorage = _.cloneDeep(
+                        this._storageMapping[requesterAddress]
+                            .commitmentStorage,
+                    );
+                    const groupVectorStorageMapping = _.cloneDeep(
+                        this._storageMapping[requesterAddress]
+                            .groupVectorStorageMapping,
+                    );
+                    let nextTaskId = Field.fromFields(
+                        counters.taskCounter.toFields(),
+                    );
+                    let nextCommitmentIndex = Field.fromFields(
+                        counters.commitmentCounter.toFields(),
+                    );
+                    for (let i = 0; i < notActiveActions.length; i++) {
+                        const notActiveAction = notActiveActions[i];
+                        if (
+                            notActiveAction.actionData.taskId ==
+                            Number(UInt32.MAXINT().toBigint())
+                        ) {
+                            proof = await Utils.prove(
+                                UpdateTask.name,
+                                'create',
+                                async () =>
+                                    UpdateTask.create(
+                                        ZkApp.Requester.RequesterAction.fromFields(
+                                            Utilities.stringArrayToFields(
+                                                notActiveAction.actions,
+                                            ),
+                                        ),
+                                        proof,
+                                        keyIndexStorage.getLevel1Witness(
+                                            nextTaskId,
+                                        ),
+                                        timestampStorage.getLevel1Witness(
+                                            nextTaskId,
+                                        ),
+                                        accumulationStorage.getLevel1Witness(
+                                            nextTaskId,
+                                        ),
+                                    ),
+                                undefined,
+                                { info: true, error: true },
+                            );
+
+                            keyIndexStorage.updateLeaf(
+                                { level1Index: nextTaskId },
+                                Field(notActiveAction.actionData.keyIndex),
+                            );
+                            timestampStorage.updateLeaf(
+                                { level1Index: nextTaskId },
+                                Field(notActiveAction.actionData.timestamp),
+                            );
+                            const groupVectorStorageR =
+                                new GroupVectorStorage();
+                            const groupVectorStorageM =
+                                new GroupVectorStorage();
+                            accumulationStorage.updateLeaf(
+                                { level1Index: nextTaskId },
+                                accumulationStorage.calculateLeaf({
+                                    accumulationRootR: groupVectorStorageR.root,
+                                    accumulationRootM: groupVectorStorageM.root,
+                                }),
+                            );
+                            groupVectorStorageMapping[
+                                Number(nextTaskId.toBigInt())
+                            ] = {
+                                R: groupVectorStorageR,
+                                M: groupVectorStorageM,
+                            };
+                            nextTaskId = nextTaskId.add(1);
+                            // Provable.log(
+                            //     proof.publicOutput.nextAccumulationRoot,
+                            // );
+                            // Provable.log(accumulationStorage.root);
+                        } else {
+                            if (
+                                groupVectorStorageMapping[
+                                    notActiveAction.actionData.taskId
+                                ] == undefined
+                            ) {
+                                groupVectorStorageMapping[
+                                    notActiveAction.actionData.taskId
+                                ] = {
+                                    R: new GroupVectorStorage(),
+                                    M: new GroupVectorStorage(),
+                                };
+                            }
+                            const oldSumR: Group[] = [];
+                            const oldSumM: Group[] = [];
+                            const accumulationWitnessesR =
+                                new GroupVectorWitnesses();
+                            const accumulationWitnessesM =
+                                new GroupVectorWitnesses();
+                            const commitmentWitnesses =
+                                new CommitmentWitnesses();
+                            for (
+                                let j = 0;
+                                j < Constants.ENCRYPTION_LIMITS.DIMENSION;
+                                j++
+                            ) {
+                                const dimensionIndex = Number(
+                                    Field.fromBits(
+                                        Field(
+                                            notActiveAction.actionData.indices,
+                                        )
+                                            .toBits()
+                                            .slice(j * 8, (j + 1) * 8),
+                                    ).toBigInt(),
+                                );
+                                accumulationWitnessesR.set(
+                                    Field(j),
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.getWitness(Field(dimensionIndex)),
+                                );
+                                accumulationWitnessesM.set(
+                                    Field(j),
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].M.getWitness(Field(dimensionIndex)),
+                                );
+                                oldSumR.push(
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.leafs[dimensionIndex.toString()]
+                                        ? groupVectorStorageMapping[
+                                              notActiveAction.actionData.taskId
+                                          ].R.leafs[dimensionIndex.toString()]
+                                              .raw
+                                        : Group.zero,
+                                );
+                                oldSumM.push(
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].M.leafs[dimensionIndex.toString()]
+                                        ? groupVectorStorageMapping[
+                                              notActiveAction.actionData.taskId
+                                          ].M.leafs[dimensionIndex.toString()]
+                                              .raw
+                                        : Group.zero,
+                                );
+                                if (
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.leafs[dimensionIndex.toString()] ==
+                                    undefined
+                                ) {
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.updateRawLeaf(
+                                        {
+                                            level1Index: Field(dimensionIndex),
+                                        },
+                                        Group.from(
+                                            notActiveAction.actionData.R[j].x,
+                                            notActiveAction.actionData.R[j].y,
+                                        ),
+                                    );
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].M.updateRawLeaf(
+                                        {
+                                            level1Index: Field(dimensionIndex),
+                                        },
+                                        Group.from(
+                                            notActiveAction.actionData.M[j].x,
+                                            notActiveAction.actionData.M[j].y,
+                                        ),
+                                    );
+                                } else {
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].R.updateRawLeaf(
+                                        {
+                                            level1Index: Field(dimensionIndex),
+                                        },
+                                        Group.from(
+                                            notActiveAction.actionData.R[j].x,
+                                            notActiveAction.actionData.R[j].y,
+                                        ).add(
+                                            groupVectorStorageMapping[
+                                                notActiveAction.actionData
+                                                    .taskId
+                                            ].R.leafs[dimensionIndex.toString()]
+                                                .raw,
+                                        ),
+                                    );
+                                    groupVectorStorageMapping[
+                                        notActiveAction.actionData.taskId
+                                    ].M.updateRawLeaf(
+                                        {
+                                            level1Index: Field(dimensionIndex),
+                                        },
+                                        Group.from(
+                                            notActiveAction.actionData.M[j].x,
+                                            notActiveAction.actionData.M[j].y,
+                                        ).add(
+                                            groupVectorStorageMapping[
+                                                notActiveAction.actionData
+                                                    .taskId
+                                            ].M.leafs[dimensionIndex.toString()]
+                                                .raw,
+                                        ),
+                                    );
+                                }
+                                commitmentWitnesses.set(
+                                    Field(j),
+                                    commitmentStorage.getWitness(
+                                        nextCommitmentIndex,
+                                    ),
+                                );
+                                commitmentStorage.updateRawLeaf(
+                                    {
+                                        level1Index: nextCommitmentIndex,
+                                    },
+                                    Field(
+                                        notActiveAction.actionData.commitments[
+                                            j
+                                        ],
+                                    ),
+                                );
+                                nextCommitmentIndex =
+                                    nextCommitmentIndex.add(1);
+                            }
+                            const groupVectorOldSumR: GroupVector =
+                                new GroupVector(oldSumR);
+                            const groupVectorOldSumM: GroupVector =
+                                new GroupVector(oldSumM);
+
+                            proof = await Utils.prove(
+                                UpdateTask.name,
+                                'accumulate',
+                                async () =>
+                                    UpdateTask.accumulate(
+                                        ZkApp.Requester.RequesterAction.fromFields(
+                                            Utilities.stringArrayToFields(
+                                                notActiveAction.actions,
+                                            ),
+                                        ),
+                                        proof,
+                                        groupVectorOldSumR,
+                                        groupVectorOldSumM,
+                                        accumulationStorage.getLevel1Witness(
+                                            Field(
+                                                notActiveAction.actionData
+                                                    .taskId,
+                                            ),
+                                        ),
+                                        accumulationWitnessesR,
+                                        accumulationWitnessesM,
+                                        commitmentWitnesses,
+                                    ),
+                                undefined,
+                                { info: true, error: true },
+                            );
+                            accumulationStorage.updateLeaf(
+                                {
+                                    level1Index: Field(
+                                        notActiveAction.actionData.taskId,
+                                    ),
+                                },
+                                accumulationStorage.calculateLeaf({
+                                    accumulationRootR:
+                                        groupVectorStorageMapping[
+                                            notActiveAction.actionData.taskId
+                                        ].R.root,
+                                    accumulationRootM:
+                                        groupVectorStorageMapping[
+                                            notActiveAction.actionData.taskId
+                                        ].M.root,
+                                }),
+                            );
+                        }
+                    }
+                    const requesterContract = new RequesterContract(
+                        PublicKey.fromBase58(requesterAddress),
+                    );
+                    const feePayerPrivateKey = PrivateKey.fromBase58(
+                        process.env.FEE_PAYER_PRIVATE_KEY,
+                    );
+                    await Utils.proveAndSendTx(
+                        RequesterContract.name,
+                        'updateTasks',
+                        async () => requesterContract.updateTasks(proof),
                         {
-                            level1Index: Field(
-                                notActiveAction.actionData.taskId,
+                            sender: {
+                                privateKey: feePayerPrivateKey,
+                                publicKey: feePayerPrivateKey.toPublicKey(),
+                            },
+                            fee: process.env.FEE,
+                            memo: '',
+                            nonce: await this.queryService.fetchAccountNonce(
+                                feePayerPrivateKey.toPublicKey().toBase58(),
                             ),
                         },
-                        accumulationStorage.calculateLeaf({
-                            accumulationRootR:
-                                groupVectorStorageMapping[
-                                    notActiveAction.actionData.taskId
-                                ].R.root,
-                            accumulationRootM:
-                                groupVectorStorageMapping[
-                                    notActiveAction.actionData.taskId
-                                ].M.root,
-                        }),
+                        undefined,
+                        undefined,
+                        { info: true, error: true, memoryUsage: false },
                     );
+                    return true;
                 }
+                return false;
             }
-            const requesterContract = new RequesterContract(
-                PublicKey.fromBase58(requester),
-            );
-            const feePayerPrivateKey = PrivateKey.fromBase58(
-                process.env.FEE_PAYER_PRIVATE_KEY,
-            );
-            await Utils.proveAndSendTx(
-                RequesterContract.name,
-                'updateTasks',
-                async () => requesterContract.updateTasks(proof),
-                {
-                    sender: {
-                        privateKey: feePayerPrivateKey,
-                        publicKey: feePayerPrivateKey.toPublicKey(),
-                    },
-                    fee: process.env.FEE,
-                    memo: '',
-                    nonce: await this.queryService.fetchAccountNonce(
-                        feePayerPrivateKey.toPublicKey().toBase58(),
-                    ),
-                },
-                undefined,
-                undefined,
-                { info: true, error: true, memoryUsage: false },
-            );
-            return true;
         } catch (err) {
             console.log(err);
             return false;
@@ -651,8 +645,8 @@ export class RequesterContractsService implements ContractServiceInterface {
                             taskId: nextTaskId,
                             timestamp: notActiveAction.actionData.timestamp,
                             keyIndex: notActiveAction.actionData.keyIndex,
-                            totalR: getFullDimensionEmptyGroupVector(),
-                            totalM: getFullDimensionEmptyGroupVector(),
+                            totalR: getFullDimensionEmptyPointVector(),
+                            totalM: getFullDimensionEmptyPointVector(),
                         });
 
                         nextTaskId += 1;
@@ -672,9 +666,9 @@ export class RequesterContractsService implements ContractServiceInterface {
                         task.commitmentCounter +=
                             Constants.ENCRYPTION_LIMITS.DIMENSION;
                         const newTotalR: { x: string; y: string }[] =
-                            getFullDimensionEmptyGroupVector();
+                            getFullDimensionEmptyPointVector();
                         const newTotalM: { x: string; y: string }[] =
-                            getFullDimensionEmptyGroupVector();
+                            getFullDimensionEmptyPointVector();
                         for (
                             let j = 0;
                             j < Constants.ENCRYPTION_LIMITS.FULL_DIMENSION;

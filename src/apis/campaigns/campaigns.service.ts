@@ -12,7 +12,7 @@ import { IpfsResponse } from 'src/entities/ipfs-response.entity';
 import { JwtPayload } from 'src/interfaces/jwt-payload.interface';
 import { Ipfs } from 'src/ipfs/ipfs';
 import { Campaign } from 'src/schemas/campaign.schema';
-import { FundingResult } from 'src/schemas/funding-result.schema';
+import { Funding } from 'src/schemas/funding.schema';
 import { Participation } from 'src/schemas/participation.schema';
 import { Project } from 'src/schemas/project.schema';
 
@@ -24,8 +24,10 @@ export class CampaignsService {
         private readonly campaignModel: Model<Campaign>,
         @InjectModel(Participation.name)
         private readonly participationModel: Model<Participation>,
-        @InjectModel(FundingResult.name)
-        private readonly fundingResultModel: Model<FundingResult>,
+        @InjectModel(Project.name)
+        private readonly projectModel: Model<Project>,
+        @InjectModel(Funding.name)
+        private readonly fundingModel: Model<Funding>,
     ) {}
 
     async createCampaign(
@@ -43,10 +45,9 @@ export class CampaignsService {
         }
     }
 
-    async getCampaigns(owner: string, active: boolean): Promise<Campaign[]> {
+    async getCampaigns(owner: string): Promise<Campaign[]> {
         if (owner == undefined) {
             return await this.campaignModel.aggregate([
-                { $match: { active: active } },
                 {
                     $lookup: {
                         from: 'organizers',
@@ -69,7 +70,7 @@ export class CampaignsService {
             ]);
         } else {
             return await this.campaignModel.aggregate([
-                { $match: { owner: owner, active: active } },
+                { $match: { owner: owner } },
                 {
                     $lookup: {
                         from: 'organizers',
@@ -151,29 +152,48 @@ export class CampaignsService {
         return result;
     }
 
-    async getCampaignResult(campaignId: number): Promise<{ projects: any }> {
-        const exist = await this.campaignModel.exists({
+    async getProjectsNotParticipated(
+        campaignId: number,
+        projectOwner: string,
+    ): Promise<Project[]> {
+        const participations = await this.participationModel.find({
             campaignId: campaignId,
         });
-        if (exist) {
-            const projects = await this.participationModel.aggregate([
-                { $match: { campaignId: campaignId } },
-                { $sort: { projectIndex: 1 } },
-                { $project: { campaignId: 0, active: 0, _id: 0 } },
-                {
-                    $addFields: {
-                        totalRaising: {
-                            $sum: '$ipfsData.scopeOfWorks.raisingAmount',
-                        },
-                        totalFunded: '0',
+        const participatedProjectIds = participations.map(
+            (participation) => participation.projectId,
+        );
+        const result = await this.projectModel.find({
+            projectId: {
+                $nin: participatedProjectIds,
+            },
+            'members.0': projectOwner,
+        });
+        return result ? result : [];
+    }
+
+    async getFundings(campaignId: number) {
+        const result = await this.fundingModel.aggregate([
+            {
+                $match: {
+                    campaignId: campaignId,
+                },
+            },
+            {
+                $group: {
+                    _id: '$investor',
+                    totalAmount: {
+                        $sum: '$amount',
                     },
                 },
-            ]);
-            return {
-                projects: projects,
-            };
-        } else {
-            throw new NotFoundException();
-        }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    investor: '$_id',
+                    totalAmount: 1,
+                },
+            },
+        ]);
+        return result;
     }
 }
