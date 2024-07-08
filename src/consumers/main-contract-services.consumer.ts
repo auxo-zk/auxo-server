@@ -33,17 +33,12 @@ export class MainContractServicesConsumer {
     @Process('updateContractMerkleTrees')
     async updateContractTrees(job: Job<unknown>) {
         try {
-            Promise.all([
-                this.rollupContractService.updateMerkleTrees(),
-                this.committeeContractService.updateMerkleTrees(),
-                this.dkgContractsService.updateMerkleTrees(),
-                this.dkgUsageContractsService.updateMerkleTrees(),
-                this.requesterContractsService.updateMerkleTrees(),
-            ]).then(async () => {
-                this.logger.log('All contract trees updated successfully');
-                await job.progress();
-                return {};
-            });
+            await this.rollupContractService.updateMerkleTrees();
+            await this.committeeContractService.updateMerkleTrees();
+            await this.dkgContractsService.updateMerkleTrees();
+            await this.requesterContractsService.updateMerkleTrees();
+            await this.dkgUsageContractsService.updateMerkleTrees();
+            this.logger.log("All contracts' Merkle trees updated successfully");
         } catch (err) {
             this.logger.error(
                 'Error during updating contract merkle trees: ',

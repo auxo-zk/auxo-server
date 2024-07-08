@@ -67,8 +67,8 @@ export class ParticipationContractService implements ContractServiceInterface {
 
     async onModuleInit() {
         try {
-            await this.fetch();
-            await this.updateMerkleTrees();
+            // await this.fetch();
+            // await this.updateMerkleTrees();
             // Provable.log(await this.fetchParticipationState());
             // Provable.log(this._projectIndexStorage.root);
             // Provable.log(this._projectCounterStorage.root);

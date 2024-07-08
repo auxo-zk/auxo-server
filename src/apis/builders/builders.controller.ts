@@ -64,7 +64,7 @@ export class BuildersController {
         )
         avatar: Express.Multer.File,
         @Request() req: any,
-    ): Promise<FileInformation> {
+    ): Promise<string> {
         return await this.buildersService.updateAvatar(avatar, req.user);
     }
 

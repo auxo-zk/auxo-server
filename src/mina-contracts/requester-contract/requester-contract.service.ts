@@ -163,7 +163,8 @@ export class RequesterContractsService implements ContractServiceInterface {
         await RequesterContract.compile({ cache });
     }
 
-    async rollup() {
+    async getNextUpdateTaskJobs(): Promise<Array<string>> {
+        const jobIds: Array<string> = [];
         try {
             for (
                 let index = 0;

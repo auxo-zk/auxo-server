@@ -38,7 +38,7 @@ export class BuildersService {
     async updateAvatar(
         avatar: Express.Multer.File,
         jwtPayload: JwtPayload,
-    ): Promise<FileInformation> {
+    ): Promise<string> {
         if (jwtPayload.role != AuthRoleEnum.BUILDER) {
             throw new UnauthorizedException();
         } else {
@@ -46,11 +46,11 @@ export class BuildersService {
             await this.builderModel.findOneAndUpdate(
                 { address: jwtPayload.sub },
                 {
-                    img: fileInfo,
+                    img: fileInfo.URL,
                 },
                 { new: true, upsert: true },
             );
-            return fileInfo;
+            return fileInfo.URL;
         }
     }
 
