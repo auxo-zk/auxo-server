@@ -875,6 +875,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             const rawResultStorage = new ScalarVectorStorage();
             const rawResult = bruteForceResultVector(
                 getResultVector(totalD, totalM),
+                1,
             );
             const groupVectorStorage = new GroupVectorStorage();
             totalD.map((Di, index) => {
