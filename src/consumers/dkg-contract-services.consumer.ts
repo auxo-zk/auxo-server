@@ -32,6 +32,11 @@ export class DkgContractServicesConsumer {
     @Process({ name: 'handleContractServices', concurrency: 1 })
     async handleContractServices(job: Job<ReducerJobData>) {
         try {
+            await this.committeeContractService.updateMerkleTrees();
+            await this.rollupContractService.updateMerkleTrees();
+            await this.dkgContractsService.updateMerkleTrees();
+            await this.dkgUsageContractsService.updateMerkleTrees();
+            await this.requesterContractsService.updateMerkleTrees();
             const jobId = job.id as string;
             console.log('Job ID:', jobId);
             let isSuccessful = false;

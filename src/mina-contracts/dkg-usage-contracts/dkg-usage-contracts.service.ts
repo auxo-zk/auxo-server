@@ -833,7 +833,15 @@ export class DkgUsageContractsService implements ContractServiceInterface {
                 const committee = await this.committeeModel.findOne({
                     committeeId: key.committeeId,
                 });
-                if (request.responses.length == committee.threshold)
+                const existRequestAction = await this.requestActionModel.exists(
+                    {
+                        'actionData.requestId': request.requestId,
+                    },
+                );
+                if (
+                    request.responses.length == committee.threshold &&
+                    !existRequestAction
+                )
                     jobIds.push(`${request.requestId}`);
             }
         } catch (err) {
@@ -875,6 +883,7 @@ export class DkgUsageContractsService implements ContractServiceInterface {
             const rawResultStorage = new ScalarVectorStorage();
             const rawResult = bruteForceResultVector(
                 getResultVector(totalD, totalM),
+                1,
             );
             const groupVectorStorage = new GroupVectorStorage();
             totalD.map((Di, index) => {
