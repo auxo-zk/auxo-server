@@ -35,8 +35,8 @@ export class DkgContractServicesConsumer {
             await this.committeeContractService.updateMerkleTrees();
             await this.rollupContractService.updateMerkleTrees();
             await this.dkgContractsService.updateMerkleTrees();
-            await this.dkgUsageContractsService.updateMerkleTrees();
             await this.requesterContractsService.updateMerkleTrees();
+            await this.dkgUsageContractsService.updateMerkleTrees();
             const jobId = job.id as string;
             console.log('Job ID:', jobId);
             let isSuccessful = false;
