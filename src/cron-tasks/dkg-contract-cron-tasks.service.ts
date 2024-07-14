@@ -39,7 +39,7 @@ export class DkgContractCronTasksService implements OnModuleInit {
     ) {}
 
     async onModuleInit() {
-        await this.contractServices.client.flushdb();
+        // await this.contractServices.client.flushdb();
         await this.contractServices.add(
             'handleContractServices',
             {

@@ -31,7 +31,7 @@ export class BoiContractCronTasksService implements OnModuleInit {
     ) {}
 
     async onModuleInit() {
-        await this.contractServices.client.flushdb();
+        // await this.contractServices.client.flushdb();
         await this.contractServices.add(
             'handleContractServices',
             {
